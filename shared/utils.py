@@ -122,7 +122,6 @@ MAX_VIDEO_SIZE = 100 * 1024 * 1024
 def _secure_file(file, allowed_extensions, max_size):
     if not file or file.filename == '':
         return None
-    # استخراج الامتداد من الاسم الأصلي قبل secure_filename
     original_filename = file.filename
     if '.' in original_filename:
         ext = original_filename.rsplit('.', 1)[1].lower()
@@ -161,7 +160,7 @@ def _upload_to_cloudinary(file, resource_type='image', **kwargs):
     return upload_result.get('secure_url')
 
 def _delete_from_cloudinary(url):
-    """حذف ملف من Cloudinary إذا كان الرابط من Cloudinary، يُستخرج public_id و resource_type."""
+    """حذف ملف من Cloudinary إذا كان الرابط من Cloudinary."""
     if not url or not url.startswith('http'):
         return
     pattern = r'https?://res\.cloudinary\.com/[^/]+/(image|video|raw)/upload/(?:v\d+/)?(.+)$'
@@ -198,18 +197,20 @@ def delete_local_file(url):
 def _compress_image(file, max_width=1200, max_height=1200, quality=85):
     """
     ضغط الصورة وتقليل حجمها.
-    يعيد دائمًا كائن BytesIO يحتوي على الصورة المضغوطة (أو الأصلية عند الفشل).
+    تعيد (bytes_io, output_ext) حيث:
+    - bytes_io: كائن BytesIO يحتوي على بيانات الصورة.
+    - output_ext: الامتداد الصحيح للصورة الناتجة (مثل 'jpg' أو 'png' أو 'gif' أو 'webp').
     """
     try:
         img = Image.open(file)
         img_format = img.format
 
-        # صور GIF المتحركة: نعيد نسخة من الملف الأصلي دون ضغط
+        # صور GIF المتحركة: نعيد نسخة من الملف الأصلي مع الامتداد الأصلي
         if img_format == 'GIF':
             file.seek(0)
             output = io.BytesIO(file.read())
             output.seek(0)
-            return output
+            return output, 'gif'
 
         # معالجة الشفافية
         if img.mode in ('RGBA', 'LA', 'P'):
@@ -227,20 +228,23 @@ def _compress_image(file, max_width=1200, max_height=1200, quality=85):
         output = io.BytesIO()
         img.save(output, format='JPEG', quality=quality, optimize=True)
         output.seek(0)
-        return output
+        return output, 'jpg'
 
     except Exception as e:
         current_app.logger.warning(f'فشل ضغط الصورة: {str(e)}')
+        # إعادة البيانات الأصلية مع الامتداد الأصلي
         file.seek(0)
         output = io.BytesIO(file.read())
         output.seek(0)
-        return output
+        # الحصول على الامتداد الأصلي من اسم الملف
+        if file.filename and '.' in file.filename:
+            orig_ext = file.filename.rsplit('.', 1)[1].lower()
+        else:
+            orig_ext = 'jpg'  # افتراضي
+        return output, orig_ext
 
 def _compress_video(file, max_width=1280, crf=28):
-    """
-    ضغط الفيديو باستخدام ffmpeg إذا كان متاحًا.
-    يعيد مسار ملف مؤقت مضغوطًا، أو None إذا لم يتم الضغط.
-    """
+    """ضغط الفيديو باستخدام ffmpeg إذا كان متاحًا."""
     if not shutil.which('ffmpeg'):
         return None
     try:
@@ -287,22 +291,22 @@ def save_image(file, old_url=None):
     if not ext:
         raise ValueError('صيغة الملف غير مدعومة أو الحجم كبير جداً')
     try:
-        compressed_file = _compress_image(file)  # BytesIO
+        compressed_file, output_ext = _compress_image(file)  # BytesIO + الامتداد
 
         if _is_cloudinary_enabled():
+            # لا نفرض format، بل نترك Cloudinary يحدد الصيغة من المحتوى
             new_url = _upload_to_cloudinary(
                 compressed_file,
-                resource_type='image',
-                format='jpg'  # نحدد الصيغة لأننا نضغط إلى JPEG
+                resource_type='image'
             )
             if new_url and old_url:
                 delete_local_file(old_url)
             return new_url
         else:
-            # حفظ محلي: كتابة BytesIO إلى ملف
+            # حفظ محلي: كتابة BytesIO إلى ملف بالامتداد الصحيح
             original_name = secure_filename(file.filename)
             base_name = os.path.splitext(original_name)[0]
-            unique_name = f"{uuid.uuid4().hex}_{base_name}.jpg"
+            unique_name = f"{uuid.uuid4().hex}_{base_name}.{output_ext}"
             relative_dir = os.path.join('static', 'uploads', 'images')
             full_dir = os.path.join(current_app.root_path, relative_dir)
             os.makedirs(full_dir, exist_ok=True)
