@@ -16,6 +16,7 @@
     body.dark-mode .main-image-container { background: #2d2d2d; border-color: #444; }
     body.dark-mode .thumbnail-item { background: #333; }
     body.dark-mode .main-image-fallback { color: #ccc; }
+    body.dark-mode .thumbnail-item.active { border-color: var(--accent); }
     .product-title { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
     .product-description { line-height: 1.7; color: var(--muted-light); }
     body.dark-mode .product-description { color: var(--muted-dark); }
@@ -84,19 +85,22 @@
                     </div>
                     {% if product.sub_images %}
                         {% set sub_images = product.sub_images.split(',') %}
+                        {% set shown_sub = [] %}
+                        {% for img in sub_images %}
+                            {% set img = img.strip() %}
+                            {% if img and shown_sub|length < 4 %}
+                                {% set _ = shown_sub.append(img) %}
+                            {% endif %}
+                        {% endfor %}
+                        {% if shown_sub %}
                         <div class="thumbnails-row" id="thumbnailsRow">
-                            <div class="thumbnail-item active" data-full="{{ product.main_image | get_image_url }}">
-                                <img src="{{ product.main_image | get_image_url }}" alt="الصورة الأساسية">
-                            </div>
-                            {% for img in sub_images %}
-                                {% set img = img.strip() %}
-                                {% if img %}
-                                    <div class="thumbnail-item" data-full="{{ img | get_image_url }}">
-                                        <img src="{{ img | get_image_url }}" alt="صورة فرعية">
-                                    </div>
-                                {% endif %}
+                            {% for img in shown_sub %}
+                                <div class="thumbnail-item" data-full="{{ img | get_image_url }}">
+                                    <img src="{{ img | get_image_url }}" alt="صورة فرعية {{ loop.index }}">
+                                </div>
                             {% endfor %}
                         </div>
+                        {% endif %}
                     {% endif %}
                 </div>
             </div>
@@ -265,7 +269,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // تقييم النجوم
+    // تقييم النجوم (نفس السابق)
     const stars = document.querySelectorAll('#starRating .star');
     const ratingInput = document.getElementById('ratingValue');
     function updateStars(elements, value) {
@@ -299,7 +303,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // فيديو المنتج
+    // فيديو المنتج (نفس السابق)
     const video = document.querySelector('[data-product-reel-video]');
     const playBtn = document.querySelector('[data-play-btn]');
     const spinner = document.querySelector('[data-video-spinner]');
