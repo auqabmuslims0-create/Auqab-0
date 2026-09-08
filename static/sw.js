@@ -1,4 +1,4 @@
-const CACHE_NAME = 'husayniyyah-cache-v10';
+const CACHE_NAME = 'husayniyyah-cache-v11';
 const STATIC_ASSETS = [
   '/static/css/variables.css',
   '/static/css/base.css',
@@ -106,11 +106,17 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   const { request } = event;
+  const url = new URL(request.url);
+
+  // تجاهل Cloudinary تمامًا وعدم تخزينه
+  if (url.hostname.includes('cloudinary.com')) {
+    event.respondWith(fetch(request));
+    return;
+  }
 
   if (request.method !== 'GET') return;
 
   if (request.mode === 'navigate') {
-    const url = new URL(request.url);
     const isCacheable = CACHEABLE_PATHS.some(path => {
       if (path === '/') return url.pathname === '/';
       if (path.endsWith('/')) return url.pathname.startsWith(path);
@@ -136,8 +142,8 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  if (request.url.includes('/api/')) {
-    const shouldCache = API_CACHE_PATTERNS.some(pattern => pattern.test(new URL(request.url).pathname));
+  if (url.pathname.startsWith('/api/')) {
+    const shouldCache = API_CACHE_PATTERNS.some(pattern => pattern.test(url.pathname));
     if (shouldCache) {
       event.respondWith(
         fetch(request)
@@ -161,7 +167,8 @@ self.addEventListener('fetch', event => {
     }
   }
 
-  if (request.destination === 'image' && request.url.includes('/static/uploads/')) {
+  // الصور المحلية فقط
+  if (request.destination === 'image' && url.pathname.startsWith('/static/uploads/')) {
     event.respondWith(
       fetch(request)
         .then(response => {
@@ -179,7 +186,6 @@ self.addEventListener('fetch', event => {
   if (
     request.destination === 'style' ||
     request.destination === 'script' ||
-    request.destination === 'image' ||
     request.destination === 'font'
   ) {
     event.respondWith(
@@ -209,9 +215,7 @@ self.addEventListener('fetch', event => {
 });
 
 self.addEventListener('push', event => {
-  console.log('Push received', event);
   let data = { title: 'سوق الحسينية', message: 'إشعار جديد', url: '/' };
-
   if (event.data) {
     try {
       data = event.data.json();
@@ -219,14 +223,12 @@ self.addEventListener('push', event => {
       data = { title: 'سوق الحسينية', message: event.data.text(), url: '/' };
     }
   }
-
   const options = {
     body: data.message || data.body,
     icon: data.icon || '/static/icons/icon-192.png',
     badge: data.badge || '/static/icons/icon-96.png',
     data: { url: data.url || '/' }
   };
-
   event.waitUntil(
     self.registration.showNotification(data.title || 'سوق الحسينية', options)
   );
