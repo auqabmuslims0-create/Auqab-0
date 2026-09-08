@@ -164,15 +164,12 @@ def _delete_from_cloudinary(url):
     """حذف ملف من Cloudinary إذا كان الرابط من Cloudinary، يُستخرج public_id و resource_type."""
     if not url or not url.startswith('http'):
         return
-    # نمط لاستخراج resource_type و public_id من secure_url
-    # مثال: https://res.cloudinary.com/cloud_name/image/upload/v1234567890/husayniyyah_market/abc.jpg
     pattern = r'https?://res\.cloudinary\.com/[^/]+/(image|video|raw)/upload/(?:v\d+/)?(.+)$'
     match = re.match(pattern, url)
     if not match:
         return
     resource_type = match.group(1)
     public_id_with_ext = match.group(2)
-    # إزالة الامتداد من public_id
     public_id = public_id_with_ext.rsplit('.', 1)[0]
     if not public_id:
         return
@@ -187,7 +184,6 @@ def delete_local_file(url):
     if not url:
         return
     if url.startswith('http'):
-        # إذا كان رابط Cloudinary نحذفه
         _delete_from_cloudinary(url)
         return
     if not url.startswith('static/uploads/'):
@@ -201,18 +197,21 @@ def delete_local_file(url):
 
 def _compress_image(file, max_width=1200, max_height=1200, quality=85):
     """
-    ضغط الصورة وتقليل حجمها. يعيد كائن BytesIO مضغوطًا.
-    إذا فشل الضغط أو كانت الصورة GIF متحركة، يعيد الملف الأصلي.
+    ضغط الصورة وتقليل حجمها.
+    يعيد دائمًا كائن BytesIO يحتوي على الصورة المضغوطة (أو الأصلية عند الفشل).
     """
     try:
         img = Image.open(file)
-        img_format = img.format  # مثل 'JPEG', 'PNG', 'GIF'
-        if img_format == 'GIF':
-            # لا نضغط صور GIF المتحركة (نعيد الملف كما هو)
-            file.seek(0)
-            return file
+        img_format = img.format
 
-        # تحويل الصور ذات الوضع الشفاف إلى RGB مع خلفية بيضاء
+        # صور GIF المتحركة: نعيد نسخة من الملف الأصلي دون ضغط
+        if img_format == 'GIF':
+            file.seek(0)
+            output = io.BytesIO(file.read())
+            output.seek(0)
+            return output
+
+        # معالجة الشفافية
         if img.mode in ('RGBA', 'LA', 'P'):
             if img.mode == 'P':
                 img = img.convert('RGBA')
@@ -222,18 +221,20 @@ def _compress_image(file, max_width=1200, max_height=1200, quality=85):
         else:
             img = img.convert('RGB')
 
-        # إعادة التحجيم مع الحفاظ على نسبة الأبعاد
+        # تصغير الأبعاد
         img.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
 
         output = io.BytesIO()
-        # نستخدم JPEG لجميع الصور المضغوطة (يفقد الشفافية لكن مقبول)
         img.save(output, format='JPEG', quality=quality, optimize=True)
         output.seek(0)
         return output
+
     except Exception as e:
         current_app.logger.warning(f'فشل ضغط الصورة: {str(e)}')
         file.seek(0)
-        return file  # نرفع الصورة الأصلية إذا فشل الضغط
+        output = io.BytesIO(file.read())
+        output.seek(0)
+        return output
 
 def _compress_video(file, max_width=1280, crf=28):
     """
@@ -243,7 +244,6 @@ def _compress_video(file, max_width=1280, crf=28):
     if not shutil.which('ffmpeg'):
         return None
     try:
-        # حفظ الملف المرفوع إلى ملف مؤقت
         file.seek(0)
         temp_input = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
         file.save(temp_input.name)
@@ -263,7 +263,6 @@ def _compress_video(file, max_width=1280, crf=28):
         ]
         subprocess.run(cmd, check=True, capture_output=True, timeout=120)
 
-        # التحقق من حجم الملف الناتج؛ إذا كان أكبر أو يساوي الأصلي نستخدم الأصلي
         if os.path.getsize(temp_output.name) < os.path.getsize(temp_input.name):
             os.unlink(temp_input.name)
             return temp_output.name
@@ -273,7 +272,6 @@ def _compress_video(file, max_width=1280, crf=28):
             return None
     except Exception as e:
         current_app.logger.warning(f'فشل ضغط الفيديو: {str(e)}')
-        # تنظيف الملفات المؤقتة إن أمكن
         try:
             if 'temp_input' in locals() and os.path.exists(temp_input.name):
                 os.unlink(temp_input.name)
@@ -289,15 +287,19 @@ def save_image(file, old_url=None):
     if not ext:
         raise ValueError('صيغة الملف غير مدعومة أو الحجم كبير جداً')
     try:
-        compressed_file = _compress_image(file)
+        compressed_file = _compress_image(file)  # BytesIO
+
         if _is_cloudinary_enabled():
-            new_url = _upload_to_cloudinary(compressed_file, resource_type='image')
+            new_url = _upload_to_cloudinary(
+                compressed_file,
+                resource_type='image',
+                format='jpg'  # نحدد الصيغة لأننا نضغط إلى JPEG
+            )
             if new_url and old_url:
                 delete_local_file(old_url)
             return new_url
         else:
-            compressed_file.seek(0)
-            # تحديد اسم الملف الجديد بصيغة jpg دائمًا بعد الضغط
+            # حفظ محلي: كتابة BytesIO إلى ملف
             original_name = secure_filename(file.filename)
             base_name = os.path.splitext(original_name)[0]
             unique_name = f"{uuid.uuid4().hex}_{base_name}.jpg"
@@ -305,7 +307,10 @@ def save_image(file, old_url=None):
             full_dir = os.path.join(current_app.root_path, relative_dir)
             os.makedirs(full_dir, exist_ok=True)
             file_path = os.path.join(full_dir, unique_name)
-            compressed_file.save(file_path)
+
+            with open(file_path, 'wb') as f:
+                f.write(compressed_file.read())
+
             new_url = os.path.join(relative_dir, unique_name).replace('\\', '/')
             if new_url and old_url:
                 delete_local_file(old_url)
@@ -327,7 +332,6 @@ def save_video(file, old_url=None):
                     new_url = _upload_to_cloudinary(f, resource_type='video')
                 os.unlink(compressed_path)
             else:
-                # لا يوجد ffmpeg، نرفع الملف الأصلي مع خيارات ضغط Cloudinary
                 file.seek(0)
                 new_url = _upload_to_cloudinary(
                     file,
@@ -341,7 +345,6 @@ def save_video(file, old_url=None):
             return new_url
         else:
             if compressed_path:
-                # نستخدم الملف المضغوط
                 filename = secure_filename(file.filename)
                 base_name = os.path.splitext(filename)[0]
                 unique_name = f"{uuid.uuid4().hex}_{base_name}.mp4"
@@ -352,7 +355,6 @@ def save_video(file, old_url=None):
                 shutil.move(compressed_path, file_path)
                 new_url = os.path.join(relative_dir, unique_name).replace('\\', '/')
             else:
-                # حفظ الملف الأصلي
                 file.seek(0)
                 filename = secure_filename(file.filename)
                 unique_name = f"{uuid.uuid4().hex}_{filename}"
