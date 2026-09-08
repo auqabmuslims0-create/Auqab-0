@@ -155,6 +155,9 @@ def _upload_to_cloudinary(file, resource_type='image', **kwargs):
         'use_filename': True,
         'unique_filename': True,
     }
+    # دعم تحديد format (الصيغة) إذا مررت
+    if 'format' in kwargs:
+        options['format'] = kwargs.pop('format')
     options.update(kwargs)
     upload_result = cloudinary.uploader.upload(file, **options)
     return upload_result.get('secure_url')
@@ -304,7 +307,8 @@ def save_image(file, old_url=None):
         if _is_cloudinary_enabled():
             new_url = _upload_to_cloudinary(
                 compressed_file,
-                resource_type='image'
+                resource_type='image',
+                format=output_ext
             )
             if new_url and old_url:
                 delete_local_file(old_url)
@@ -342,7 +346,7 @@ def save_video(file, old_url=None):
         if _is_cloudinary_enabled():
             if compressed_path:
                 with open(compressed_path, 'rb') as f:
-                    new_url = _upload_to_cloudinary(f, resource_type='video')
+                    new_url = _upload_to_cloudinary(f, resource_type='video', format='mp4')
                 os.unlink(compressed_path)
             else:
                 file.seek(0)
