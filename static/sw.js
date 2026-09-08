@@ -1,4 +1,4 @@
-const CACHE_NAME = 'husayniyyah-cache-v11';
+const CACHE_NAME = 'husayniyyah-cache-v12';
 const STATIC_ASSETS = [
   '/static/css/variables.css',
   '/static/css/base.css',
@@ -24,70 +24,10 @@ const STATIC_ASSETS = [
   '/static/offline.html'
 ];
 
-const PUBLIC_PATHS = [
-  '/',
-  '/market',
-  '/stores',
-  '/offers',
-  '/search',
-  '/product/',
-  '/store/',
-  '/reels',
-  '/services',
-  '/about',
-  '/contact'
-];
-
-const PROTECTED_PATHS = [
-  '/admin',
-  '/my_stores',
-  '/store',
-  '/delivery'
-];
-
-const CACHEABLE_PATHS = [...PUBLIC_PATHS, ...PROTECTED_PATHS];
-
-const API_CACHE_PATTERNS = [
-  /^\/api\/products/,
-  /^\/api\/stores/,
-  /^\/api\/offers/,
-  /^\/api\/categories/,
-  /^\/api\/search/,
-  /^\/api\/reels/,
-  /^\/api\/notifications/,
-  /^\/api\/updates/
-];
-
-const PAGES_TO_CACHE = [
-  '/',
-  '/market',
-  '/stores',
-  '/offers',
-  '/reels',
-  '/services',
-  '/about',
-  '/contact',
-  '/offline.html'
-];
-
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
-        return Promise.allSettled(
-          STATIC_ASSETS.map(asset => cache.add(asset))
-        ).then(() => {
-          return Promise.allSettled(
-            PAGES_TO_CACHE.map(page =>
-              fetch(page, {cache: 'no-store'})
-                .then(response => {
-                  if (response.ok) cache.put(page, response);
-                })
-                .catch(() => {})
-            )
-          );
-        });
-      })
+      .then(cache => Promise.allSettled(STATIC_ASSETS.map(asset => cache.add(asset))))
       .then(() => self.skipWaiting())
   );
 });
@@ -96,9 +36,7 @@ self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
-        cacheNames
-          .filter(name => name !== CACHE_NAME)
-          .map(name => caches.delete(name))
+        cacheNames.filter(name => name !== CACHE_NAME).map(name => caches.delete(name))
       );
     }).then(() => self.clients.claim())
   );
@@ -108,7 +46,7 @@ self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // تجاهل Cloudinary تمامًا وعدم تخزينه
+  // أ) Cloudinary دائمًا من الشبكة
   if (url.hostname.includes('cloudinary.com')) {
     event.respondWith(fetch(request));
     return;
@@ -116,91 +54,25 @@ self.addEventListener('fetch', event => {
 
   if (request.method !== 'GET') return;
 
+  // ب) صفحات التنقل (HTML) لا تُخزن أبدًا، دائمًا من الشبكة
   if (request.mode === 'navigate') {
-    const isCacheable = CACHEABLE_PATHS.some(path => {
-      if (path === '/') return url.pathname === '/';
-      if (path.endsWith('/')) return url.pathname.startsWith(path);
-      return url.pathname === path || url.pathname.startsWith(path);
-    });
-
-    event.respondWith(
-      fetch(request)
-        .then(response => {
-          if (response.ok && isCacheable) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-          }
-          return response;
-        })
-        .catch(() => {
-          return caches.match(request).then(cached => {
-            if (cached) return cached;
-            return caches.match('/static/offline.html');
-          });
-        })
-    );
+    event.respondWith(fetch(request).catch(() => caches.match('/static/offline.html')));
     return;
   }
 
+  // ج) طلبات API لا تُخزن
   if (url.pathname.startsWith('/api/')) {
-    const shouldCache = API_CACHE_PATTERNS.some(pattern => pattern.test(url.pathname));
-    if (shouldCache) {
-      event.respondWith(
-        fetch(request)
-          .then(response => {
-            if (response && response.status === 200) {
-              const copy = response.clone();
-              caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-            }
-            return response;
-          })
-          .catch(() => {
-            return caches.match(request).then(cached => {
-              if (cached) return cached;
-              return new Response(JSON.stringify({ error: 'offline' }), {
-                headers: { 'Content-Type': 'application/json' }
-              });
-            });
-          })
-      );
-      return;
-    }
+    event.respondWith(fetch(request));
+    return;
   }
 
-  // الصور المحلية فقط
+  // د) الصور المحلية فقط تُخزن مؤقتًا
   if (request.destination === 'image' && url.pathname.startsWith('/static/uploads/')) {
     event.respondWith(
-      fetch(request)
-        .then(response => {
-          if (response && response.status === 200) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
-          }
-          return response;
-        })
-        .catch(() => caches.match(request))
-    );
-    return;
-  }
-
-  if (
-    request.destination === 'style' ||
-    request.destination === 'script' ||
-    request.destination === 'font'
-  ) {
-    event.respondWith(
       caches.match(request).then(cached => {
-        if (cached) {
-          fetch(request).then(response => {
-            if (response.ok) {
-              const clone = response.clone();
-              caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
-            }
-          }).catch(() => {});
-          return cached;
-        }
+        if (cached) return cached;
         return fetch(request).then(response => {
-          if (response && response.status === 200) {
+          if (response.ok) {
             const copy = response.clone();
             caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
           }
@@ -211,6 +83,36 @@ self.addEventListener('fetch', event => {
     return;
   }
 
+  // هـ) الأصول الثابتة الأخرى (CSS/JS/Fonts)
+  if (
+    request.destination === 'style' ||
+    request.destination === 'script' ||
+    request.destination === 'font'
+  ) {
+    event.respondWith(
+      caches.match(request).then(cached => {
+        if (cached) {
+          // تحديث في الخلفية
+          fetch(request).then(response => {
+            if (response.ok) {
+              caches.open(CACHE_NAME).then(cache => cache.put(request, response));
+            }
+          }).catch(() => {});
+          return cached;
+        }
+        return fetch(request).then(response => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, copy));
+          }
+          return response;
+        });
+      })
+    );
+    return;
+  }
+
+  // و) أي شيء آخر من الشبكة مباشرة
   event.respondWith(fetch(request));
 });
 
