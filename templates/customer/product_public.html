@@ -42,7 +42,7 @@
     .product-reel-play-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: transparent; border: none; color: #fff; font-size: 5rem; line-height: 1; cursor: pointer; text-shadow: 0 0 12px rgba(0,0,0,0.8); z-index: 10; padding: 0; }
     .product-reel-play-btn:hover { color: #ffd700; transform: translate(-50%, -50%) scale(1.1); }
     .product-reel-play-btn.hidden { display: none; }
-    .video-loading-spinner { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 4; display: none; width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
+    .video-loading-spinner { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 11; display: none; width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
     .video-loading-spinner.show { display: block; }
     @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
     .reel-content { position: absolute; bottom: 0; left: 0; right: 0; z-index: 2; display: flex; justify-content: space-between; align-items: flex-end; padding: 15px; gap: 10px; pointer-events: none; line-height: 1.6; }
@@ -255,6 +255,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/reels.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // معرض الصور
@@ -269,7 +270,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // تقييم النجوم (نفس السابق)
+    // تقييم النجوم
     const stars = document.querySelectorAll('#starRating .star');
     const ratingInput = document.getElementById('ratingValue');
     function updateStars(elements, value) {
@@ -302,48 +303,6 @@ document.addEventListener('DOMContentLoaded', function() {
             updateStars(stars, parseInt(ratingInput.value) || 0);
         });
     });
-
-    // فيديو المنتج (نفس السابق)
-    const video = document.querySelector('[data-product-reel-video]');
-    const playBtn = document.querySelector('[data-play-btn]');
-    const spinner = document.querySelector('[data-video-spinner]');
-    if (video && playBtn) {
-        function showPlayBtn() { playBtn.classList.remove('hidden'); }
-        function hidePlayBtn() { playBtn.classList.add('hidden'); }
-        function playVideo() {
-            if (video.readyState < 3 && spinner) spinner.classList.add('show');
-            video.muted = false;
-            video.play().then(() => {
-                if (spinner) spinner.classList.remove('show');
-                hidePlayBtn();
-            }).catch(() => {
-                if (spinner) spinner.classList.remove('show');
-            });
-        }
-        playBtn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            playVideo();
-        });
-        video.addEventListener('click', function() {
-            if (video.paused) {
-                playVideo();
-            } else {
-                video.pause();
-                showPlayBtn();
-            }
-        });
-        video.addEventListener('pause', showPlayBtn);
-        video.addEventListener('play', hidePlayBtn);
-        video.addEventListener('canplaythrough', function() {
-            if (spinner) spinner.classList.remove('show');
-        });
-        video.addEventListener('waiting', function() {
-            if (spinner) spinner.classList.add('show');
-        });
-        video.addEventListener('playing', function() {
-            if (spinner) spinner.classList.remove('show');
-        });
-    }
 
     // حفظ المنتج والمتجر في IndexedDB إذا كان متصلاً
     if (navigator.onLine && typeof OfflineDB !== 'undefined') {
