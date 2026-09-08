@@ -2,39 +2,49 @@
 document.addEventListener('DOMContentLoaded', function() {
     const videos = document.querySelectorAll('[data-reel-video], [data-store-reel-video], [data-owner-reel-video], [data-product-reel-video]');
 
+    function getVideoContainer(video) {
+        // نبحث عن أقرب حاوية تحتوي على video (قد يكون reel-slide أو product-reel-slide أو أي شيء)
+        return video.closest('.reel-slide, .product-reel-slide') || video.parentElement;
+    }
+
     function pauseAllVideos(exceptVideo) {
         videos.forEach(video => {
             if (video !== exceptVideo) {
                 video.pause();
-                const overlay = video.closest('.reel-slide')?.querySelector('[data-play-overlay]');
+                const container = getVideoContainer(video);
+                const overlay = container?.querySelector('[data-play-overlay]');
                 if (overlay) overlay.classList.remove('hidden');
-                const playBtn = video.closest('.reel-slide')?.querySelector('[data-play-btn]');
+                const playBtn = container?.querySelector('[data-play-btn]');
                 if (playBtn) playBtn.classList.remove('hidden');
             }
         });
     }
 
     function showSpinner(video) {
-        const spinner = video.closest('.reel-slide')?.querySelector('[data-video-spinner]');
+        const container = getVideoContainer(video);
+        const spinner = container?.querySelector('[data-video-spinner]');
         if (spinner) spinner.classList.add('show');
     }
 
     function hideSpinner(video) {
-        const spinner = video.closest('.reel-slide')?.querySelector('[data-video-spinner]');
+        const container = getVideoContainer(video);
+        const spinner = container?.querySelector('[data-video-spinner]');
         if (spinner) spinner.classList.remove('show');
     }
 
     function showPlayBtn(video) {
-        const playBtn = video.closest('.reel-slide')?.querySelector('[data-play-btn]');
+        const container = getVideoContainer(video);
+        const playBtn = container?.querySelector('[data-play-btn]');
         if (playBtn) playBtn.classList.remove('hidden');
-        const overlay = video.closest('.reel-slide')?.querySelector('[data-play-overlay]');
+        const overlay = container?.querySelector('[data-play-overlay]');
         if (overlay) overlay.classList.remove('hidden');
     }
 
     function hidePlayBtn(video) {
-        const playBtn = video.closest('.reel-slide')?.querySelector('[data-play-btn]');
+        const container = getVideoContainer(video);
+        const playBtn = container?.querySelector('[data-play-btn]');
         if (playBtn) playBtn.classList.add('hidden');
-        const overlay = video.closest('.reel-slide')?.querySelector('[data-play-overlay]');
+        const overlay = container?.querySelector('[data-play-overlay]');
         if (overlay) overlay.classList.add('hidden');
     }
 
@@ -65,10 +75,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // ربط الأحداث بجميع الفيديوهات
     videos.forEach(video => {
-        const slide = video.closest('.reel-slide');
-        if (!slide) return;
+        const container = getVideoContainer(video);
+        if (!container) return;
 
-        const playBtn = slide.querySelector('[data-play-btn]');
+        const playBtn = container.querySelector('[data-play-btn]');
         if (playBtn) {
             playBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
