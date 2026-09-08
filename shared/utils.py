@@ -255,45 +255,55 @@ def _compress_image(file, max_width=1200, max_height=1200, quality=85):
         return output, orig_ext
 
 def _compress_video(file, max_width=1280, crf=28):
-    """ضغط الفيديو باستخدام ffmpeg إذا كان متاحًا."""
+    """ضغط الفيديو باستخدام ffmpeg إذا كان متاحًا وبسرعة معقولة."""
     if not shutil.which('ffmpeg'):
         return None
     try:
         file.seek(0)
-        temp_input = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
-        file.save(temp_input.name)
-        temp_input.close()
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_input:
+            file.save(temp_input.name)
+            input_path = temp_input.name
 
-        temp_output = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
-        temp_output.close()
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_output:
+            output_path = temp_output.name
 
         cmd = [
-            'ffmpeg', '-i', temp_input.name,
+            'ffmpeg', '-i', input_path,
             '-vf', f'scale={max_width}:-2',
             '-c:v', 'libx264', '-crf', str(crf),
-            '-preset', 'medium', '-c:a', 'aac', '-b:a', '128k',
+            '-preset', 'ultrafast',   # أسرع ضغط
+            '-c:a', 'aac', '-b:a', '128k',
             '-movflags', '+faststart',
-            temp_output.name,
+            output_path,
             '-y'
         ]
-        subprocess.run(cmd, check=True, capture_output=True, timeout=120)
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, timeout=30)
+        except subprocess.TimeoutExpired:
+            current_app.logger.warning('ffmpeg استغرق أكثر من 30 ثانية، سيتم رفع الفيديو الأصلي')
+            os.unlink(input_path)
+            os.unlink(output_path)
+            return None
+        except subprocess.CalledProcessError:
+            current_app.logger.warning('ffmpeg فشل، سيتم رفع الفيديو الأصلي')
+            if os.path.exists(input_path):
+                os.unlink(input_path)
+            if os.path.exists(output_path):
+                os.unlink(output_path)
+            return None
 
-        if os.path.getsize(temp_output.name) < os.path.getsize(temp_input.name):
-            os.unlink(temp_input.name)
-            return temp_output.name
+        if os.path.getsize(output_path) < os.path.getsize(input_path):
+            os.unlink(input_path)
+            return output_path
         else:
-            os.unlink(temp_output.name)
-            os.unlink(temp_input.name)
+            os.unlink(output_path)
+            os.unlink(input_path)
             return None
     except Exception as e:
         current_app.logger.warning(f'فشل ضغط الفيديو: {str(e)}')
-        try:
-            if 'temp_input' in locals() and os.path.exists(temp_input.name):
-                os.unlink(temp_input.name)
-            if 'temp_output' in locals() and os.path.exists(temp_output.name):
-                os.unlink(temp_output.name)
-        except Exception:
-            pass
+        for p in [input_path, output_path]:
+            if p and os.path.exists(p):
+                os.unlink(p)
         return None
 
 def save_image(file, old_url=None):

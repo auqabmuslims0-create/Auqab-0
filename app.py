@@ -154,6 +154,9 @@ else:
 db.init_app(app)
 migrate = Migrate(app, db)
 
+with app.app_context():
+    db.create_all()
+
 # تسجيل Blueprints
 app.register_blueprint(auth_bp)
 app.register_blueprint(store_bp)
@@ -374,14 +377,10 @@ def get_image_url(filename):
         return ''
     if filename.startswith('http'):
         return filename
-    # التعامل مع المسارات التي تبدأ بـ "static/"
     if filename.startswith('static/'):
-        # إزالة "static/" وإعادة بناء المسار عبر url_for
-        return url_for('static', filename=filename[len('static/'):])
-    # التعامل مع المسارات التي تبدأ بـ "uploads/"
+        return url_for('static', filename=filename[7:])
     if filename.startswith('uploads/'):
         return url_for('static', filename=filename)
-    # أي مسار آخر نفترض أنه نسبي داخل مجلد static
     return url_for('static', filename='uploads/' + filename)
 
 @app.route('/sw.js')
