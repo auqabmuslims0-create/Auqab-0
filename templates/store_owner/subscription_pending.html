@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+
+{% block title %}قيد المراجعة{% endblock %}
+
+{% block head %}
+<style>
+    .pending-card {
+        border-radius: 20px;
+        border: none;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        background: #fff;
+        overflow: hidden;
+    }
+    body.dark-mode .pending-card {
+        background: #1e1e1e;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        color: #fff;
+    }
+    .pending-header {
+        background: linear-gradient(135deg, #ffc107, #e0a800);
+        color: #000;
+        padding: 15px 20px;
+        text-align: center;
+        font-weight: 700;
+    }
+    .pending-body {
+        padding: 25px 20px;
+    }
+    .info-box {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 15px;
+        margin-bottom: 20px;
+        text-align: center;
+        border: 1px dashed #ccc;
+    }
+    body.dark-mode .info-box {
+        background: #2d2d2d;
+        border-color: #555;
+    }
+    .price-display {
+        font-size: 1.2rem;
+        font-weight: 700;
+        margin: 10px 0;
+    }
+    .code-section-title {
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+    .code-input-wrap {
+        position: relative;
+        margin-bottom: 0;
+    }
+    .code-input-wrap .form-control {
+        border-radius: 12px;
+        padding-right: 40px;
+        padding-left: 40px;
+        height: 48px;
+        background-color: #fff;
+        border: 1px solid #ced4da;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        text-align: center;
+        letter-spacing: 2px;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+    .code-input-wrap .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(46,93,52,0.15);
+    }
+    .code-input-icon {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        color: #6c757d;
+        pointer-events: none;
+        z-index: 2;
+    }
+    body.dark-mode .code-input-wrap .form-control {
+        background-color: #2d2d2d;
+        border-color: #444;
+        color: #fff;
+    }
+    body.dark-mode .code-input-wrap .form-control:focus {
+        border-color: #c9a227;
+        box-shadow: 0 0 0 0.2rem rgba(201,162,39,0.2);
+    }
+    body.dark-mode .code-input-icon {
+        color: #adb5bd;
+    }
+    .btn-confirm {
+        border-radius: 25px;
+        padding: 10px 16px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .btn-back {
+        border-radius: 25px;
+    }
+    .attempts-warning {
+        color: #dc3545;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card pending-card">
+                <div class="pending-header">
+                    <i class="bi bi-hourglass-split me-1"></i> متجرك قيد المراجعة
+                </div>
+                <div class="pending-body">
+                    <div class="info-box">
+                        <p class="lead mb-2">تم استلام طلب الاشتراك الخاص بمتجرك <strong>{{ store.name }}</strong>.</p>
+                        <div class="price-display">
+                            المبلغ: <span class="text-success">{{ subscription_price|format_price }} ل.س</span>
+                        </div>
+                        {% if sub.payment_method == 'manual_delivery' %}
+                            <p class="mb-0"><i class="bi bi-truck"></i> طريقة الدفع: تسليم يدوي</p>
+                        {% else %}
+                            <p class="mb-0"><i class="bi bi-receipt"></i> رقم العملية: {{ sub.payment_ref or 'غير مدخل' }}</p>
+                        {% endif %}
+                    </div>
+
+                    {% if sub.payment_method == 'manual_delivery' %}
+                        <h5 class="code-section-title"><i class="bi bi-shield-lock"></i> إدخال كود التأكيد</h5>
+                        <p class="text-muted">أدخل الكود الذي يصلك من المدير بعد استلام المندوب للمبلغ.</p>
+                        {% if sub.confirmation_attempts > 0 and sub.confirmation_attempts < 5 %}
+                            <p class="attempts-warning">محاولات خاطئة: {{ sub.confirmation_attempts }} من 5</p>
+                        {% elif sub.confirmation_attempts >= 5 %}
+                            <p class="attempts-warning">تم تجاوز الحد الأقصى للمحاولات. يرجى التواصل مع الإدارة.</p>
+                        {% endif %}
+                        <form method="post" action="{{ url_for('store.subscription_confirm', store_id=store.id) }}" class="d-flex gap-2 flex-wrap">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <div class="code-input-wrap flex-grow-1">
+                                <i class="bi bi-key code-input-icon"></i>
+                                <input type="text" name="confirmation_code" class="form-control" placeholder="أدخل الكود" required>
+                            </div>
+                            <button type="submit" class="btn btn-custom btn-confirm" {% if sub.confirmation_attempts >= 5 %}disabled{% endif %}>تأكيد</button>
+                        </form>
+                    {% endif %}
+
+                    <hr class="my-4">
+
+                    <a href="{{ url_for('store.my_stores') }}" class="btn btn-outline-secondary btn-back">
+                        <i class="bi bi-arrow-right"></i> العودة لمتاجري
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

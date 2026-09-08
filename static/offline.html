@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>غير متصل - سوق الحسينية</title>
+  <style>
+    :root {
+      --primary: #2e5d34;
+      --accent: #d4af37;
+      --bg-light: #f7f4ef;
+      --text-light: #2d2d2d;
+      --muted-light: #6c757d;
+      --card-light: #ffffff;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Tajawal', sans-serif;
+      background: linear-gradient(135deg, #f7f4ef 0%, #e8f0e9 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    body.dark-mode {
+      background: linear-gradient(135deg, #121212 0%, #1e2a1f 100%);
+    }
+    .offline-card {
+      background: var(--card-light);
+      border-radius: 25px;
+      padding: 40px 30px;
+      text-align: center;
+      max-width: 420px;
+      width: 100%;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.08);
+      transition: transform 0.2s;
+      border: 1px solid rgba(0,0,0,0.05);
+    }
+    body.dark-mode .offline-card {
+      background: #1e1e1e;
+      border-color: #333;
+      box-shadow: 0 12px 28px rgba(0,0,0,0.3);
+      color: #fff;
+    }
+    .icon-wrapper {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: rgba(46,93,52,0.1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 3rem;
+      color: var(--primary);
+    }
+    body.dark-mode .icon-wrapper {
+      background: rgba(201,162,39,0.15);
+      color: var(--accent);
+    }
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+      color: var(--text-light);
+    }
+    body.dark-mode h1 {
+      color: #fff;
+    }
+    p {
+      font-size: 0.95rem;
+      color: var(--muted-light);
+      margin-bottom: 20px;
+      line-height: 1.6;
+    }
+    .retry-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 25px;
+      padding: 12px 25px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.2s;
+      text-decoration: none;
+    }
+    .retry-btn:hover {
+      background: #224527;
+      transform: translateY(-2px);
+    }
+    body.dark-mode .retry-btn {
+      background: var(--accent);
+      color: #000;
+    }
+    body.dark-mode .retry-btn:hover {
+      background: #b8941f;
+    }
+    .cached-pages {
+      margin-top: 25px;
+      text-align: right;
+    }
+    .cached-pages h2 {
+      font-size: 1rem;
+      margin-bottom: 10px;
+      color: var(--text-light);
+    }
+    body.dark-mode .cached-pages h2 {
+      color: #fff;
+    }
+    .cached-pages ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+    }
+    .cached-pages li a {
+      display: inline-block;
+      background: rgba(46,93,52,0.05);
+      color: var(--text-light);
+      text-decoration: none;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      border: 1px solid rgba(0,0,0,0.05);
+      transition: background 0.2s;
+    }
+    body.dark-mode .cached-pages li a {
+      background: rgba(255,255,255,0.05);
+      color: #fff;
+      border-color: #333;
+    }
+    .cached-pages li a:hover {
+      background: rgba(46,93,52,0.1);
+    }
+    svg {
+      display: inline-block;
+      vertical-align: middle;
+    }
+    @media (max-width: 400px) {
+      .offline-card { padding: 30px 20px; }
+      .icon-wrapper { width: 70px; height: 70px; }
+      .icon-wrapper svg { width: 40px; height: 40px; }
+      h1 { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="offline-card">
+    <div class="icon-wrapper">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 18.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z" fill="currentColor"/>
+        <path d="M8.5 15.5a4.5 4.5 0 0 1 7 0l-1.4 1.4a2.5 2.5 0 0 0-4.2 0l-1.4-1.4z" fill="currentColor" opacity="0.6"/>
+        <path d="M5 12a9 9 0 0 1 14 0l-1.4 1.4a7 7 0 0 0-11.2 0L5 12z" fill="currentColor" opacity="0.4"/>
+        <line x1="2" y1="3" x2="22" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <h1>أنت غير متصل بالإنترنت</h1>
+    <p>تعذر الاتصال بالخادم. تحقق من اتصالك وحاول مرة أخرى.</p>
+    <button class="retry-btn" onclick="location.reload()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 4a8 8 0 0 0-8 8h3l-4 4-4-4h3a10 10 0 1 1 10 10v-2a8 8 0 0 0 0-16z" fill="currentColor"/>
+      </svg>
+      إعادة المحاولة
+    </button>
+
+    <div class="cached-pages">
+      <h2>صفحات متاحة بدون اتصال</h2>
+      <ul id="cachedPagesList">
+        <li>جاري التحميل...</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    // عرض الصفحات المخزنة مؤقتاً في Cache Storage
+    document.addEventListener('DOMContentLoaded', async function() {
+      const list = document.getElementById('cachedPagesList');
+      if (!list) return;
+
+      try {
+        const cacheNames = await caches.keys();
+        const mainCache = cacheNames.find(name => name.startsWith('husayniyyah-cache'));
+        if (!mainCache) {
+          list.innerHTML = '<li>لا توجد صفحات مخزنة</li>';
+          return;
+        }
+
+        const cache = await caches.open(mainCache);
+        const requests = await cache.keys();
+        const pageUrls = requests
+          .map(req => new URL(req.url).pathname)
+          .filter(path => !path.startsWith('/static/') && path !== '/' && !path.includes('/api/') && path !== '/offline.html')
+          .filter((value, index, self) => self.indexOf(value) === index);
+
+        if (pageUrls.length === 0) {
+          list.innerHTML = '<li>لا توجد صفحات مخزنة</li>';
+          return;
+        }
+
+        list.innerHTML = '';
+        pageUrls.forEach(path => {
+          const li = document.createElement('li');
+          const a = document.createElement('a');
+          a.href = path;
+          let label = path;
+          if (path === '/market') label = 'السوق';
+          else if (path === '/stores') label = 'المتاجر';
+          else if (path === '/offers') label = 'العروض';
+          else if (path === '/reels') label = 'الريلز';
+          else if (path === '/services') label = 'الخدمات';
+          else if (path === '/about') label = 'حول';
+          else if (path === '/contact') label = 'اتصل بنا';
+          else if (path.startsWith('/product/')) label = 'منتج';
+          else if (path.startsWith('/store/')) label = 'متجر';
+          a.textContent = label;
+          li.appendChild(a);
+          list.appendChild(li);
+        });
+      } catch (e) {
+        list.innerHTML = '<li>تعذر جلب الصفحات المخزنة</li>';
+      }
+    });
+  </script>
+</body>
+</html>

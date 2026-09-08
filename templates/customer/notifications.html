@@ -1,0 +1,257 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as macros %}
+
+{% block title %}الإشعارات{% endblock %}
+
+{% block head %}
+<style>
+    .notification-list { display: flex; flex-direction: column; gap: 10px; }
+    .notification-item {
+        display: flex; align-items: center; gap: 12px; padding: 12px 15px;
+        border-radius: 15px; background: #fff; border: 1px solid #eaeaea;
+        transition: background 0.2s, border-color 0.2s, opacity 0.2s; position: relative;
+    }
+    .notification-item.unread {
+        background: #f0f7f0; border-right: 4px solid var(--primary);
+        border-left: 1px solid #eaeaea; box-shadow: 0 2px 8px rgba(0,0,0,0.05); opacity: 1;
+    }
+    .notification-item.read {
+        opacity: 0.7; background: #f8f9fa; border-right: 4px solid transparent;
+    }
+    body.dark-mode .notification-item { background: #1e1e1e; border-color: #333; }
+    body.dark-mode .notification-item.unread {
+        background: #263626; border-right-color: var(--accent); border-left-color: #333; opacity: 1;
+    }
+    body.dark-mode .notification-item.read { background: #252525; opacity: 0.7; }
+
+    .notification-check { flex-shrink: 0; display: flex; align-items: center; }
+    .notification-icon {
+        width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center;
+        justify-content: center; font-size: 1.2rem; flex-shrink: 0;
+    }
+    .icon-order { background: rgba(13,110,253,0.1); color: #0d6efd; }
+    .icon-subscription { background: rgba(25,135,84,0.1); color: #198754; }
+    .icon-delivery { background: rgba(255,193,7,0.1); color: #ffc107; }
+    .icon-message { background: rgba(13,202,240,0.1); color: #0dcaf0; }
+    .icon-alert { background: rgba(220,53,69,0.1); color: #dc3545; }
+    .icon-default { background: rgba(108,117,125,0.1); color: #6c757d; }
+    body.dark-mode .icon-order { background: rgba(13,110,253,0.2); color: #6ea8fe; }
+    body.dark-mode .icon-subscription { background: rgba(25,135,84,0.2); color: #75b798; }
+    body.dark-mode .icon-delivery { background: rgba(255,193,7,0.2); color: #ffda6a; }
+    body.dark-mode .icon-message { background: rgba(13,202,240,0.2); color: #6edff6; }
+    body.dark-mode .icon-alert { background: rgba(220,53,69,0.2); color: #ea868f; }
+    body.dark-mode .icon-default { background: rgba(173,181,189,0.2); color: #adb5bd; }
+
+    .notification-content { flex: 1; min-width: 0; }
+    .notification-title { font-weight: 600; margin-bottom: 2px; }
+    .notification-message { font-size: 0.9rem; color: #555; line-height: 1.4; word-break: break-word; }
+    body.dark-mode .notification-message { color: #ccc; }
+    .notification-meta { display: flex; align-items: center; gap: 10px; margin-top: 5px; font-size: 0.75rem; color: #888; }
+    .notification-actions { flex-shrink: 0; display: flex; gap: 5px; }
+    .btn-action {
+        border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center;
+        justify-content: center; padding: 0; border: 1px solid transparent;
+    }
+    .btn-mark-read { background: #e9ecef; color: #198754; border-color: #ced4da; }
+    .btn-mark-read:hover { background: #198754; color: #fff; border-color: #198754; }
+    .btn-delete { background: #f8d7da; color: #dc3545; border-color: #f5c2c7; }
+    .btn-delete:hover { background: #dc3545; color: #fff; border-color: #dc3545; }
+    .btn-link-view { font-size: 0.8rem; text-decoration: none; color: var(--primary); }
+    body.dark-mode .btn-link-view { color: var(--accent); }
+
+    #offlineNotificationsContainer { display: none; }
+    .offline-notification-item {
+        background: #fff; border-radius: 15px;
+        padding: 12px 15px; margin-bottom: 10px;
+        border: 1px solid #eaeaea;
+    }
+    body.dark-mode .offline-notification-item {
+        background: #1e1e1e;
+        border-color: #333;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <h4 class="fw-bold mb-0"><i class="bi bi-bell"></i> الإشعارات</h4>
+        <div class="d-flex gap-2 flex-wrap">
+            <form method="POST" action="{{ url_for('notifications.mark_all_notifications_read') }}" class="d-inline">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="btn btn-sm btn-outline-success">
+                    <i class="bi bi-check2-all"></i> تحديد الكل كمقروء
+                </button>
+            </form>
+            <form id="deleteReadForm" method="POST" action="{{ url_for('notifications.delete_all_read_notifications') }}" class="d-inline">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <button type="button" class="btn btn-sm btn-outline-danger"
+                        onclick="showConfirmModal('هل تريد حذف جميع الإشعارات المقروءة؟', function() { document.getElementById('deleteReadForm').submit(); })">
+                    <i class="bi bi-trash"></i> حذف المقروءة
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div id="onlineNotificationsContent">
+        {% if notifs %}
+        <form id="bulkDeleteForm" method="POST" action="{{ url_for('notifications.delete_selected_notifications') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <button type="button" class="btn btn-sm btn-danger"
+                        onclick="showConfirmModal('هل تريد حذف الإشعارات المحددة؟', function() { document.getElementById('bulkDeleteForm').submit(); })">
+                    <i class="bi bi-trash"></i> حذف المحدد
+                </button>
+                <span class="text-muted small">{{ notifs|length }} إشعار</span>
+            </div>
+
+            <div class="notification-list">
+                {% for notif in notifs %}
+                    <div class="notification-item {% if not notif.is_read %}unread{% else %}read{% endif %}">
+                        <div class="notification-check">
+                            <input type="checkbox" name="notification_ids" value="{{ notif.id }}" class="form-check-input" {% if not notif.is_read %}checked{% endif %}>
+                        </div>
+                        <div class="notification-icon
+                            {%- if notif.type == 'order' %} icon-order
+                            {%- elif notif.type == 'subscription' %} icon-subscription
+                            {%- elif notif.type == 'delivery' %} icon-delivery
+                            {%- elif notif.type == 'message' %} icon-message
+                            {%- elif notif.type == 'alert' %} icon-alert
+                            {%- else %} icon-default{% endif %}">
+                            {% if notif.type == 'order' %}<i class="bi bi-bag-check"></i>
+                            {% elif notif.type == 'subscription' %}<i class="bi bi-arrow-repeat"></i>
+                            {% elif notif.type == 'delivery' %}<i class="bi bi-truck"></i>
+                            {% elif notif.type == 'message' %}<i class="bi bi-chat-dots"></i>
+                            {% elif notif.type == 'alert' %}<i class="bi bi-exclamation-triangle"></i>
+                            {% else %}<i class="bi bi-bell"></i>{% endif %}
+                        </div>
+                        <div class="notification-content">
+                            {% if notif.title %}<div class="notification-title">{{ notif.title }}</div>{% endif %}
+                            <div class="notification-message">{{ notif.message }}</div>
+                            <div class="notification-meta">
+                                <span class="notification-time"><i class="bi bi-clock"></i> {{ notif.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                {% if notif.link %}
+                                    <a href="{{ notif.link }}" class="btn-link-view"><i class="bi bi-box-arrow-up-left"></i> عرض</a>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="notification-actions">
+                            {% if not notif.is_read %}
+                            <form method="POST" action="{{ url_for('notifications.mark_notification_read', notif_id=notif.id) }}" class="d-inline">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                <button type="submit" class="btn btn-action btn-mark-read" title="تعليم كمقروء">
+                                    <i class="bi bi-check"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                            <button type="button" class="btn btn-action btn-delete"
+                                    onclick="showConfirmModal('هل تريد حذف هذا الإشعار؟', function() { document.getElementById('deleteNotificationForm{{ notif.id }}').submit(); })"
+                                    title="حذف">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                            <form id="deleteNotificationForm{{ notif.id }}" method="POST"
+                                  action="{{ url_for('notifications.delete_notification', notif_id=notif.id) }}" class="d-none">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            </form>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </form>
+        {% else %}
+            {{ macros.render_empty_state('bi-bell-slash', 'لا توجد إشعارات', url_for('market.market'), 'العودة للسوق') }}
+        {% endif %}
+    </div>
+
+    <div id="offlineNotificationsContainer">
+        <div class="alert alert-warning text-center">
+            <i class="bi bi-wifi-off"></i> أنت غير متصل - يتم عرض الإشعارات المحفوظة
+        </div>
+        <div id="offlineNotificationsList"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (navigator.onLine && typeof OfflineDB !== 'undefined') {
+        const notificationsData = [
+            {% for notif in notifs %}
+            {
+                id: {{ notif.id }},
+                type: '{{ notif.type }}',
+                title: {{ notif.title | tojson if notif.title else '""' }},
+                message: {{ notif.message | tojson if notif.message else '""' }},
+                link: {{ notif.link | tojson if notif.link else '""' }},
+                is_read: {{ notif.is_read | lower }},
+                created_at: {{ notif.created_at.isoformat() | tojson }}
+            }{{ ',' if not loop.last }}
+            {% endfor %}
+        ];
+        if (notificationsData.length) {
+            OfflineDB.saveNotifications(notificationsData).catch(err => console.warn('OfflineDB saveNotifications failed:', err));
+        }
+    }
+
+    const onlineContent = document.getElementById('onlineNotificationsContent');
+    const offlineContainer = document.getElementById('offlineNotificationsContainer');
+    const offlineList = document.getElementById('offlineNotificationsList');
+
+    function showOfflineNotifications() {
+        if (onlineContent) onlineContent.style.display = 'none';
+        if (offlineContainer) offlineContainer.style.display = 'block';
+        loadOfflineNotifications();
+    }
+
+    function showOnlineNotifications() {
+        if (onlineContent) onlineContent.style.display = 'block';
+        if (offlineContainer) offlineContainer.style.display = 'none';
+    }
+
+    async function loadOfflineNotifications() {
+        try {
+            if (typeof OfflineDB === 'undefined') return;
+            const notifications = await OfflineDB.getAllNotifications();
+            if (offlineList) {
+                if (notifications && notifications.length > 0) {
+                    offlineList.innerHTML = notifications.map(n => `
+                        <div class="offline-notification-item">
+                            <div class="d-flex align-items-start gap-2">
+                                <div class="notification-icon icon-${n.type || 'default'}">
+                                    <i class="bi bi-bell"></i>
+                                </div>
+                                <div class="flex-grow-1">
+                                    ${n.title ? `<div class="notification-title">${n.title}</div>` : ''}
+                                    <div class="notification-message">${n.message}</div>
+                                    <div class="notification-meta">
+                                        <span><i class="bi bi-clock"></i> ${new Date(n.created_at).toLocaleString('ar')}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    offlineList.innerHTML = '<p class="text-muted text-center">لا توجد إشعارات محفوظة</p>';
+                }
+            }
+        } catch (err) {
+            console.error('خطأ في تحميل الإشعارات من IndexedDB:', err);
+        }
+    }
+
+    if (!navigator.onLine) {
+        showOfflineNotifications();
+    }
+
+    window.addEventListener('online', function() {
+        showOnlineNotifications();
+        window.location.reload();
+    });
+
+    window.addEventListener('offline', function() {
+        showOfflineNotifications();
+    });
+});
+</script>
+{% endblock %}

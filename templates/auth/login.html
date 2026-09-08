@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+
+{% block title %}تسجيل الدخول{% endblock %}
+
+{% block head %}
+<style>
+    /* حقول إدخال موحدة بحواف مستديرة كاملة */
+    .custom-input-wrap {
+        position: relative;
+        margin-bottom: 0;
+    }
+    .custom-input-wrap .form-control {
+        border-radius: 12px;
+        padding-right: 40px; /* مساحة للأيقونة اليمنى */
+        padding-left: 40px;  /* مساحة لزر كلمة المرور إذا وجد */
+        height: 48px;
+        background-color: #fff;
+        border: 1px solid #ced4da;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .custom-input-wrap .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(46,93,52,0.15);
+    }
+    .custom-input-icon {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        color: #6c757d;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .custom-input-toggle {
+        position: absolute;
+        top: 50%;
+        left: 8px;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #6c757d;
+        z-index: 2;
+        cursor: pointer;
+        padding: 4px 8px;
+    }
+    .custom-input-toggle:hover {
+        color: var(--primary);
+    }
+    /* الوضع الداكن */
+    body.dark-mode .custom-input-wrap .form-control {
+        background-color: #2d2d2d;
+        border-color: #444;
+        color: #fff;
+    }
+    body.dark-mode .custom-input-wrap .form-control:focus {
+        border-color: #c9a227;
+        box-shadow: 0 0 0 0.2rem rgba(201,162,39,0.2);
+    }
+    body.dark-mode .custom-input-icon,
+    body.dark-mode .custom-input-toggle {
+        color: #adb5bd;
+    }
+    .auth-card {
+        border-radius: var(--radius-lg);
+        background: rgba(255,255,255,0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+    body.dark-mode .auth-card {
+        background: rgba(30,30,30,0.85);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5 col-lg-4">
+            <div class="card p-4 shadow-sm auth-card">
+                <div class="text-center mb-4">
+                    <i class="bi bi-person-circle auth-icon"></i>
+                    <h1 class="h3 mt-2">تسجيل الدخول</h1>
+                    <p class="text-muted small">أهلاً بعودتك</p>
+                </div>
+
+                <form method="post">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">اسم المستخدم أو البريد الإلكتروني</label>
+                        <div class="custom-input-wrap">
+                            <i class="bi bi-person custom-input-icon"></i>
+                            <input type="text" name="login_id" class="form-control {% if login_error %}is-invalid{% endif %}" required autofocus autocomplete="username" value="{{ request.form.get('login_id', '') }}" placeholder="أدخل اسم المستخدم">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">كلمة المرور</label>
+                        <div class="custom-input-wrap">
+                            <i class="bi bi-lock custom-input-icon"></i>
+                            <input type="password" name="password" id="password" class="form-control {% if login_error %}is-invalid{% endif %}" required autocomplete="current-password" placeholder="أدخل كلمة المرور">
+                            <button class="custom-input-toggle" type="button" id="togglePasswordBtn" aria-label="إظهار كلمة المرور">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                        {% if login_error %}
+                            <div class="text-danger small mt-1">
+                                <i class="bi bi-exclamation-circle"></i> {{ login_error }}
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" name="remember_me" class="form-check-input" id="rememberMe" value="1">
+                            <label class="form-check-label small" for="rememberMe">تذكرني</label>
+                        </div>
+                        <a href="{{ url_for('auth.forgot_password') }}" class="small">نسيت كلمة المرور؟</a>
+                    </div>
+
+                    <button type="submit" class="btn btn-custom w-100">
+                        <i class="bi bi-box-arrow-in-right"></i> دخول
+                    </button>
+                </form>
+
+                <p class="mt-3 text-center mb-0">
+                    ليس لديك حساب؟ <a href="{{ url_for('auth.register') }}">أنشئ حساباً</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('togglePasswordBtn').addEventListener('click', function() {
+        var pwd = document.getElementById('password');
+        var icon = this.querySelector('i');
+        if (pwd.type === 'password') {
+            pwd.type = 'text';
+            icon.className = 'bi bi-eye-slash';
+        } else {
+            pwd.type = 'password';
+            icon.className = 'bi bi-eye';
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if person %}تعديل مندوب{% else %}إضافة مندوب{% endif %}{% endblock %}
+
+{% block head %}
+<style>
+    .form-card {
+        border-radius: 20px;
+        border: none;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        background: #fff;
+    }
+    body.dark-mode .form-card {
+        background: #1e1e1e;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        color: #fff;
+    }
+    .custom-input-wrap {
+        position: relative;
+        margin-bottom: 0;
+    }
+    .custom-input-wrap .form-control {
+        border-radius: 12px;
+        padding-right: 40px;
+        padding-left: 40px;
+        height: 48px;
+        background-color: #fff;
+        border: 1px solid #ced4da;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .custom-input-wrap .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(46,93,52,0.15);
+    }
+    .custom-input-icon {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        color: #6c757d;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .custom-phone-prefix {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        color: #6c757d;
+        font-size: 0.9rem;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .custom-phone-prefix + .form-control {
+        padding-right: 55px;
+    }
+    .custom-input-toggle {
+        position: absolute;
+        top: 50%;
+        left: 8px;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #6c757d;
+        z-index: 2;
+        cursor: pointer;
+        padding: 4px 8px;
+    }
+    .custom-input-toggle:hover {
+        color: var(--primary);
+    }
+    body.dark-mode .custom-input-wrap .form-control {
+        background-color: #2d2d2d;
+        border-color: #444;
+        color: #fff;
+    }
+    body.dark-mode .custom-input-wrap .form-control:focus {
+        border-color: #c9a227;
+        box-shadow: 0 0 0 0.2rem rgba(201,162,39,0.2);
+    }
+    body.dark-mode .custom-input-icon,
+    body.dark-mode .custom-phone-prefix,
+    body.dark-mode .custom-input-toggle {
+        color: #adb5bd;
+    }
+    .btn-save {
+        border-radius: 25px;
+        font-weight: 600;
+        transition: background 0.2s, transform 0.2s;
+        padding: 10px;
+    }
+    .btn-save:hover {
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card p-4 shadow-sm form-card">
+                <div class="text-center mb-4">
+                    <i class="bi bi-person-badge auth-icon"></i>
+                    <h1 class="h4 mt-2">
+                        {% if person %}تعديل مندوب: {{ person.username }}{% else %}إضافة مندوب جديد{% endif %}
+                    </h1>
+                </div>
+
+                <form method="post">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">اسم المستخدم</label>
+                        <div class="custom-input-wrap">
+                            <i class="bi bi-person custom-input-icon"></i>
+                            <input type="text" name="username" class="form-control"
+                                   value="{{ person.username if person else '' }}" required autocomplete="username" placeholder="اسم المستخدم">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">البريد الإلكتروني</label>
+                        <div class="custom-input-wrap">
+                            <i class="bi bi-envelope custom-input-icon"></i>
+                            <input type="email" name="email" class="form-control"
+                                   value="{{ person.email if person else '' }}" required autocomplete="email" placeholder="example@mail.com">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">رقم الهاتف</label>
+                        <div class="custom-input-wrap">
+                            <span class="custom-phone-prefix">+963</span>
+                            <input type="tel" name="phone" class="form-control"
+                                   pattern="9[0-9]{8}" maxlength="9" placeholder="9XXXXXXXX"
+                                   value="{{ person.phone[4:] if person and person.phone and person.phone.startswith('+963') and person.phone|length >= 4 else (person.phone if person else '') }}">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">
+                            كلمة المرور
+                            {% if person %}(اتركها فارغة إذا لا تريد تغييرها){% endif %}
+                        </label>
+                        <div class="custom-input-wrap">
+                            <i class="bi bi-lock custom-input-icon"></i>
+                            <input type="password" name="password" id="password" class="form-control"
+                                   {% if not person %}required{% endif %} autocomplete="new-password" placeholder="كلمة المرور">
+                            <button class="custom-input-toggle" type="button" id="togglePasswordBtn" aria-label="إظهار كلمة المرور">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-custom btn-save w-100 py-3">حفظ</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('togglePasswordBtn').addEventListener('click', function() {
+        const pwd = document.getElementById('password');
+        const icon = this.querySelector('i');
+        if (pwd.type === 'password') {
+            pwd.type = 'text';
+            icon.className = 'bi bi-eye-slash';
+        } else {
+            pwd.type = 'password';
+            icon.className = 'bi bi-eye';
+        }
+    });
+</script>
+{% endblock %}

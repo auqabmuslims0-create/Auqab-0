@@ -1,0 +1,340 @@
+{% extends 'base.html' %}
+
+{% block title %}إنشاء متجر جديد{% endblock %}
+
+{% block head %}
+<style>
+    .auth-card {
+        border-radius: 20px;
+        border: none;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        transition: box-shadow 0.3s;
+        background: rgba(255,255,255,0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+    .auth-card:hover {
+        box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+    }
+    body.dark-mode .auth-card {
+        background: #1e1e1e;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .custom-input-wrap {
+        position: relative;
+        margin-bottom: 0;
+    }
+    .custom-input-wrap .form-control {
+        border-radius: 12px;
+        padding-right: 40px;
+        padding-left: 40px;
+        height: 48px;
+        background-color: #fff;
+        border: 1px solid #ced4da;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .custom-input-wrap .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(46,93,52,0.15);
+    }
+    .custom-input-icon {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        color: #6c757d;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .custom-phone-prefix {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        color: #6c757d;
+        font-size: 0.9rem;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .custom-phone-prefix + .form-control {
+        padding-right: 55px;
+    }
+    body.dark-mode .custom-input-wrap .form-control {
+        background-color: #2d2d2d;
+        border-color: #444;
+        color: #fff;
+    }
+    body.dark-mode .custom-input-wrap .form-control:focus {
+        border-color: #c9a227;
+        box-shadow: 0 0 0 0.2rem rgba(201,162,39,0.2);
+    }
+    body.dark-mode .custom-input-icon,
+    body.dark-mode .custom-phone-prefix {
+        color: #adb5bd;
+    }
+    .avatar-upload-circle {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background-color: rgba(46, 93, 52, 0.05);
+        border: 2px dashed var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        overflow: hidden;
+        transition: background-color 0.2s, border-color 0.2s;
+        position: relative;
+        margin: 0 auto;
+    }
+    .avatar-upload-circle:hover {
+        background-color: rgba(46, 93, 52, 0.1);
+        border-color: var(--primary-dark);
+    }
+    .avatar-upload-circle img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+        position: absolute;
+        inset: 0;
+    }
+    .avatar-upload-circle i {
+        font-size: 2.5rem;
+        color: var(--primary);
+    }
+    body.dark-mode .avatar-upload-circle {
+        background-color: rgba(201,162,39,0.1);
+        border-color: var(--accent);
+    }
+    body.dark-mode .avatar-upload-circle i {
+        color: var(--accent);
+    }
+    .edit-store-map {
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border: 1px solid #e0e0e0;
+        height: 300px;
+    }
+    body.dark-mode .edit-store-map {
+        border-color: #444;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card p-4 auth-card">
+                <div class="text-center mb-4">
+                    {% if step == 1 %}
+                        <i class="bi bi-shop auth-icon"></i>
+                        <h1 class="h3 mt-2">معلومات المتجر</h1>
+                        <p class="text-muted small">الخطوة 1 من 3</p>
+                    {% elif step == 2 %}
+                        <i class="bi bi-geo-alt auth-icon"></i>
+                        <h1 class="h3 mt-2">الموقع والعنوان</h1>
+                        <p class="text-muted small">الخطوة 2 من 3</p>
+                    {% elif step == 3 %}
+                        <i class="bi bi-clock auth-icon"></i>
+                        <h1 class="h3 mt-2">ساعات العمل والتوصيل</h1>
+                        <p class="text-muted small">الخطوة 3 من 3</p>
+                    {% endif %}
+                </div>
+
+                {% if step == 1 %}
+                <form method="post" enctype="multipart/form-data" action="{{ url_for('store.new_store') }}">
+                    <input type="hidden" name="step" value="1">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+                    <div class="mb-3 text-center">
+                        <label class="form-label d-block">شعار المتجر</label>
+                        <div class="avatar-upload-circle" id="logoUploadCircle">
+                            <img id="logoPreview" src="" alt="معاينة الشعار" style="display:none;">
+                            <i class="bi bi-camera" id="logoPlaceholderIcon"></i>
+                        </div>
+                        <input type="file" name="logo" id="logoInput" accept="image/*" class="d-none">
+                        <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="removeLogoBtn" style="display:none;">
+                            <i class="bi bi-x-circle"></i> إزالة
+                        </button>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">اسم المتجر</label>
+                        <div class="custom-input-wrap">
+                            <i class="bi bi-shop custom-input-icon"></i>
+                            <input type="text" name="name" class="form-control" required autofocus placeholder="أدخل اسم المتجر">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">الوصف (اختياري)</label>
+                        <textarea name="description" class="form-control" rows="3" placeholder="وصف مختصر عن المتجر"></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">رقم الهاتف (اختياري)</label>
+                        <div class="custom-input-wrap">
+                            <span class="custom-phone-prefix">+963</span>
+                            <input type="tel" name="phone" class="form-control" pattern="9[0-9]{8}" maxlength="9" placeholder="9XXXXXXXX" style="padding-right:55px;">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-custom w-100 py-2">
+                        <i class="bi bi-arrow-left"></i> متابعة
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if step == 2 %}
+                <form method="post" action="{{ url_for('store.new_store') }}">
+                    <input type="hidden" name="step" value="2">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">العنوان</label>
+                        <div class="custom-input-wrap">
+                            <i class="bi bi-geo-alt custom-input-icon"></i>
+                            <input type="text" name="address" class="form-control" placeholder="اكتب العنوان">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label d-block">موقع المتجر على الخريطة</label>
+                        <div id="storeMap" class="edit-store-map mb-2"></div>
+                        <p class="text-muted small">انقر على الخريطة لتحديد الموقع، أو استخدم زر "موقعي".</p>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="locateMeBtn">
+                            <i class="bi bi-crosshair"></i> استخدام موقعي الحالي
+                        </button>
+                        <input type="hidden" name="latitude" id="latitude">
+                        <input type="hidden" name="longitude" id="longitude">
+                    </div>
+
+                    <button type="submit" class="btn btn-custom w-100 py-2">
+                        <i class="bi bi-arrow-left"></i> متابعة
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if step == 3 %}
+                <form method="post" action="{{ url_for('store.new_store') }}">
+                    <input type="hidden" name="step" value="3">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">ساعات العمل</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label class="small">من</label>
+                                <input type="time" name="opening_time" class="form-control">
+                            </div>
+                            <div class="col-6">
+                                <label class="small">إلى</label>
+                                <input type="time" name="closing_time" class="form-control">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-check form-switch mb-4">
+                        <input type="checkbox" name="has_delivery" value="yes" class="form-check-input" id="hasDelivery">
+                        <label class="form-check-label" for="hasDelivery">خدمة توصيل متوفرة</label>
+                    </div>
+
+                    <button type="submit" class="btn btn-custom w-100 py-2">
+                        <i class="bi bi-check-circle"></i> إنشاء المتجر
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if step == 2 %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css') }}">
+<script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
+<script>
+    const HUSAYNIYYAH_CENTER = [33.4183, 36.3494];
+    const map = L.map('storeMap').setView(HUSAYNIYYAH_CENTER, 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let marker;
+    map.on('click', function(e) {
+        setMarker(e.latlng.lat, e.latlng.lng);
+    });
+
+    function setMarker(lat, lng) {
+        document.getElementById('latitude').value = lat;
+        document.getElementById('longitude').value = lng;
+        if (marker) {
+            marker.setLatLng([lat, lng]);
+        } else {
+            marker = L.marker([lat, lng]).addTo(map);
+        }
+        map.setView([lat, lng], 17);
+    }
+
+    document.getElementById('locateMeBtn').addEventListener('click', function() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+                setMarker(position.coords.latitude, position.coords.longitude);
+            }, error => {
+                showToast('تعذر تحديد موقعك. انقر على الخريطة لتحديد الموقع.', 'warning');
+            });
+        } else {
+            showToast('متصفحك لا يدعم تحديد الموقع.', 'danger');
+        }
+    });
+</script>
+{% endif %}
+
+{% if step == 1 %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const circle = document.getElementById('logoUploadCircle');
+        const input = document.getElementById('logoInput');
+        const preview = document.getElementById('logoPreview');
+        const placeholderIcon = document.getElementById('logoPlaceholderIcon');
+        const removeBtn = document.getElementById('removeLogoBtn');
+
+        if (circle && input) {
+            circle.addEventListener('click', function() {
+                input.click();
+            });
+        }
+
+        if (input) {
+            input.addEventListener('change', function(e) {
+                if (e.target.files && e.target.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        preview.src = event.target.result;
+                        preview.style.display = 'block';
+                        placeholderIcon.style.display = 'none';
+                        removeBtn.style.display = 'inline-block';
+                    };
+                    reader.readAsDataURL(e.target.files[0]);
+                }
+            });
+        }
+
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                input.value = '';
+                preview.src = '';
+                preview.style.display = 'none';
+                placeholderIcon.style.display = 'block';
+                removeBtn.style.display = 'none';
+            });
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

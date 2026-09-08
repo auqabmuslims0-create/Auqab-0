@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}تعديل وردية المندوب{% endblock %}
+
+{% block head %}
+<style>
+    .form-card {
+        border-radius: 20px;
+        border: none;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        background: #fff;
+    }
+    body.dark-mode .form-card {
+        background: #1e1e1e;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        color: #fff;
+    }
+    .custom-input-wrap {
+        position: relative;
+        margin-bottom: 0;
+    }
+    .custom-input-wrap .form-control {
+        border-radius: 12px;
+        padding-right: 40px;
+        padding-left: 40px;
+        height: 48px;
+        background-color: #fff;
+        border: 1px solid #ced4da;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .custom-input-wrap .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(46,93,52,0.15);
+    }
+    .custom-input-icon {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        color: #6c757d;
+        pointer-events: none;
+        z-index: 2;
+    }
+    body.dark-mode .custom-input-wrap .form-control {
+        background-color: #2d2d2d;
+        border-color: #444;
+        color: #fff;
+    }
+    body.dark-mode .custom-input-wrap .form-control:focus {
+        border-color: #c9a227;
+        box-shadow: 0 0 0 0.2rem rgba(201,162,39,0.2);
+    }
+    body.dark-mode .custom-input-icon {
+        color: #adb5bd;
+    }
+    .btn-save {
+        border-radius: 25px;
+        font-weight: 600;
+        transition: background 0.2s, transform 0.2s;
+        padding: 10px;
+    }
+    .btn-save:hover {
+        transform: translateY(-2px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="text-center mb-4">
+        <i class="bi bi-clock auth-icon"></i>
+        <h1 class="h4 mt-2">تعديل وردية {{ person.username }}</h1>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card p-4 shadow-sm form-card">
+                <form method="post">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">بداية الوردية</label>
+                        <div class="custom-input-wrap">
+                            <i class="bi bi-clock custom-input-icon"></i>
+                            <input type="time" name="shift_start_time" class="form-control"
+                                   value="{{ person.shift_start_time.strftime('%H:%M') if person.shift_start_time else '' }}"
+                                   autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">نهاية الوردية</label>
+                        <div class="custom-input-wrap">
+                            <i class="bi bi-clock-history custom-input-icon"></i>
+                            <input type="time" name="shift_end_time" class="form-control"
+                                   value="{{ person.shift_end_time.strftime('%H:%M') if person.shift_end_time else '' }}"
+                                   autocomplete="off">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">أقصى عدد طلبات نشطة</label>
+                        <div class="custom-input-wrap">
+                            <i class="bi bi-list-ol custom-input-icon"></i>
+                            <input type="number" name="max_active_orders" class="form-control"
+                                   value="{{ person.max_active_orders }}" min="1" max="20">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-custom btn-save w-100">حفظ</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

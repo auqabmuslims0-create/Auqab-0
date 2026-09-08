@@ -1,0 +1,326 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as macros %}
+
+{% block title %}المتاجر{% endblock %}
+
+{% block head %}
+<style>
+    .stores-hero {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(135deg, #f8f9fa, #fff);
+        border-radius: 20px;
+        padding: 16px 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    body.dark-mode .stores-hero {
+        background: linear-gradient(135deg, #252525, #1e1e1e);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .stores-hero-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        color: #fff;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        flex-shrink: 0;
+    }
+    .stores-count {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+        border-radius: 25px;
+    }
+    .filter-bar {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    body.dark-mode .filter-bar {
+        background: #252525;
+    }
+    .stores-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 15px;
+    }
+    @media (max-width: 480px) {
+        .stores-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+    }
+    .store-card-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    .store-status-badge {
+        font-size: 0.7rem;
+        padding: 0.3rem 0.6rem;
+        border-radius: 12px;
+        font-weight: 600;
+        display: inline-block;
+    }
+    .store-card {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        background: #fff;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .store-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    }
+    body.dark-mode .store-card {
+        background: #1e1e1e;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .store-card-image {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+        flex-shrink: 0;
+        background: #f0f0f0;
+        border-radius: 20px 20px 0 0;
+    }
+    .store-card-body {
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        flex-grow: 1;
+        text-align: center;
+    }
+    .store-card-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .store-visit-btn {
+        margin-top: auto;
+        display: inline-block;
+        width: 100%;
+        padding: 6px;
+        border-radius: 20px;
+        border: 1px solid var(--primary);
+        color: var(--primary);
+        background: transparent;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s;
+        text-decoration: none;
+        text-align: center;
+    }
+    .store-visit-btn:hover {
+        background: var(--primary);
+        color: #fff;
+    }
+    body.dark-mode .store-visit-btn {
+        border-color: var(--accent);
+        color: var(--accent);
+    }
+    body.dark-mode .store-visit-btn:hover {
+        background: var(--accent);
+        color: #000;
+    }
+    #offlineContent {
+        display: none;
+    }
+    .offline-store-card {
+        background: #fff;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: transform 0.2s;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+    body.dark-mode .offline-store-card {
+        background: #1e1e1e;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .offline-store-image {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        object-fit: cover;
+        display: block;
+        background: #f0f0f0;
+    }
+    .offline-store-body {
+        padding: 10px;
+        text-align: center;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .offline-store-name {
+        font-weight: 600;
+        margin-bottom: 4px;
+        font-size: 0.9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div id="onlineContent">
+        <div class="stores-hero">
+            <div class="d-flex align-items-center gap-3">
+                <div class="stores-hero-icon">
+                    <i class="bi bi-shop-window"></i>
+                </div>
+                <div>
+                    <h4 class="fw-bold mb-1">المتاجر</h4>
+                    <p class="text-muted mb-0 small">اكتشف متاجرنا النشطة</p>
+                </div>
+            </div>
+            <span class="badge bg-primary stores-count">{{ pagination.total }} متجر</span>
+        </div>
+
+        <div class="filter-bar">
+            <form method="GET" action="{{ url_for('stores.stores_page') }}" class="row g-2 align-items-end">
+                <div class="col-12 col-md-6">
+                    <label class="form-label small fw-bold">بحث</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" name="q" value="{{ q or '' }}" class="form-control" placeholder="ابحث عن متجر بالاسم أو المالك...">
+                    </div>
+                </div>
+                <div class="col-6 col-md-4">
+                    <label class="form-label small fw-bold">الحالة</label>
+                    <select name="status" class="form-select">
+                        <option value="">الكل</option>
+                        <option value="open" {% if status_filter == 'open' %}selected{% endif %}>مفتوح الآن</option>
+                        <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>مغلق</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2 d-grid">
+                    <button type="submit" class="btn btn-custom"><i class="bi bi-funnel"></i> تصفية</button>
+                </div>
+            </form>
+        </div>
+
+        {% if stores %}
+        <div class="stores-grid">
+            {% for store in stores %}
+                {{ macros.render_store_card(store, open_status.get(store.id)) }}
+            {% endfor %}
+        </div>
+        {% else %}
+            {{ macros.render_empty_state('bi-shop-window', 'لا توجد متاجر مطابقة', url_for('stores.stores_page'), 'عرض الكل') }}
+        {% endif %}
+
+        {{ macros.render_pagination(pagination, 'stores.stores_page', {'q': q, 'status': status_filter}) }}
+    </div>
+
+    <div id="offlineContent">
+        <div class="alert alert-warning text-center mb-3">
+            <i class="bi bi-wifi-off"></i> أنت غير متصل بالإنترنت - يتم عرض نسخة محفوظة من المتاجر
+        </div>
+        <div class="stores-grid" id="offlineStoresGrid"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (navigator.onLine && typeof OfflineDB !== 'undefined') {
+        const storesData = [
+            {% for store in stores %}
+            {
+                id: {{ store.id }},
+                name: {{ store.name | tojson }},
+                description: {{ store.description | tojson if store.description else '""' }},
+                logo_url: {{ store.logo_url | tojson if store.logo_url else '""' }},
+                phone: {{ store.phone | tojson if store.phone else '""' }},
+                address: {{ store.address | tojson if store.address else '""' }},
+                working_hours: {{ store.working_hours | tojson if store.working_hours else '""' }},
+                subscription_status: {{ store.subscription_status | tojson if store.subscription_status else '""' }},
+                is_open: {{ open_status.get(store.id, false) | lower }}
+            }{{ ',' if not loop.last }}
+            {% endfor %}
+        ];
+        if (storesData.length) {
+            OfflineDB.saveStores(storesData).catch(err => console.warn('OfflineDB saveStores failed:', err));
+        }
+    }
+
+    const onlineContent = document.getElementById('onlineContent');
+    const offlineContent = document.getElementById('offlineContent');
+
+    function showOfflineContent() {
+        if (onlineContent) onlineContent.style.display = 'none';
+        if (offlineContent) offlineContent.style.display = 'block';
+        loadOfflineData();
+    }
+
+    function showOnlineContent() {
+        if (onlineContent) onlineContent.style.display = 'block';
+        if (offlineContent) offlineContent.style.display = 'none';
+    }
+
+    async function loadOfflineData() {
+        try {
+            if (typeof OfflineDB === 'undefined') return;
+            const stores = await OfflineDB.getAllStores();
+            const grid = document.getElementById('offlineStoresGrid');
+            if (grid) {
+                if (stores && stores.length > 0) {
+                    grid.innerHTML = stores.map(store => `
+                        <a href="/store/${store.id}/public" class="text-decoration-none">
+                            <div class="offline-store-card">
+                                ${store.logo_url ? `<img src="${store.logo_url}" alt="${store.name}" class="offline-store-image">` : `<div class="offline-store-image d-flex align-items-center justify-content-center"><i class="bi bi-shop" style="font-size:2rem;"></i></div>`}
+                                <div class="offline-store-body">
+                                    <div class="offline-store-name">${store.name}</div>
+                                    <span class="store-status-badge ${store.is_open ? 'bg-success' : 'bg-secondary'}">${store.is_open ? 'مفتوح' : 'مغلق'}</span>
+                                </div>
+                            </div>
+                        </a>
+                    `).join('');
+                } else {
+                    grid.innerHTML = '<p class="text-muted text-center">لا توجد متاجر محفوظة</p>';
+                }
+            }
+        } catch (err) {
+            console.error('خطأ في تحميل البيانات من IndexedDB:', err);
+        }
+    }
+
+    if (!navigator.onLine) {
+        showOfflineContent();
+    }
+
+    window.addEventListener('online', function() {
+        showOnlineContent();
+        window.location.reload();
+    });
+
+    window.addEventListener('offline', function() {
+        showOfflineContent();
+    });
+});
+</script>
+{% endblock %}

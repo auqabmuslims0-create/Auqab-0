@@ -1,0 +1,347 @@
+{% extends 'base.html' %}
+
+{% block title %}تعديل بيانات المتجر{% endblock %}
+
+{% block head %}
+<style>
+    .card {
+        border-radius: 20px;
+        border: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        background: #fff;
+    }
+    body.dark-mode .card {
+        background: #1e1e1e;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        color: #fff;
+    }
+    .custom-input-wrap {
+        position: relative;
+        margin-bottom: 0;
+    }
+    .custom-input-wrap .form-control {
+        border-radius: 12px;
+        padding-right: 40px;
+        padding-left: 40px;
+        height: 48px;
+        background-color: #fff;
+        border: 1px solid #ced4da;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .custom-input-wrap .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(46,93,52,0.15);
+    }
+    .custom-input-icon {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        color: #6c757d;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .custom-phone-prefix {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        color: #6c757d;
+        font-size: 0.9rem;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .custom-phone-prefix + .form-control {
+        padding-right: 55px;
+    }
+    body.dark-mode .custom-input-wrap .form-control {
+        background-color: #2d2d2d;
+        border-color: #444;
+        color: #fff;
+    }
+    body.dark-mode .custom-input-wrap .form-control:focus {
+        border-color: #c9a227;
+        box-shadow: 0 0 0 0.2rem rgba(201,162,39,0.2);
+    }
+    body.dark-mode .custom-input-icon,
+    body.dark-mode .custom-phone-prefix {
+        color: #adb5bd;
+    }
+    .logo-preview {
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 50%;
+        border: 3px solid var(--primary);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        cursor: pointer;
+    }
+    .logo-preview-placeholder {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        background: #6c757d;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 48px;
+        margin: 0 auto;
+        cursor: pointer;
+        border: 3px dashed var(--primary);
+    }
+    body.dark-mode .logo-preview {
+        border-color: var(--accent);
+    }
+    body.dark-mode .logo-preview-placeholder {
+        background: #444;
+        border-color: var(--accent);
+    }
+    .edit-store-map {
+        height: 300px;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border: 1px solid #e0e0e0;
+    }
+    body.dark-mode .edit-store-map {
+        border-color: #444;
+    }
+    .delete-countdown {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #dc3545;
+        text-align: center;
+        letter-spacing: 2px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4 text-center"><i class="bi bi-pencil-square"></i> تعديل بيانات المتجر</h1>
+
+    <form method="post" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+        <!-- بطاقة الشعار -->
+        <div class="card p-4 mb-4 shadow-sm">
+            <h5 class="mb-3"><i class="bi bi-image"></i> شعار المتجر</h5>
+            <div class="text-center">
+                <label for="logoInput" class="cursor-pointer">
+                    {% if store.logo_url %}
+                        <img src="{{ store.logo_url | get_image_url }}"
+                             id="logoPreview"
+                             alt="شعار المتجر"
+                             class="logo-preview mb-3">
+                    {% else %}
+                        <div id="logoPreview" class="logo-preview-placeholder">
+                            <i class="bi bi-shop"></i>
+                        </div>
+                    {% endif %}
+                </label>
+                <input type="file" name="logo" id="logoInput" accept="image/*" class="d-none">
+                <p class="text-muted small">اضغط على الصورة لتغيير الشعار</p>
+            </div>
+        </div>
+
+        <!-- بطاقة المعلومات الأساسية -->
+        <div class="card p-4 mb-4 shadow-sm">
+            <h5 class="mb-3"><i class="bi bi-info-circle"></i> المعلومات الأساسية</h5>
+            <div class="mb-3">
+                <label class="form-label">اسم المتجر</label>
+                <div class="custom-input-wrap">
+                    <i class="bi bi-shop custom-input-icon"></i>
+                    <input type="text" name="name" class="form-control" value="{{ store.name }}" required>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">الوصف</label>
+                <textarea name="description" class="form-control" rows="4">{{ store.description }}</textarea>
+            </div>
+        </div>
+
+        <!-- بطاقة الاتصال -->
+        <div class="card p-4 mb-4 shadow-sm">
+            <h5 class="mb-3"><i class="bi bi-telephone"></i> الاتصال</h5>
+            <div class="mb-3">
+                <label class="form-label">رقم الهاتف</label>
+                <div class="custom-input-wrap">
+                    <span class="custom-phone-prefix">+963</span>
+                    <input type="tel" name="phone" class="form-control"
+                           pattern="9[0-9]{8}" maxlength="9" placeholder="9XXXXXXXX"
+                           value="{{ store.phone[4:] if store.phone and store.phone.startswith('+963') and store.phone|length >= 4 else store.phone or '' }}"
+                           required>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">العنوان</label>
+                <div class="custom-input-wrap">
+                    <i class="bi bi-geo-alt custom-input-icon"></i>
+                    <input type="text" name="address" class="form-control" value="{{ store.address }}">
+                </div>
+            </div>
+        </div>
+
+        <!-- بطاقة الموقع -->
+        <div class="card p-4 mb-4 shadow-sm">
+            <h5 class="mb-3"><i class="bi bi-geo-alt"></i> موقع المتجر على الخريطة</h5>
+            <div id="storeMap" class="edit-store-map"></div>
+            <p class="text-muted small mt-1">انقر على الخريطة لتحديد موقع المتجر، أو استخدم زر "تحديد موقعي".</p>
+            <button type="button" class="btn btn-sm btn-outline-primary mt-2" id="locateMeBtn">
+                <i class="bi bi-crosshair"></i> استخدام موقعي الحالي
+            </button>
+            <input type="hidden" name="latitude" id="latitude" value="{{ store.latitude if store.latitude else '' }}">
+            <input type="hidden" name="longitude" id="longitude" value="{{ store.longitude if store.longitude else '' }}">
+        </div>
+
+        <!-- بطاقة ساعات العمل والتوصيل -->
+        <div class="card p-4 mb-4 shadow-sm">
+            <h5 class="mb-3"><i class="bi bi-clock"></i> ساعات العمل والتوصيل</h5>
+            <div class="mb-3">
+                <label class="form-label">ساعات العمل</label>
+                <div class="row g-2 align-items-end">
+                    <div class="col-5">
+                        <label class="small">من</label>
+                        <input type="time" name="opening_time" class="form-control"
+                               value="{{ store.working_hours.split(' - ')[0] if store.working_hours else '' }}">
+                    </div>
+                    <div class="col-5">
+                        <label class="small">إلى</label>
+                        <input type="time" name="closing_time" class="form-control"
+                               value="{{ store.working_hours.split(' - ')[1] if store.working_hours and ' - ' in store.working_hours else '' }}">
+                    </div>
+                </div>
+            </div>
+            <div class="form-check form-switch">
+                <input type="checkbox" name="has_delivery" value="yes"
+                       class="form-check-input" id="hasDelivery"
+                       {% if store.has_delivery %}checked{% endif %}>
+                <label class="form-check-label" for="hasDelivery">خدمة توصيل متوفرة</label>
+            </div>
+        </div>
+
+        <!-- زر الحفظ -->
+        <div class="d-grid">
+            <button type="submit" class="btn btn-custom py-3">
+                <i class="bi bi-save"></i> حفظ التعديلات
+            </button>
+        </div>
+    </form>
+
+    <!-- منطقة حذف المتجر -->
+    {% if pending_deletion_at_iso %}
+    <div class="card p-4 mt-4 shadow-sm border-danger">
+        <h5 class="mb-3 text-danger"><i class="bi bi-trash3"></i> حذف المتجر</h5>
+        <p class="text-muted">سيتم حذف المتجر بالكامل خلال:</p>
+        <div class="delete-countdown" id="deleteCountdown">48:00:00</div>
+        <p class="text-muted small mt-2">إضغط للتراجع قبل انتهاء المدة.</p>
+        <form method="post" action="{{ url_for('store.cancel_delete_store', store_id=store.id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-outline-secondary w-100">إلغاء الحذف</button>
+        </form>
+    </div>
+    {% else %}
+    <div class="card p-4 mt-4 shadow-sm border-danger">
+        <h5 class="mb-3 text-danger"><i class="bi bi-trash3"></i> منطقة الخطر</h5>
+        <form method="post" action="{{ url_for('store.request_delete_store', store_id=store.id) }}"
+              onsubmit="return confirm('هل انت متأكد من حذف المتجر فعلا.!؟');">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-outline-danger w-100">حذف المتجر</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css') }}">
+<script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
+<script>
+    const HUSAYNIYYAH_CENTER = [33.4183, 36.3494];
+    const map = L.map('storeMap').setView(HUSAYNIYYAH_CENTER, 15);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    let marker;
+
+    function setMarker(lat, lng) {
+        document.getElementById('latitude').value = lat;
+        document.getElementById('longitude').value = lng;
+        if (marker) {
+            marker.setLatLng([lat, lng]);
+        } else {
+            marker = L.marker([lat, lng]).addTo(map);
+        }
+        map.setView([lat, lng], 17);
+    }
+
+    const initialLat = parseFloat(document.getElementById('latitude').value);
+    const initialLng = parseFloat(document.getElementById('longitude').value);
+    if (!isNaN(initialLat) && !isNaN(initialLng)) {
+        setMarker(initialLat, initialLng);
+    }
+
+    map.on('click', function(e) {
+        setMarker(e.latlng.lat, e.latlng.lng);
+    });
+
+    document.getElementById('locateMeBtn').addEventListener('click', function() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+                setMarker(position.coords.latitude, position.coords.longitude);
+            }, error => {
+                showToast('تعذر تحديد موقعك. انقر على الخريطة لتحديد الموقع.', 'warning');
+            });
+        } else {
+            showToast('متصفحك لا يدعم تحديد الموقع.', 'danger');
+        }
+    });
+
+    // معاينة الشعار
+    document.getElementById('logoInput').addEventListener('change', function(e) {
+        if (e.target.files && e.target.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const preview = document.getElementById('logoPreview');
+                if (preview.tagName === 'IMG') {
+                    preview.src = event.target.result;
+                } else {
+                    const img = document.createElement('img');
+                    img.src = event.target.result;
+                    img.id = 'logoPreview';
+                    img.className = 'logo-preview mb-3';
+                    img.alt = 'شعار المتجر';
+                    preview.parentNode.replaceChild(img, preview);
+                }
+            };
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    });
+
+    // العداد التنازلي للحذف
+    const pendingDeletionAtIso = "{{ pending_deletion_at_iso or '' }}";
+    if (pendingDeletionAtIso) {
+        const countdownElement = document.getElementById('deleteCountdown');
+        if (countdownElement) {
+            const endTime = new Date(pendingDeletionAtIso).getTime();
+            const pad = (num) => Math.floor(num).toString().padStart(2, '0');
+            const updateCountdown = () => {
+                const remaining = Math.max(0, endTime - Date.now());
+                if (remaining <= 0) {
+                    countdownElement.textContent = '00:00:00';
+                    clearInterval(interval);
+                    return;
+                }
+                const hours = Math.floor(remaining / 3600000);
+                const minutes = Math.floor((remaining % 3600000) / 60000);
+                const seconds = Math.floor((remaining % 60000) / 1000);
+                countdownElement.textContent = pad(hours) + ':' + pad(minutes) + ':' + pad(seconds);
+            };
+            const interval = setInterval(updateCountdown, 1000);
+            updateCountdown();
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}إدارة الريلز - {{ store.name }}{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/reels.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="reels-page-container">
+    <div class="reels-header">
+        <h4 class="fw-bold mb-0"><i class="bi bi-film"></i> إدارة الريلز - {{ store.name }}</h4>
+        <a href="{{ url_for('store.new_reel', store_id=store.id) }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-plus-lg"></i> إضافة ريل
+        </a>
+    </div>
+
+    {% if reels %}
+    <div class="reels-vertical-container">
+        {% for reel in reels %}
+        <div class="reel-slide" id="reel-{{ reel.id }}">
+            <div class="reel-video-wrapper">
+                {% if reel.video_url %}
+                <video class="reel-video" loop playsinline preload="metadata"
+                       src="{{ reel.video_url | get_image_url }}"
+                       poster="{{ reel.thumbnail_url | get_image_url if reel.thumbnail_url else '' }}"
+                       data-reel-video>
+                </video>
+                <div class="video-loading-spinner" data-video-spinner></div>
+                <div class="reel-play-overlay" data-play-overlay>
+                    <button type="button" class="reel-play-btn" data-play-btn aria-label="تشغيل الفيديو">
+                        <i class="bi bi-play-fill"></i>
+                    </button>
+                </div>
+                {% else %}
+                <div class="reel-video-placeholder"><i class="bi bi-film"></i></div>
+                {% endif %}
+            </div>
+
+            <div class="reel-content">
+                <div class="reel-info-bottom">
+                    {% if reel.product %}
+                    <a href="{{ url_for('stores.product_public', product_id=reel.product.id) }}" class="reel-product-link">
+                        <h5 class="reel-product-name">{{ reel.product.name }}</h5>
+                    </a>
+                    {% else %}
+                    <p class="reel-caption text-white mb-0">{{ reel.caption or 'بدون وصف' }}</p>
+                    {% endif %}
+                    <div class="reel-meta text-white small mt-1">
+                        <span><i class="bi bi-eye"></i> {{ reel.views }}</span> |
+                        <span><i class="bi bi-calendar"></i> {{ reel.created_at.strftime('%Y-%m-%d') }}</span>
+                    </div>
+                </div>
+                <div class="reel-actions-column">
+                    <form action="{{ url_for('store.delete_reel', store_id=store.id, reel_id=reel.id) }}" method="post" onsubmit="return confirm('هل أنت متأكد من حذف هذا الريل؟');">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="reel-action-btn delete" title="حذف">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-film" style="font-size: 4rem; color: #adb5bd;"></i>
+        <h4 class="mt-3">لا توجد ريلزات بعد</h4>
+        <p class="text-muted">ابدأ بإضافة ريل جديد لجذب العملاء.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/reels.js') }}"></script>
+{% endblock %}

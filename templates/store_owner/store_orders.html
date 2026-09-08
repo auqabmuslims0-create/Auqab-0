@@ -1,0 +1,433 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as macros %}
+
+{% block title %}طلبات {{ store.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .page-header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .page-header h1 {
+        font-size: 1.6rem;
+        font-weight: 800;
+        margin: 0;
+    }
+    .filter-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+    }
+    .filter-form select,
+    .filter-form button {
+        border-radius: 25px;
+        padding: 8px 16px;
+        border: 1px solid #ced4da;
+        background: #fff;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .filter-form select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(46,93,52,0.15);
+    }
+    body.dark-mode .filter-form select,
+    body.dark-mode .filter-form button {
+        background: #2d2d2d;
+        border-color: #444;
+        color: #fff;
+    }
+    .order-card {
+        border: none;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        background: #fff;
+        transition: transform 0.2s, box-shadow 0.2s;
+        margin-bottom: 20px;
+    }
+    .order-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    }
+    body.dark-mode .order-card {
+        background: #1e1e1e;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        color: #fff;
+    }
+    .order-card-header {
+        padding: 15px 20px;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+    body.dark-mode .order-card-header {
+        border-bottom-color: #333;
+    }
+    .order-number {
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+    .order-date {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+    body.dark-mode .order-date {
+        color: #adb5bd;
+    }
+    .order-status-badge {
+        font-size: 0.8rem;
+        padding: 0.4rem 0.8rem;
+        border-radius: 20px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    .order-summary {
+        padding: 15px 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 10px;
+        font-size: 0.9rem;
+    }
+    .summary-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .summary-item i {
+        color: var(--primary);
+        width: 18px;
+        text-align: center;
+    }
+    body.dark-mode .summary-item i {
+        color: var(--accent);
+    }
+    .order-actions {
+        padding: 0 20px 15px;
+        display: flex;
+        justify-content: flex-end;
+    }
+    .btn-details {
+        border-radius: 20px;
+        padding: 6px 16px;
+        font-size: 0.85rem;
+    }
+    .order-details-collapse {
+        border-top: 1px solid rgba(0,0,0,0.05);
+        padding: 15px 20px;
+    }
+    body.dark-mode .order-details-collapse {
+        border-top-color: #333;
+    }
+    .products-table {
+        background: #f8f9fa;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    body.dark-mode .products-table {
+        background: #2d2d2d;
+    }
+    .management-section {
+        margin-top: 20px;
+    }
+    .delivery-person-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 10px;
+    }
+    .delivery-person-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 10px;
+        background: #fff;
+        transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .delivery-person-card:hover {
+        border-color: var(--primary);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .delivery-person-card.selected {
+        border-color: var(--primary);
+        background: rgba(46,93,52,0.05);
+        box-shadow: 0 0 0 2px rgba(46,93,52,0.15);
+    }
+    body.dark-mode .delivery-person-card {
+        background: #252525;
+        border-color: #444;
+    }
+    body.dark-mode .delivery-person-card.selected {
+        border-color: var(--accent);
+        background: rgba(201,162,39,0.1);
+        box-shadow: 0 0 0 2px rgba(201,162,39,0.2);
+    }
+    .person-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+    }
+    .person-avatar-placeholder {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #6c757d;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .person-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .person-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 2px;
+    }
+    .person-meta {
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+    body.dark-mode .person-meta {
+        color: #adb5bd;
+    }
+    .select-person-btn {
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 0.75rem;
+    }
+    .alert-warning {
+        border-radius: 12px;
+    }
+    .btn-update {
+        width: 100%;
+        border-radius: 25px;
+        margin-top: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="page-header">
+        <h1><i class="bi bi-receipt"></i> طلبات {{ store.name }}</h1>
+        <form method="get" class="filter-form">
+            <select name="status" class="form-select" style="max-width:200px;">
+                <option value="">جميع الحالات</option>
+                {% for status in allowed_statuses %}
+                <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>
+                    {% if status == 'new' %}جديد
+                    {% elif status == 'confirmed' %}مؤكد
+                    {% elif status == 'preparing' %}قيد التجهيز
+                    {% elif status == 'ready' %}جاهز للتسليم
+                    {% elif status == 'delivering' %}قيد التسليم
+                    {% elif status == 'delivered' %}تم التسليم
+                    {% elif status == 'cancelled' %}ملغي{% endif %}
+                </option>
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-outline-secondary">تصفية</button>
+        </form>
+    </div>
+
+    {% if orders %}
+        {% for order in orders %}
+        <div class="card order-card">
+            <div class="order-card-header">
+                <div>
+                    <span class="order-number">طلب #{{ order.id }}</span>
+                    <span class="order-date ms-2">{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+                {{ macros.render_order_status(order.status) }}
+            </div>
+
+            <div class="order-summary">
+                <div class="summary-item">
+                    <i class="bi bi-person"></i>
+                    <span><strong>الزبون:</strong> {{ order.customer.username if order.customer else 'غير متوفر' }}</span>
+                </div>
+                <div class="summary-item">
+                    <i class="bi bi-telephone"></i>
+                    <span><strong>الهاتف:</strong> {{ order.customer.phone if order.customer else 'غير متوفر' }}</span>
+                </div>
+                <div class="summary-item">
+                    <i class="bi bi-geo-alt"></i>
+                    <span><strong>العنوان:</strong> {{ order.delivery_address or 'استلام من المتجر' }}</span>
+                </div>
+                <div class="summary-item">
+                    <i class="bi bi-cash"></i>
+                    <span><strong>الإجمالي:</strong> {{ order.total|format_price }} ل.س</span>
+                </div>
+                {% if order.delivery_person %}
+                <div class="summary-item">
+                    <i class="bi bi-truck"></i>
+                    <span><strong>المندوب:</strong> {{ order.delivery_person.username }}</span>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="order-actions">
+                <button class="btn btn-outline-primary btn-details" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#orderDetails{{ order.id }}"
+                        aria-expanded="false" aria-controls="orderDetails{{ order.id }}">
+                    <i class="bi bi-eye"></i> التفاصيل والإدارة
+                </button>
+            </div>
+
+            <div class="collapse order-details-collapse" id="orderDetails{{ order.id }}">
+                <h6 class="fw-bold mb-3"><i class="bi bi-box-seam"></i> المنتجات</h6>
+                <div class="table-responsive products-table">
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead>
+                            <tr><th>المنتج</th><th>الكمية</th><th>السعر</th><th>الخيارات</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for item in order.items %}
+                            <tr>
+                                <td>{{ item.product.name if item.product else 'منتج محذوف' }}</td>
+                                <td>{{ item.quantity }}</td>
+                                <td>{{ item.price|format_price }} ل.س</td>
+                                <td>{{ item.options_selected or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if order.status != 'cancelled' and order.status != 'delivered' %}
+                <div class="management-section">
+                    <h6 class="fw-bold mb-3"><i class="bi bi-gear"></i> إدارة الطلب</h6>
+                    <form action="{{ url_for('store.update_order_status', store_id=store.id, order_id=order.id) }}"
+                          method="post" id="orderForm{{ order.id }}">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="delivery_person_id" id="selectedPersonId{{ order.id }}"
+                               value="{{ order.delivery_person_id if order.delivery_person_id else '' }}">
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-bold">حالة الطلب</label>
+                            <select name="status" class="form-select form-select-sm">
+                                <option value="new" {% if order.status == 'new' %}selected{% endif %}>جديد</option>
+                                <option value="confirmed" {% if order.status == 'confirmed' %}selected{% endif %}>مؤكد</option>
+                                <option value="preparing" {% if order.status == 'preparing' %}selected{% endif %}>قيد التجهيز</option>
+                                <option value="ready" {% if order.status == 'ready' %}selected{% endif %}>جاهز للتسليم</option>
+                                <option value="delivering" {% if order.status == 'delivering' %}selected{% endif %}>قيد التسليم</option>
+                                <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>ملغي</option>
+                            </select>
+                        </div>
+
+                        <label class="form-label small fw-bold">اختر مندوبًا للتوصيل</label>
+                        {% if delivery_persons %}
+                        <div class="delivery-person-grid">
+                            {% for person in delivery_persons %}
+                                {% set stats = delivery_person_stats[person.id] %}
+                                <div class="delivery-person-card {% if order.delivery_person_id == person.id %}selected{% endif %}"
+                                     data-person-id="{{ person.id }}"
+                                     data-order-id="{{ order.id }}">
+                                    {% if person.avatar %}
+                                        <img src="{{ person.avatar | get_image_url }}"
+                                             alt="{{ person.username }}"
+                                             class="person-avatar">
+                                    {% else %}
+                                        <div class="person-avatar-placeholder">
+                                            <i class="bi bi-person"></i>
+                                        </div>
+                                    {% endif %}
+                                    <div class="person-info">
+                                        <div class="person-name">{{ person.username }}</div>
+                                        <div class="person-meta">
+                                            <i class="bi bi-clock"></i>
+                                            {{ person.shift_start_time.strftime('%H:%M') if person.shift_start_time else '--:--' }} -
+                                            {{ person.shift_end_time.strftime('%H:%M') if person.shift_end_time else '--:--' }}
+                                            · طلبات نشطة: {{ stats.active_orders }}
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-success select-person-btn"
+                                            data-person-id="{{ person.id }}"
+                                            data-order-id="{{ order.id }}">
+                                        {% if order.delivery_person_id == person.id %}مُختار{% else %}اختيار{% endif %}
+                                    </button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div class="alert alert-warning">
+                            <i class="bi bi-exclamation-triangle"></i> لا يوجد مناديب متاحون حاليًا لهذه الوردية.
+                        </div>
+                        {% endif %}
+
+                        <input type="hidden" name="notify_delivery" value="yes">
+                        <button type="submit" class="btn btn-custom btn-update">تحديث الحالة والإسناد</button>
+                    </form>
+                </div>
+                {% elif order.status == 'delivered' %}
+                <div class="alert alert-success mt-3">
+                    <i class="bi bi-check-circle"></i> تم تسليم هذا الطلب بنجاح.
+                </div>
+                {% else %}
+                <div class="alert alert-info mt-3">هذا الطلب ملغي.</div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+
+        {{ macros.render_pagination(pagination, 'store.store_orders', {'store_id': store.id, 'status': status_filter}) }}
+
+    {% else %}
+        <div class="text-center py-5 empty-state">
+            <i class="bi bi-inbox display-1 text-muted"></i>
+            <p class="mt-3">لا توجد طلبات مطابقة.</p>
+        </div>
+    {% endif %}
+
+    <div class="text-center mt-4">
+        <a href="{{ url_for('store.store_manage', store_id=store.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-right"></i> عودة لإدارة المتجر
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.select-person-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const personId = this.getAttribute('data-person-id');
+            const orderId = this.getAttribute('data-order-id');
+            const hiddenInput = document.getElementById('selectedPersonId' + orderId);
+
+            if (hiddenInput) {
+                hiddenInput.value = personId;
+            }
+            const orderForm = document.getElementById('orderForm' + orderId);
+            const allCards = orderForm.querySelectorAll('.delivery-person-card');
+            allCards.forEach(card => {
+                card.classList.remove('selected');
+                const innerBtn = card.querySelector('.select-person-btn');
+                if (innerBtn) innerBtn.textContent = 'اختيار';
+            });
+            const parentCard = this.closest('.delivery-person-card');
+            if (parentCard) {
+                parentCard.classList.add('selected');
+                this.textContent = 'مُختار';
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

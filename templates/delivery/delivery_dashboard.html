@@ -1,0 +1,734 @@
+{% extends 'base.html' %}
+
+{% block title %}لوحة المندوب{% endblock %}
+
+{% block head %}
+<style>
+    .page-header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .page-header h1 {
+        font-size: 1.6rem;
+        font-weight: 800;
+        margin: 0;
+    }
+    .shift-alert {
+        border-radius: 15px;
+        padding: 12px 15px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+    /* شريط الأدوات العصري والمرن */
+    .toolbar-card {
+        background: rgba(255,255,255,0.9);
+        border-radius: 25px;
+        padding: 12px 15px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+        margin-bottom: 20px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+    body.dark-mode .toolbar-card {
+        background: rgba(30,30,30,0.9);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+    .btn-toolbar {
+        border-radius: 25px;
+        padding: 10px 18px;
+        font-weight: 600;
+        font-size: 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    .btn-toolbar:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(0,0,0,0.1);
+    }
+    .status-column {
+        border-radius: 18px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        background: #fff;
+        margin-bottom: 15px;
+    }
+    body.dark-mode .status-column {
+        background: #1e1e1e;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        color: #fff;
+    }
+    .status-header {
+        padding: 12px 15px;
+        font-weight: 700;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        border: none;
+        width: 100%;
+        color: #fff;
+    }
+    .status-body {
+        padding: 10px;
+    }
+    .order-mini-card {
+        background: #fafafa;
+        border-radius: 12px;
+        padding: 10px;
+        margin-bottom: 8px;
+        border: 1px solid #eee;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .order-mini-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    body.dark-mode .order-mini-card {
+        background: #252525;
+        border-color: #333;
+    }
+    .order-mini-card .order-id {
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+    .order-mini-card .order-info {
+        font-size: 0.8rem;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-bottom: 3px;
+    }
+    body.dark-mode .order-mini-card .order-info {
+        color: #adb5bd;
+    }
+    .order-mini-card .order-actions {
+        display: flex;
+        gap: 5px;
+        flex-wrap: wrap;
+        margin-top: 5px;
+    }
+    .btn-mini {
+        border-radius: 20px;
+        font-size: 0.75rem;
+        padding: 4px 10px;
+    }
+    .map-container {
+        height: 350px;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        margin-bottom: 20px;
+    }
+    .modal-content {
+        border-radius: 20px;
+        border: none;
+    }
+    body.dark-mode .modal-content {
+        background: #1e1e1e;
+        color: #fff;
+    }
+    body.dark-mode .modal-header,
+    body.dark-mode .modal-footer {
+        border-color: #333;
+    }
+    /* أنماط الدبابيس الدائرية */
+    .circular-icon-marker {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        font-size: 18px;
+        color: var(--primary);
+        width: 32px;
+        height: 32px;
+        border: 2px solid #fff;
+    }
+    body.dark-mode .circular-icon-marker {
+        background: #1e1e1e;
+        border-color: #fff;
+        color: var(--accent);
+    }
+    .circular-order-marker {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: #0d6efd;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        font-size: 16px;
+        color: #fff;
+        width: 28px;
+        height: 28px;
+        border: 2px solid #fff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="page-header">
+        <h1><i class="bi bi-truck"></i> لوحة المندوب</h1>
+        <span class="badge {% if user.is_available %}bg-success{% else %}bg-secondary{% endif %} rounded-pill px-3 py-2">
+            {% if user.is_available %}متاح الآن{% else %}غير متاح{% endif %}
+        </span>
+    </div>
+
+    <!-- بطاقة الوردية (تم نقلها فوق شريط الأزرار) -->
+    {% if shift_info %}
+    <div class="alert alert-info shift-alert">
+        <span><i class="bi bi-clock"></i> ورديتك اليوم: من {{ shift_info.start }} إلى {{ shift_info.end }}</span>
+        <span><strong>الطلبات النشطة:</strong> {{ active_orders_count }}</span>
+    </div>
+    {% endif %}
+
+    <!-- شريط الأدوات -->
+    <div class="toolbar-card">
+        <form action="{{ url_for('delivery.update_availability') }}" method="post" class="m-0">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="is_available" value="{{ 'false' if user.is_available else 'true' }}">
+            <button type="submit" class="btn btn-sm btn-toolbar {% if user.is_available %}btn-success{% else %}btn-outline-secondary{% endif %}">
+                {% if user.is_available %}
+                    <i class="bi bi-toggle-on"></i> متاح الآن
+                {% else %}
+                    <i class="bi bi-toggle-off"></i> غير متاح
+                {% endif %}
+            </button>
+        </form>
+
+        <button type="button" class="btn btn-sm btn-outline-info btn-toolbar" onclick="focusOnOrders()">
+            <i class="bi bi-map"></i> مواقع الطلبات
+        </button>
+
+        <button type="button" class="btn btn-sm btn-outline-secondary btn-toolbar" onclick="location.reload();">
+            <i class="bi bi-arrow-clockwise"></i> تحديث
+        </button>
+
+        <a href="{{ url_for('notifications.notifications') }}" class="btn btn-sm btn-outline-warning btn-toolbar position-relative">
+            <i class="bi bi-bell"></i>
+            {% if notifications %}
+            <span class="badge bg-danger rounded-pill position-absolute top-0 start-100 translate-middle">
+                {{ notifications|length }}
+            </span>
+            {% endif %}
+        </a>
+    </div>
+
+    <!-- الخريطة -->
+    <div class="map-container" id="map"></div>
+
+    <!-- بطاقات الحالات -->
+    <div class="row g-3">
+        <!-- جاهزة للتسليم -->
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="status-column">
+                <button class="status-header bg-primary" type="button" data-bs-toggle="collapse" data-bs-target="#readyOrdersCollapse">
+                    <span><i class="bi bi-check-circle"></i> جاهزة للتسليم</span>
+                    <span class="badge bg-light text-dark">{{ ready_orders|length }}</span>
+                </button>
+                <div class="collapse" id="readyOrdersCollapse">
+                    <div class="status-body">
+                        {% if ready_orders %}
+                            {% for order in ready_orders %}
+                            <div class="order-mini-card">
+                                <div class="order-id">طلب #{{ order.id }}</div>
+                                <div class="order-info"><i class="bi bi-geo-alt"></i> {{ order.delivery_address or 'استلام من المتجر' }}</div>
+                                <div class="order-info"><i class="bi bi-person"></i> {{ order.customer.username if order.customer else 'غير متوفر' }}</div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold text-success">{{ order.total|format_price }} ل.س</span>
+                                    <div class="order-actions">
+                                        <button type="button" class="btn btn-sm btn-outline-primary btn-mini"
+                                                data-bs-toggle="modal" data-bs-target="#orderModal"
+                                                data-order-id="{{ order.id }}"
+                                                data-customer="{{ order.customer.username if order.customer else '' }}"
+                                                data-phone="{{ order.customer.phone if order.customer else '' }}"
+                                                data-address="{{ order.delivery_address or '' }}"
+                                                data-store="{{ order.store.name if order.store else '' }}"
+                                                data-total="{{ order.total|format_price }}"
+                                                data-status="{{ order.status }}"
+                                                data-latitude="{{ order.latitude if order.latitude else '' }}"
+                                                data-longitude="{{ order.longitude if order.longitude else '' }}">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <form action="{{ url_for('delivery.delivery_order_start', order_id=order.id) }}" method="post" class="m-0">
+                                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                            <button type="submit" class="btn btn-sm btn-success btn-mini">بدء</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted text-center small mb-0">لا توجد طلبات جاهزة</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- قيد التسليم -->
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="status-column">
+                <button class="status-header bg-warning text-dark" type="button" data-bs-toggle="collapse" data-bs-target="#deliveringOrdersCollapse">
+                    <span><i class="bi bi-truck"></i> قيد التسليم</span>
+                    <span class="badge bg-light text-dark">{{ delivering_orders|length }}</span>
+                </button>
+                <div class="collapse" id="deliveringOrdersCollapse">
+                    <div class="status-body">
+                        {% if delivering_orders %}
+                            {% for order in delivering_orders %}
+                            <div class="order-mini-card">
+                                <div class="order-id">طلب #{{ order.id }}</div>
+                                <div class="order-info"><i class="bi bi-geo-alt"></i> {{ order.delivery_address or 'استلام من المتجر' }}</div>
+                                <div class="order-info"><i class="bi bi-person"></i> {{ order.customer.username if order.customer else 'غير متوفر' }}</div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold text-success">{{ order.total|format_price }} ل.س</span>
+                                    <div class="order-actions">
+                                        <button type="button" class="btn btn-sm btn-outline-primary btn-mini"
+                                                data-bs-toggle="modal" data-bs-target="#orderModal"
+                                                data-order-id="{{ order.id }}"
+                                                data-customer="{{ order.customer.username if order.customer else '' }}"
+                                                data-phone="{{ order.customer.phone if order.customer else '' }}"
+                                                data-address="{{ order.delivery_address or '' }}"
+                                                data-store="{{ order.store.name if order.store else '' }}"
+                                                data-total="{{ order.total|format_price }}"
+                                                data-status="{{ order.status }}"
+                                                data-latitude="{{ order.latitude if order.latitude else '' }}"
+                                                data-longitude="{{ order.longitude if order.longitude else '' }}">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-success btn-mini"
+                                                data-bs-toggle="modal" data-bs-target="#deliverModal"
+                                                data-order-id="{{ order.id }}"
+                                                data-deliver-url="{{ url_for('delivery.delivery_order_deliver', order_id=order.id) }}">
+                                            <i class="bi bi-check"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted text-center small mb-0">لا توجد طلبات قيد التسليم</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- تم التسليم -->
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="status-column">
+                <button class="status-header bg-success" type="button" data-bs-toggle="collapse" data-bs-target="#deliveredOrdersCollapse">
+                    <span><i class="bi bi-house-check"></i> تم التسليم</span>
+                    <span class="badge bg-light text-dark">{{ delivered_orders|length }}</span>
+                </button>
+                <div class="collapse" id="deliveredOrdersCollapse">
+                    <div class="status-body">
+                        {% if delivered_orders %}
+                            {% for order in delivered_orders %}
+                            <div class="order-mini-card">
+                                <div class="order-id">طلب #{{ order.id }}</div>
+                                <div class="order-info"><i class="bi bi-geo-alt"></i> {{ order.delivery_address or 'استلام من المتجر' }}</div>
+                                <div class="order-info"><i class="bi bi-person"></i> {{ order.customer.username if order.customer else 'غير متوفر' }}</div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold text-success">{{ order.total|format_price }} ل.س</span>
+                                    <div class="order-actions">
+                                        <button type="button" class="btn btn-sm btn-outline-primary btn-mini"
+                                                data-bs-toggle="modal" data-bs-target="#orderModal"
+                                                data-order-id="{{ order.id }}"
+                                                data-customer="{{ order.customer.username if order.customer else '' }}"
+                                                data-phone="{{ order.customer.phone if order.customer else '' }}"
+                                                data-address="{{ order.delivery_address or '' }}"
+                                                data-store="{{ order.store.name if order.store else '' }}"
+                                                data-total="{{ order.total|format_price }}"
+                                                data-status="{{ order.status }}"
+                                                data-latitude="{{ order.latitude if order.latitude else '' }}"
+                                                data-longitude="{{ order.longitude if order.longitude else '' }}">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted text-center small mb-0">لا توجد طلبات مسلمة</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- إجمالي الطلبات -->
+        <div class="col-12 col-md-6 col-lg-3">
+            <div class="status-column">
+                <button class="status-header bg-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#allOrdersCollapse">
+                    <span><i class="bi bi-receipt"></i> إجمالي الطلبات</span>
+                    <span class="badge bg-light text-dark">{{ orders|length }}</span>
+                </button>
+                <div class="collapse" id="allOrdersCollapse">
+                    <div class="status-body">
+                        {% if orders %}
+                            {% for order in orders %}
+                            <div class="order-mini-card">
+                                <div class="order-id">طلب #{{ order.id }}</div>
+                                <div class="order-info"><i class="bi bi-geo-alt"></i> {{ order.delivery_address or 'استلام من المتجر' }}</div>
+                                <div class="order-info"><i class="bi bi-person"></i> {{ order.customer.username if order.customer else 'غير متوفر' }}</div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <span class="fw-bold text-success">{{ order.total|format_price }} ل.س</span>
+                                    <div class="order-actions">
+                                        <button type="button" class="btn btn-sm btn-outline-primary btn-mini"
+                                                data-bs-toggle="modal" data-bs-target="#orderModal"
+                                                data-order-id="{{ order.id }}"
+                                                data-customer="{{ order.customer.username if order.customer else '' }}"
+                                                data-phone="{{ order.customer.phone if order.customer else '' }}"
+                                                data-address="{{ order.delivery_address or '' }}"
+                                                data-store="{{ order.store.name if order.store else '' }}"
+                                                data-total="{{ order.total|format_price }}"
+                                                data-status="{{ order.status }}"
+                                                data-latitude="{{ order.latitude if order.latitude else '' }}"
+                                                data-longitude="{{ order.longitude if order.longitude else '' }}">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        {% if order.status == 'ready' %}
+                                        <form action="{{ url_for('delivery.delivery_order_start', order_id=order.id) }}" method="post" class="m-0">
+                                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                            <button type="submit" class="btn btn-sm btn-success btn-mini">بدء</button>
+                                        </form>
+                                        {% elif order.status == 'delivering' %}
+                                        <button type="button" class="btn btn-sm btn-outline-success btn-mini"
+                                                data-bs-toggle="modal" data-bs-target="#deliverModal"
+                                                data-order-id="{{ order.id }}"
+                                                data-deliver-url="{{ url_for('delivery.delivery_order_deliver', order_id=order.id) }}">
+                                            <i class="bi bi-check"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <p class="text-muted text-center small mb-0">لا توجد طلبات</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- مودال تفاصيل الطلب -->
+<div class="modal fade" id="orderModal" tabindex="-1" aria-labelledby="orderModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="orderModalLabel">تفاصيل الطلب</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-12 col-md-6">
+                        <p><strong>الزبون:</strong> <span id="modalCustomer"></span></p>
+                        <p><strong>الهاتف:</strong> <span id="modalPhone"></span></p>
+                        <p><strong>العنوان:</strong> <span id="modalAddress"></span></p>
+                        <p><strong>المتجر:</strong> <span id="modalStore"></span></p>
+                        <p><strong>الإجمالي:</strong> <span id="modalTotal"></span> ل.س</p>
+                        <p><strong>الحالة:</strong> <span id="modalStatus"></span></p>
+                    </div>
+                    <div class="col-12 col-md-6">
+                        <button type="button" class="btn btn-outline-success w-100" id="modalShowLocationBtn">
+                            <i class="bi bi-geo-alt"></i> عرض الموقع والمسار
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- مودال تأكيد التسليم -->
+<div class="modal fade" id="deliverModal" tabindex="-1" aria-labelledby="deliverModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deliverModalLabel">تأكيد التسليم</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body">
+                <form id="deliverForm" method="post">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <div class="mb-3">
+                        <label class="form-label">رمز التسليم</label>
+                        <input type="text" name="delivery_code" class="form-control" required placeholder="أدخل رمز التسليم من الزبون">
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">تأكيد التسليم</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css') }}" />
+<script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
+<script>
+    const HUSAYNIYYAH_CENTER = [33.4183, 36.3494];
+    const map = L.map('map').setView(HUSAYNIYYAH_CENTER, 17);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    // أيقونة المتجر الافتراضية (بديل بدون شعار) - دائرية مع أيقونة محل
+    const defaultStoreIcon = L.divIcon({
+        className: 'store-icon-wrapper',
+        html: '<div class="circular-icon-marker"><i class="bi bi-shop"></i></div>',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -16]
+    });
+
+    // أيقونة الطلب - دائرية صغيرة مع أيقونة حقيبة
+    const orderIcon = L.divIcon({
+        className: 'order-icon-wrapper',
+        html: '<div class="circular-order-marker"><i class="bi bi-basket3-fill"></i></div>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        popupAnchor: [0, -14]
+    });
+
+    // أيقونة الطلب المسلّم
+    const deliveredOrderIcon = L.divIcon({
+        className: 'delivered-order-wrapper',
+        html: '<div class="circular-order-marker" style="background:#198754;"><i class="bi bi-bag-check-fill"></i></div>',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        popupAnchor: [0, -14]
+    });
+
+    // أيقونة موقع المندوب
+    const deliveryIcon = L.divIcon({
+        className: 'delivery-marker',
+        html: '<div style="background-color: #007bff; width: 34px; height: 34px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 8px rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; color: white; font-size: 20px;">🚚</div>',
+        iconSize: [34, 34],
+        iconAnchor: [17, 17],
+        popupAnchor: [0, -17]
+    });
+
+    // إضافة علامات المتاجر
+    {% for store in stores_on_map %}
+        const storeLogoUrl{{ loop.index }} = "{{ store.logo_url | get_image_url if store.logo_url else '' }}";
+        const storeIcon{{ loop.index }} = storeLogoUrl{{ loop.index }} ?
+            L.divIcon({
+                className: 'store-icon-wrapper',
+                html: `<div style="width:36px; height:36px; border-radius:50%; overflow:hidden; border:2px solid #fff; box-shadow:0 0 8px rgba(0,0,0,0.5); background:#fff;"><img src="${storeLogoUrl{{ loop.index }}}" alt="{{ store.name }}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;"></div>`,
+                iconSize: [36, 36],
+                iconAnchor: [18, 18],
+                popupAnchor: [0, -18]
+            })
+            : defaultStoreIcon;
+        L.marker([{{ store.latitude }}, {{ store.longitude }}], { icon: storeIcon{{ loop.index }} })
+            .addTo(map)
+            .bindPopup('<strong>{{ store.name }}</strong>');
+    {% endfor %}
+
+    let currentLocation = null;
+    let myMarker = null;
+    let currentRouteLine = null;
+
+    function autoLocate() {
+        if (!navigator.geolocation) return;
+        navigator.geolocation.getCurrentPosition(position => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            currentLocation = { lat, lng };
+            if (myMarker) {
+                myMarker.setLatLng([lat, lng]);
+            } else {
+                myMarker = L.marker([lat, lng], { icon: deliveryIcon }).addTo(map)
+                    .bindPopup('موقعك الحالي').openPopup();
+            }
+            map.setView([lat, lng], 17);
+        }, error => {
+            console.warn('تعذر تحديد الموقع تلقائيًا', error);
+        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+    }
+
+    map.on('click', function(e) {
+        const lat = e.latlng.lat;
+        const lng = e.latlng.lng;
+        currentLocation = { lat, lng };
+        if (myMarker) {
+            myMarker.setLatLng([lat, lng]);
+        } else {
+            myMarker = L.marker([lat, lng], { icon: deliveryIcon }).addTo(map)
+                .bindPopup('موقعك الحالي').openPopup();
+        }
+        map.setView([lat, lng], 17);
+    });
+
+    const orderMarkerMap = {};
+    {% for order in map_orders %}
+        {% if order.latitude and order.longitude %}
+            orderMarkerMap[{{ order.id }}] = L.marker(
+                [{{ order.latitude }}, {{ order.longitude }}],
+                { icon: {% if order.status == 'delivered' %}deliveredOrderIcon{% else %}orderIcon{% endif %} }
+            ).addTo(map).bindPopup(
+                '<strong>طلب #{{ order.id }}</strong><br>' +
+                'الزبون: {{ order.customer.username }}<br>' +
+                'العنوان: {{ order.delivery_address or "غير محدد" }}<br>' +
+                'الحالة: {{ order.status }}'
+            );
+        {% endif %}
+    {% endfor %}
+
+    function focusOnOrders() {
+        const markers = Object.values(orderMarkerMap);
+        if (markers.length === 0) {
+            showToast('لا توجد مواقع طلبات محددة بعد', 'warning');
+            return;
+        }
+        const bounds = L.latLngBounds(markers.map(marker => marker.getLatLng()));
+        map.fitBounds(bounds, { padding: [50, 50] });
+    }
+
+    async function fetchRoute(start, end) {
+        const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
+        try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('فشل الاتصال بخدمة المسار');
+            const data = await response.json();
+            if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) throw new Error('لا يوجد مسار متاح');
+            const route = data.routes[0];
+            return {
+                coordinates: route.geometry.coordinates.map(coord => [coord[1], coord[0]]),
+                distance: route.distance,
+                duration: route.duration
+            };
+        } catch (error) {
+            console.error('Routing error:', error);
+            return null;
+        }
+    }
+
+    function clearRoute() {
+        if (currentRouteLine) {
+            map.removeLayer(currentRouteLine);
+            currentRouteLine = null;
+        }
+    }
+
+    async function showRouteToOrder(orderId) {
+        const marker = orderMarkerMap[orderId];
+        if (!marker) {
+            showToast('لا يوجد موقع لهذا الطلب', 'warning');
+            return;
+        }
+        if (!currentLocation) {
+            showToast('يرجى تحديد موقعك (انقر على الخريطة)', 'warning');
+            return;
+        }
+
+        clearRoute();
+
+        const route = await fetchRoute(currentLocation, marker.getLatLng());
+        if (route && route.coordinates.length > 0) {
+            currentRouteLine = L.polyline(route.coordinates, {
+                color: '#007bff',
+                weight: 5,
+                opacity: 0.8
+            }).addTo(map);
+
+            const bounds = L.latLngBounds([
+                [currentLocation.lat, currentLocation.lng],
+                [marker.getLatLng().lat, marker.getLatLng().lng]
+            ]);
+            map.fitBounds(bounds, { padding: [50, 50] });
+
+            const distanceKm = (route.distance / 1000).toFixed(2);
+            const durationMin = Math.round(route.duration / 60);
+            showToast(`المسافة: ${distanceKm} كم، الزمن التقريبي: ${durationMin} دقيقة`, 'info');
+        } else {
+            const latlngs = [
+                [currentLocation.lat, currentLocation.lng],
+                [marker.getLatLng().lat, marker.getLatLng().lng]
+            ];
+            currentRouteLine = L.polyline(latlngs, {
+                color: '#007bff',
+                weight: 3,
+                dashArray: '10, 10',
+                opacity: 0.6
+            }).addTo(map);
+            map.fitBounds(L.latLngBounds(latlngs), { padding: [50, 50] });
+            showToast('تعذر حساب المسار الفعلي، تم عرض خط مستقيم تقريبي', 'warning');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        autoLocate();
+
+        const orderModal = document.getElementById('orderModal');
+        if (orderModal) {
+            orderModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                if (!button) return;
+                document.getElementById('modalCustomer').textContent = button.getAttribute('data-customer');
+                document.getElementById('modalPhone').textContent = button.getAttribute('data-phone');
+                document.getElementById('modalAddress').textContent = button.getAttribute('data-address');
+                document.getElementById('modalStore').textContent = button.getAttribute('data-store');
+                document.getElementById('modalTotal').textContent = button.getAttribute('data-total');
+                document.getElementById('modalStatus').textContent = button.getAttribute('data-status');
+
+                const orderId = button.getAttribute('data-order-id');
+                const showLocationBtn = document.getElementById('modalShowLocationBtn');
+                showLocationBtn.onclick = function() {
+                    const modalInstance = bootstrap.Modal.getInstance(orderModal);
+                    if (modalInstance) modalInstance.hide();
+                    showRouteToOrder(parseInt(orderId));
+                };
+            });
+        }
+
+        const deliverModal = document.getElementById('deliverModal');
+        if (deliverModal) {
+            deliverModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                if (!button) return;
+                const form = document.getElementById('deliverForm');
+                form.action = button.getAttribute('data-deliver-url');
+            });
+        }
+    });
+
+    // تحديث الإشعارات كل 30 ثانية
+    setInterval(function() {
+        fetch("{{ url_for('delivery.delivery_notifications_api') }}")
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success' && data.notifications.length > 0) {
+                    data.notifications.forEach(notif => {
+                        showToast(notif.message, 'info');
+                    });
+                }
+            })
+            .catch(err => console.error('Error fetching notifications:', err));
+    }, 30000);
+</script>
+{% endblock %}

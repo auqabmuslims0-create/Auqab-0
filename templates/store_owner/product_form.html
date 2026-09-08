@@ -1,0 +1,543 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {% if product %}تعديل المنتج{% else %}إضافة منتج جديد{% endif %} - {{ store.name }}
+{% endblock %}
+
+{% block head %}
+<style>
+    .form-card { border-radius: 20px; border: none; box-shadow: 0 8px 24px rgba(0,0,0,0.08); background: #fff; }
+    body.dark-mode .form-card { background: #1e1e1e; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+    .custom-input-wrap { position: relative; margin-bottom: 0; }
+    .custom-input-wrap .form-control, .custom-input-wrap .form-select {
+        border-radius: 12px; padding-right: 40px; padding-left: 40px; height: 48px;
+        background-color: #fff; border: 1px solid #ced4da;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .custom-input-wrap .form-control:focus, .custom-input-wrap .form-select:focus {
+        border-color: var(--primary); box-shadow: 0 0 0 0.2rem rgba(46,93,52,0.15);
+    }
+    .custom-input-icon { position: absolute; top: 50%; right: 14px; transform: translateY(-50%); color: #6c757d; pointer-events: none; z-index: 2; }
+    body.dark-mode .custom-input-wrap .form-control, body.dark-mode .custom-input-wrap .form-select {
+        background-color: #2d2d2d; border-color: #444; color: #fff;
+    }
+    body.dark-mode .custom-input-wrap .form-control:focus, body.dark-mode .custom-input-wrap .form-select:focus {
+        border-color: #c9a227; box-shadow: 0 0 0 0.2rem rgba(201,162,39,0.2);
+    }
+    body.dark-mode .custom-input-icon { color: #adb5bd; }
+
+    .image-card, .video-card {
+        width: 100px; height: 100px; border-radius: 12px; overflow: hidden; position: relative;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1); background: #f8f9fa;
+    }
+    .image-card img, .video-card video { width: 100%; height: 100%; object-fit: cover; }
+    body.dark-mode .image-card, body.dark-mode .video-card { background: #2d2d2d; }
+    .add-image-card, .add-video-card {
+        width: 100px; height: 100px; border: 2px dashed var(--primary); border-radius: 12px;
+        display: flex; align-items: center; justify-content: center; cursor: pointer;
+        background-color: rgba(46,93,52,0.05); transition: background-color 0.2s;
+        color: var(--primary); font-size: 2rem;
+    }
+    .add-image-card:hover, .add-video-card:hover { background-color: rgba(46,93,52,0.1); }
+    body.dark-mode .add-image-card, body.dark-mode .add-video-card {
+        background-color: rgba(201,162,39,0.1); border-color: var(--accent); color: var(--accent);
+    }
+    .remove-image, .remove-video {
+        position: absolute; top: 2px; right: 2px; width: 24px; height: 24px;
+        background-color: rgba(220,53,69,0.9); color: #fff; border: none; border-radius: 50%;
+        cursor: pointer; font-size: 14px; line-height: 1; padding: 0; z-index: 5;
+    }
+    .btn-custom { border-radius: 25px; font-weight: 600; transition: background 0.2s, transform 0.2s; }
+    .btn-custom:hover { transform: translateY(-2px); background: var(--primary-dark); }
+
+    .video-duration-warning {
+        display: none;
+        color: #dc3545;
+        font-size: 0.85rem;
+        margin-top: 5px;
+    }
+    .video-duration-info {
+        display: none;
+        color: #198754;
+        font-size: 0.85rem;
+        margin-top: 5px;
+    }
+    .video-duration-manual-wrap {
+        display: none;
+        margin-top: 10px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4 text-center">
+        <i class="bi bi-box-seam"></i>
+        {% if product %}تعديل المنتج{% else %}إضافة منتج جديد{% endif %}
+    </h1>
+
+    <div class="card form-card p-4 shadow-sm">
+        <form method="post" enctype="multipart/form-data" id="productForm"
+              action="{% if product %}{{ url_for('store.edit_product', store_id=store.id, product_id=product.id) }}{% else %}{{ url_for('store.new_product', store_id=store.id) }}{% endif %}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+            <!-- الصورة الأساسية -->
+            <div class="mb-4">
+                <label class="form-label fw-bold">الصورة الأساسية (تظهر على البطاقة)</label>
+                <div class="d-flex flex-wrap gap-2 align-items-center" id="mainImageContainer">
+                    {% if product and product.main_image %}
+                        <div class="image-card" id="mainImageCard">
+                            <img src="{{ product.main_image | get_image_url }}" alt="الصورة الأساسية">
+                            <button type="button" class="remove-image" data-action="remove-main">×</button>
+                        </div>
+                    {% else %}
+                        <div class="add-image-card" id="addMainImageBtn">
+                            <i class="bi bi-plus"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                <input type="file" name="main_image" id="mainImageInput" accept="image/*" class="d-none">
+                <p class="text-muted small mt-2">اضغط لإضافة أو تغيير الصورة الأساسية.</p>
+            </div>
+
+            <!-- الصور الفرعية (حتى 4) -->
+            <div class="mb-4">
+                <label class="form-label fw-bold">صور فرعية (حتى 4 صور)</label>
+                <div class="d-flex flex-wrap gap-2 align-items-center" id="subImagesContainer">
+                    {% if product and product.sub_images %}
+                        {% for img in product.sub_images.split(',') %}
+                            {% set img = img.strip() %}
+                            {% if img %}
+                            <div class="image-card" data-sub-image="{{ img }}">
+                                <img src="{{ img | get_image_url }}" alt="صورة فرعية">
+                                <button type="button" class="remove-image" data-action="remove-sub" data-image="{{ img }}">×</button>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                    <div class="add-image-card" id="addSubImagesBtn">
+                        <i class="bi bi-plus"></i>
+                    </div>
+                </div>
+                <input type="file" name="sub_images" id="subImagesInput" accept="image/*" multiple class="d-none">
+                <p class="text-muted small mt-2">اضغط + لاختيار صور فرعية (تظهر في صفحة المنتج).</p>
+            </div>
+
+            <!-- الفيديو -->
+            <div class="mb-4">
+                <label class="form-label fw-bold">فيديو المنتج (اختياري - بحد أقصى 60 ثانية)</label>
+                <div class="d-flex flex-wrap gap-2 align-items-center" id="videoContainer">
+                    {% if product and product.video %}
+                        <div class="video-card" id="existingVideoCard">
+                            <video controls>
+                                <source src="{{ product.video | get_image_url }}" type="video/mp4">
+                            </video>
+                            <button type="button" class="remove-video" data-video="{{ product.video }}">×</button>
+                        </div>
+                    {% else %}
+                        <div class="add-video-card" id="addVideoBtn">
+                            <i class="bi bi-plus"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                <input type="file" name="video" id="videoInput" accept="video/*" class="d-none">
+                <p class="text-muted small mt-2" id="videoHint">اضغط + لاختيار فيديو (يجب ألا تتجاوز مدته 60 ثانية).</p>
+                <div class="video-duration-warning" id="videoDurationWarning">
+                    <i class="bi bi-exclamation-triangle"></i> مدة الفيديو تتجاوز 60 ثانية. يرجى قص الفيديو ثم إعادة اختياره.
+                </div>
+                <div class="video-duration-info" id="videoDurationInfo"></div>
+                <!-- حقل إدخال المدة اليدوي يظهر عند فشل القراءة التلقائية -->
+                <div class="video-duration-manual-wrap" id="videoDurationManualWrap">
+                    <label class="form-label small">تعذر قراءة المدة تلقائيًا، أدخل المدة بالثواني (اختياري)</label>
+                    <input type="number" name="video_duration_manual" id="videoDurationManual" class="form-control" min="0" max="60" placeholder="مثال: 15">
+                </div>
+            </div>
+
+            <!-- الحقول الأساسية -->
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">اسم المنتج</label>
+                    <div class="custom-input-wrap">
+                        <i class="bi bi-tag custom-input-icon"></i>
+                        <input type="text" name="name" class="form-control" value="{{ product.name if product else '' }}" required placeholder="مثال: قهوة عربية">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">كود المنتج</label>
+                    <div class="custom-input-wrap">
+                        <i class="bi bi-upc-scan custom-input-icon"></i>
+                        <input type="text" name="product_code" class="form-control" value="{{ product.product_code if product else '' }}" placeholder="اختياري">
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label fw-bold">الوصف</label>
+                    <textarea name="description" class="form-control" rows="3" placeholder="وصف المنتج">{{ product.description if product else '' }}</textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">السعر</label>
+                    <div class="custom-input-wrap">
+                        <i class="bi bi-cash custom-input-icon"></i>
+                        <input type="number" step="any" name="price" class="form-control" value="{{ product.price if product else '' }}" required placeholder="0.00">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">الكمية المتوفرة</label>
+                    <div class="custom-input-wrap">
+                        <i class="bi bi-boxes custom-input-icon"></i>
+                        <input type="number" name="stock_quantity" class="form-control" value="{{ product.stock_quantity if product else 0 }}" min="0" placeholder="0">
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">التصنيف</label>
+                    <div class="custom-input-wrap">
+                        <i class="bi bi-folder custom-input-icon"></i>
+                        <select name="category_id" class="form-select">
+                            <option value="">بدون تصنيف</option>
+                            {% for cat in categories %}
+                                <option value="{{ cat.id }}" {% if product and product.category_id == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">خيارات إضافية (JSON)</label>
+                    <div class="custom-input-wrap">
+                        <i class="bi bi-braces custom-input-icon"></i>
+                        <input type="text" name="options" class="form-control" value="{{ product.options if product else '' }}" placeholder='{"size": "كبير"}'>
+                    </div>
+                </div>
+            </div>
+
+            <hr class="my-4">
+
+            <!-- العروض -->
+            <div class="mb-3">
+                <div class="form-check form-switch">
+                    <input type="checkbox" name="is_offer" value="yes" class="form-check-input" id="isOffer" {% if product and product.is_offer %}checked{% endif %}>
+                    <label class="form-check-label fw-bold" for="isOffer">هذا المنتج عرض خاص</label>
+                </div>
+            </div>
+            <div class="row g-3" id="offerFields" {% if not product or not product.is_offer %}style="display:none;"{% endif %}>
+                <div class="col-md-4">
+                    <label class="form-label">سعر العرض</label>
+                    <input type="number" step="any" name="offer_price" class="form-control" value="{{ product.offer_price if product else '' }}" placeholder="أقل من السعر">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">السعر الأصلي</label>
+                    <input type="number" step="any" name="original_price" class="form-control" value="{{ product.original_price if product else '' }}" placeholder="السعر قبل الخصم">
+                </div>
+                <div class="col-12">
+                    <label class="form-label">وصف العرض</label>
+                    <textarea name="offer_description" class="form-control" rows="2" placeholder="مثال: خصم 20% لفترة محدودة">{{ product.offer_description if product else '' }}</textarea>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-custom flex-fill">
+                    <i class="bi bi-check-circle"></i> حفظ المنتج
+                </button>
+                <a href="{{ url_for('store.store_products', store_id=store.id) }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-right"></i> عودة
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // إظهار/إخفاء حقول العرض
+    const isOffer = document.getElementById('isOffer');
+    const offerFields = document.getElementById('offerFields');
+    if (isOffer && offerFields) {
+        isOffer.addEventListener('change', function() {
+            offerFields.style.display = this.checked ? 'flex' : 'none';
+        });
+    }
+
+    // الصورة الأساسية
+    const mainImageInput = document.getElementById('mainImageInput');
+    const addMainImageBtn = document.getElementById('addMainImageBtn');
+    const mainImageContainer = document.getElementById('mainImageContainer');
+
+    if (mainImageInput && addMainImageBtn && mainImageContainer) {
+        addMainImageBtn.addEventListener('click', () => mainImageInput.click());
+        mainImageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    const existingCard = mainImageContainer.querySelector('.image-card');
+                    if (existingCard) existingCard.remove();
+                    const addBtn = mainImageContainer.querySelector('.add-image-card');
+                    if (addBtn) addBtn.remove();
+                    const div = document.createElement('div');
+                    div.className = 'image-card';
+                    div.innerHTML = `<img src="${ev.target.result}" alt="معاينة الصورة الأساسية"><button type="button" class="remove-image" data-action="remove-main">×</button>`;
+                    mainImageContainer.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    // الصور الفرعية
+    const subImagesInput = document.getElementById('subImagesInput');
+    const addSubImagesBtn = document.getElementById('addSubImagesBtn');
+    const subImagesContainer = document.getElementById('subImagesContainer');
+
+    if (subImagesInput && addSubImagesBtn && subImagesContainer) {
+        addSubImagesBtn.addEventListener('click', () => subImagesInput.click());
+        subImagesInput.addEventListener('change', function(e) {
+            const files = Array.from(e.target.files);
+            const currentCount = subImagesContainer.querySelectorAll('.image-card').length;
+            const remaining = 4 - currentCount;
+            if (remaining <= 0) {
+                showToast('لا يمكن إضافة أكثر من 4 صور فرعية', 'warning');
+                subImagesInput.value = '';
+                return;
+            }
+            files.slice(0, remaining).forEach(f => {
+                if (f && f.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(ev) {
+                        const div = document.createElement('div');
+                        div.className = 'image-card';
+                        div.innerHTML = `<img src="${ev.target.result}" alt="معاينة صورة فرعية"><button type="button" class="remove-image" data-action="remove-sub">×</button>`;
+                        addSubImagesBtn.before(div);
+                    };
+                    reader.readAsDataURL(f);
+                }
+            });
+        });
+    }
+
+    // الفيديو + التحقق من المدة
+    const videoInput = document.getElementById('videoInput');
+    const addVideoBtn = document.getElementById('addVideoBtn');
+    const videoContainer = document.getElementById('videoContainer');
+    const videoDurationWarning = document.getElementById('videoDurationWarning');
+    const videoDurationInfo = document.getElementById('videoDurationInfo');
+    const videoDurationManualWrap = document.getElementById('videoDurationManualWrap');
+    const videoDurationManual = document.getElementById('videoDurationManual');
+    const videoHint = document.getElementById('videoHint');
+    const productForm = document.getElementById('productForm');
+    let videoTooLong = false;
+    let durationReadFailed = false;
+
+    function checkVideoDuration(file) {
+        return new Promise((resolve, reject) => {
+            const url = URL.createObjectURL(file);
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.muted = true;
+            video.playsInline = true;
+
+            let resolved = false;
+            let timeoutId;
+
+            const cleanup = () => {
+                URL.revokeObjectURL(url);
+                if (timeoutId) clearTimeout(timeoutId);
+            };
+
+            const tryResolve = () => {
+                if (!resolved && video.duration && isFinite(video.duration)) {
+                    resolved = true;
+                    cleanup();
+                    resolve(video.duration);
+                }
+            };
+
+            video.onloadedmetadata = tryResolve;
+            video.onloadeddata = tryResolve;
+            video.ondurationchange = tryResolve;
+            video.oncanplay = tryResolve;
+            video.onerror = function() {
+                if (!resolved) {
+                    resolved = true;
+                    cleanup();
+                    reject(new Error('failed'));
+                }
+            };
+
+            timeoutId = setTimeout(() => {
+                if (!resolved) {
+                    resolved = true;
+                    cleanup();
+                    reject(new Error('timeout'));
+                }
+            }, 5000);
+
+            video.src = url;
+            video.load();
+        });
+    }
+
+    if (videoInput && addVideoBtn && videoContainer) {
+        addVideoBtn.addEventListener('click', () => videoInput.click());
+
+        videoInput.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            videoTooLong = false;
+            durationReadFailed = false;
+            videoDurationWarning.style.display = 'none';
+            videoDurationInfo.style.display = 'none';
+            videoDurationManualWrap.style.display = 'none';
+
+            if (!file) return;
+
+            if (!file.type.startsWith('video/')) {
+                showToast('الرجاء اختيار ملف فيديو صالح', 'error');
+                videoInput.value = '';
+                return;
+            }
+
+            try {
+                const duration = await checkVideoDuration(file);
+                const minutes = Math.floor(duration / 60);
+                const seconds = Math.round(duration % 60);
+                const durationText = `${minutes > 0 ? minutes + ' دقيقة و' : ''}${seconds} ثانية`;
+
+                if (duration > 60) {
+                    videoTooLong = true;
+                    videoDurationWarning.style.display = 'block';
+                    videoHint.textContent = 'الفيديو أطول من 60 ثانية. يرجى قصه أولاً.';
+                    const existing = videoContainer.querySelector('.video-card');
+                    if (existing) existing.remove();
+                    const addBtn = videoContainer.querySelector('.add-video-card');
+                    if (addBtn) addBtn.remove();
+                    const div = document.createElement('div');
+                    div.className = 'add-video-card';
+                    div.id = 'addVideoBtn';
+                    div.innerHTML = '<i class="bi bi-plus"></i>';
+                    videoContainer.appendChild(div);
+                    div.addEventListener('click', () => videoInput.click());
+                    videoInput.value = '';
+                    showToast('مدة الفيديو تتجاوز 60 ثانية', 'error');
+                } else {
+                    videoTooLong = false;
+                    videoDurationInfo.textContent = `مدة الفيديو: ${durationText} (مقبول)`;
+                    videoDurationInfo.style.display = 'block';
+                    videoHint.textContent = 'اضغط × لإزالة الفيديو الحالي.';
+                    const existing = videoContainer.querySelector('.video-card');
+                    if (existing) existing.remove();
+                    const addBtn = videoContainer.querySelector('.add-video-card');
+                    if (addBtn) addBtn.remove();
+                    const div = document.createElement('div');
+                    div.className = 'video-card';
+                    const videoUrl = URL.createObjectURL(file);
+                    div.innerHTML = `<video controls><source src="${videoUrl}" type="${file.type}"></video><button type="button" class="remove-video">×</button>`;
+                    videoContainer.appendChild(div);
+                }
+            } catch (err) {
+                durationReadFailed = true;
+                videoDurationManualWrap.style.display = 'block';
+                videoDurationManual.value = '';
+                videoHint.textContent = 'تعذر قراءة المدة تلقائيًا. يرجى إدخال مدة الفيديو بالثواني (اختياري).';
+                showToast('تعذر قراءة المدة تلقائيًا، يمكنك إدخالها يدويًا أو المتابعة', 'warning');
+                const existing = videoContainer.querySelector('.video-card');
+                if (existing) existing.remove();
+                const addBtn = videoContainer.querySelector('.add-video-card');
+                if (addBtn) addBtn.remove();
+                const div = document.createElement('div');
+                div.className = 'video-card';
+                const videoUrl = URL.createObjectURL(file);
+                div.innerHTML = `<video controls><source src="${videoUrl}" type="${file.type}"></video><button type="button" class="remove-video">×</button>`;
+                videoContainer.appendChild(div);
+            }
+        });
+    }
+
+    // منع إرسال النموذج إذا كان الفيديو أطول من المسموح
+    if (productForm) {
+        productForm.addEventListener('submit', function(e) {
+            if (videoTooLong) {
+                e.preventDefault();
+                showToast('لا يمكن حفظ المنتج: مدة الفيديو تتجاوز 60 ثانية', 'error');
+                return;
+            }
+            if (durationReadFailed) {
+                const manualDuration = parseFloat(videoDurationManual.value);
+                if (manualDuration && manualDuration > 60) {
+                    e.preventDefault();
+                    showToast('المدة اليدوية تتجاوز 60 ثانية، يرجى التصحيح', 'error');
+                }
+            }
+
+            // تعطيل زر الإرسال لمنع التكرار
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn && !submitBtn.disabled) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>جارٍ الحفظ...';
+            }
+        });
+    }
+
+    // معالجة أزرار الحذف
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-image')) {
+            const action = e.target.dataset.action;
+            const card = e.target.closest('.image-card');
+            if (action === 'remove-main') {
+                if (card && card.querySelector('img').src.includes('/static/uploads/')) {
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = 'remove_main_image';
+                    hidden.value = 'yes';
+                    document.querySelector('form').appendChild(hidden);
+                }
+                if (card) card.remove();
+                if (!mainImageContainer.querySelector('.image-card') && !mainImageContainer.querySelector('.add-image-card')) {
+                    const addDiv = document.createElement('div');
+                    addDiv.className = 'add-image-card';
+                    addDiv.id = 'addMainImageBtn';
+                    addDiv.innerHTML = '<i class="bi bi-plus"></i>';
+                    mainImageContainer.appendChild(addDiv);
+                    addDiv.addEventListener('click', () => mainImageInput.click());
+                }
+            } else if (action === 'remove-sub') {
+                const img = e.target.dataset.image;
+                if (img) {
+                    const hidden = document.createElement('input');
+                    hidden.type = 'hidden';
+                    hidden.name = 'remove_existing_sub_images';
+                    hidden.value = img;
+                    document.querySelector('form').appendChild(hidden);
+                }
+                if (card) card.remove();
+            }
+        }
+
+        if (e.target.classList.contains('remove-video')) {
+            const card = e.target.closest('.video-card');
+            if (card) {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'remove_video';
+                hidden.value = 'yes';
+                document.querySelector('form').appendChild(hidden);
+                card.remove();
+                videoTooLong = false;
+                durationReadFailed = false;
+                videoDurationWarning.style.display = 'none';
+                videoDurationInfo.style.display = 'none';
+                videoDurationManualWrap.style.display = 'none';
+                videoHint.textContent = 'اضغط + لاختيار فيديو (يجب ألا تتجاوز مدته 60 ثانية).';
+                videoInput.value = '';
+                if (!videoContainer.querySelector('.video-card') && !videoContainer.querySelector('.add-video-card')) {
+                    const addDiv = document.createElement('div');
+                    addDiv.className = 'add-video-card';
+                    addDiv.id = 'addVideoBtn';
+                    addDiv.innerHTML = '<i class="bi bi-plus"></i>';
+                    videoContainer.appendChild(addDiv);
+                    addDiv.addEventListener('click', () => videoInput.click());
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

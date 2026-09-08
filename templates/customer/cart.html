@@ -1,0 +1,602 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as macros %}
+
+{% block title %}سلة المشتريات{% endblock %}
+
+{% block head %}
+<style>
+    .cart-item-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 15px;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+        background: #fff;
+    }
+    .cart-item-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+    body.dark-mode .cart-item-card {
+        background: #1e1e1e;
+        border-color: #333;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .cart-item-image {
+        width: 100%;
+        height: 140px;
+        object-fit: cover;
+        border-radius: 15px 15px 0 0;
+        display: block;
+    }
+    .cart-item-image-placeholder {
+        width: 100%;
+        height: 140px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        color: #adb5bd;
+        background: #f0f0f0;
+        border-radius: 15px 15px 0 0;
+    }
+    body.dark-mode .cart-item-image-placeholder {
+        background: #333;
+        color: #ccc;
+    }
+    .cart-item-body {
+        padding: 10px;
+    }
+    .cart-item-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 4px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .cart-item-price {
+        font-weight: 700;
+        color: var(--primary);
+        margin-bottom: 8px;
+    }
+    body.dark-mode .cart-item-price {
+        color: var(--accent);
+    }
+    .cart-item-actions {
+        display: flex;
+        gap: 5px;
+        align-items: center;
+        flex-wrap: wrap;
+    }
+    .btn-buy-now {
+        background-color: var(--primary);
+        color: #fff;
+        border: none;
+        border-radius: 20px;
+        padding: 5px 12px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: background 0.2s;
+        text-decoration: none;
+        text-align: center;
+        white-space: nowrap;
+    }
+    .btn-buy-now:hover {
+        background-color: var(--primary-dark);
+        color: #fff;
+    }
+    .btn-remove {
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        flex-shrink: 0;
+    }
+    .pickup-only-note {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8rem;
+        color: #856404;
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-weight: 500;
+        white-space: nowrap;
+    }
+    body.dark-mode .pickup-only-note {
+        color: #ffe69c;
+        background: #3e2e00;
+        border-color: #8a6d3b;
+    }
+    .pickup-only-note i {
+        color: #f0ad4e;
+        font-size: 0.9rem;
+    }
+    body.dark-mode .pickup-only-note i {
+        color: #ffc107;
+    }
+    .store-card-header {
+        background: #f8f9fa;
+        border-bottom: 1px solid #e0e0e0;
+        padding: 10px 15px;
+    }
+    body.dark-mode .store-card-header {
+        background: #252525;
+        border-color: #333;
+    }
+
+    /* قسم الطلبات الحديثة */
+    .order-card-new {
+        border-radius: 20px;
+        background: #fff;
+        overflow: hidden;
+        border: none;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .order-card-new:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    }
+    body.dark-mode .order-card-new {
+        background: #1e1e1e;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        color: #fff;
+    }
+    .order-card-header {
+        border-bottom: 1px solid #f0f0f0;
+        padding: 0.9rem 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+    body.dark-mode .order-card-header {
+        border-bottom-color: #333;
+    }
+    .order-card-body {
+        background: #fafafa;
+        padding: 15px;
+    }
+    body.dark-mode .order-card-body {
+        background: #252525;
+    }
+    .order-progress-simple {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        direction: rtl;
+        margin-top: 15px;
+        gap: 4px;
+    }
+    .progress-step-simple {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-width: 40px;
+    }
+    .dot-simple {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #ccc;
+        transition: background 0.3s;
+    }
+    .progress-step-simple.active .dot-simple {
+        background: var(--primary);
+        box-shadow: 0 0 0 3px rgba(46,93,52,0.2);
+    }
+    body.dark-mode .progress-step-simple.active .dot-simple {
+        background: var(--accent);
+    }
+    .label-simple {
+        font-size: 0.65rem;
+        margin-top: 4px;
+        color: #777;
+        white-space: nowrap;
+    }
+    .progress-step-simple.active .label-simple {
+        color: var(--primary);
+        font-weight: 600;
+    }
+    body.dark-mode .progress-step-simple.active .label-simple {
+        color: var(--accent);
+    }
+    .line-simple {
+        flex: 1;
+        height: 2px;
+        background: #ddd;
+        margin-top: -10px;
+    }
+    .line-simple.active {
+        background: var(--primary);
+    }
+    body.dark-mode .line-simple {
+        background: #555;
+    }
+    body.dark-mode .line-simple.active {
+        background: var(--accent);
+    }
+    .delivery-code-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 12px;
+        border: 1px dashed #ccc;
+    }
+    body.dark-mode .delivery-code-row {
+        background: #2d2d2d;
+        border-color: #555;
+        color: #fff;
+    }
+    .qr-container {
+        width: 80px;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+        border-radius: 8px;
+        padding: 4px;
+        border: 1px solid #eee;
+    }
+    .delivery-code-display {
+        letter-spacing: 2px;
+        direction: ltr;
+    }
+    .delivery-person-row {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        background: #f1f3f5;
+        padding: 8px 10px;
+        border-radius: 10px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
+    body.dark-mode .delivery-person-row {
+        background: #2d2d2d;
+        color: #fff;
+    }
+    .delivery-note {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8rem;
+        color: #856404;
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-weight: 500;
+        margin-top: 6px;
+    }
+    .delivery-note i {
+        color: #f0ad4e;
+        font-size: 0.9rem;
+    }
+    body.dark-mode .delivery-note {
+        color: #ffe69c;
+        background: #3e2e00;
+        border-color: #8a6d3b;
+    }
+    body.dark-mode .delivery-note i {
+        color: #ffc107;
+    }
+    .btn-delete-order {
+        border-radius: 20px;
+        padding: 5px 15px;
+        font-size: 0.8rem;
+    }
+    /* تحسينات لوضع عدم الاتصال */
+    #offlineCartContainer {
+        display: none;
+    }
+    .offline-cart-item {
+        border: 1px solid #e0e0e0;
+        border-radius: 15px;
+        overflow: hidden;
+        background: #fff;
+        margin-bottom: 10px;
+    }
+    body.dark-mode .offline-cart-item {
+        background: #1e1e1e;
+        border-color: #333;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h4 class="fw-bold mb-4"><i class="bi bi-cart3"></i> سلة المشتريات</h4>
+
+    <!-- المحتوى العادي (عند الاتصال) -->
+    <div id="onlineCartContent">
+        {% if grouped %}
+            {% for store_id, group in grouped.items() %}
+            <div class="card mb-4 shadow-sm server-cart">
+                <div class="store-card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        {% if group.store and group.store.logo_url %}
+                            <img src="{{ group.store.logo_url | get_image_url }}" class="rounded-circle me-2" style="width:35px;height:35px;object-fit:cover;" alt="{{ group.store.name }}">
+                        {% else %}
+                            <i class="bi bi-shop me-2"></i>
+                        {% endif %}
+                        <span class="fw-bold">{{ group.store.name if group.store else 'متجر محذوف' }}</span>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-danger"
+                                onclick="clearLocalStoreCart({{ store_id }}, {{ group.cart_items|map(attribute='product.id')|list|tojson }})">مسح الكل</button>
+                        <a href="{{ url_for('cart.checkout', store_id=store_id) }}" class="btn btn-sm btn-custom">إتمام الطلب</a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="row g-2 p-2">
+                        {% for item in group.cart_items %}
+                        <div class="col-6 col-md-4 col-lg-3">
+                            <div class="cart-item-card">
+                                <a href="{{ url_for('stores.product_public', product_id=item.product.id) }}">
+                                    {% if item.product.images %}
+                                        {% set main_img = item.product.images.split(',')[0].strip() %}
+                                        <img src="{{ main_img | get_image_url }}" class="cart-item-image" alt="{{ item.product.name }}">
+                                    {% else %}
+                                        <div class="cart-item-image-placeholder"><i class="bi bi-image"></i></div>
+                                    {% endif %}
+                                </a>
+                                <div class="cart-item-body">
+                                    <div class="cart-item-name">{{ item.product.name }}</div>
+                                    <div class="cart-item-price">{{ item.product.price|format_price }} ل.س</div>
+                                    <div class="cart-item-actions">
+                                        {% if group.store.has_delivery %}
+                                            <a href="{{ url_for('cart.buy_product', product_id=item.product.id) }}" class="btn-buy-now">شراء الآن</a>
+                                        {% else %}
+                                            <div class="pickup-only-note"><i class="bi bi-shop"></i> حصرا من المتجر</div>
+                                        {% endif %}
+                                        <button class="btn btn-outline-danger btn-remove btn-sm" data-product-id="{{ item.product.id }}" title="إزالة"><i class="bi bi-trash"></i></button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            {{ macros.render_empty_state('bi-cart', 'سلتك فارغة', url_for('market.market'), 'تسوق الآن') }}
+        {% endif %}
+    </div>
+
+    <!-- محتوى عدم الاتصال -->
+    <div id="offlineCartContainer">
+        <div class="alert alert-warning text-center">
+            <i class="bi bi-wifi-off"></i> أنت غير متصل بالإنترنت - يتم عرض السلة المحفوظة محلياً
+        </div>
+        <div id="offlineCartItems"></div>
+    </div>
+
+    <!-- الطلبات الحديثة -->
+    {% if orders %}
+    <h5 class="fw-bold mt-5 mb-3"><i class="bi bi-clock-history"></i> طلباتك الحديثة (آخر 24 ساعة)</h5>
+    <div class="list-group">
+        {% for order in orders %}
+        <div class="order-card-new mb-3 shadow-sm">
+            <div class="order-card-header">
+                <div>
+                    <strong>طلب #{{ order.id }}</strong>
+                    <span class="badge bg-secondary ms-2">{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                </div>
+                {{ macros.render_order_status(order.status) }}
+            </div>
+            <div class="order-card-body">
+                <div class="mb-2">
+                    <i class="bi bi-shop me-1"></i> <span>{{ order.store.name }}</span>
+                </div>
+                <div class="mb-2">
+                    {% for item in order.items %}
+                        <span class="badge bg-light text-dark me-1 mb-1">{{ item.product.name }} × {{ item.quantity }}</span>
+                    {% endfor %}
+                </div>
+
+                {% if order.status != 'cancelled' %}
+                <div class="order-progress-simple">
+                    {% set stages = ['new', 'confirmed', 'preparing', 'ready', 'delivering', 'delivered'] %}
+                    {% set labels = ['جديد', 'مؤكد', 'تجهيز', 'جاهز', 'توصيل', 'تم'] %}
+                    {% set current_idx = stages.index(order.status) if order.status in stages else 0 %}
+                    {% for stage in stages %}
+                        <div class="progress-step-simple {% if loop.index0 <= current_idx %}active{% endif %}">
+                            <div class="dot-simple"></div>
+                            <span class="label-simple">{{ labels[loop.index0] }}</span>
+                        </div>
+                        {% if not loop.last %}
+                            <div class="line-simple {% if loop.index0 < current_idx %}active{% endif %}"></div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                {% if order.delivery_code and order.status not in ['cancelled', 'delivered'] %}
+                <div class="delivery-code-row mt-3">
+                    <div>
+                        <span class="fw-bold"><i class="bi bi-shield-check"></i> رمز التسليم:</span>
+                        <span class="delivery-code-display fw-bold fs-5 ms-2">{{ order.delivery_code }}</span>
+                    </div>
+                    <div class="qr-container" id="qr-container-{{ order.id }}"></div>
+                </div>
+                {% endif %}
+
+                {% if order.delivery_person %}
+                <div class="delivery-person-row">
+                    <i class="bi bi-person-badge"></i>
+                    <span class="fw-bold">المندوب:</span>
+                    <span>{{ order.delivery_person.username }}</span>
+                    {% if order.delivery_person.phone %}
+                        <a href="tel:{{ order.delivery_person.phone }}" class="ms-2"><i class="bi bi-telephone"></i> {{ order.delivery_person.phone }}</a>
+                    {% endif %}
+                    <div class="delivery-note">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <span>سيصلك مندوبنا خلال ساعة أو أقل</span>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="mt-3 d-flex flex-wrap gap-2">
+                    {% if order.status == 'new' %}
+                    <form method="POST" action="{{ url_for('cart.cancel_order', order_id=order.id) }}" class="d-inline">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">إلغاء الطلب</button>
+                    </form>
+                    {% endif %}
+
+                    {% if order.status in ['delivered', 'cancelled'] %}
+                    <form method="POST" action="{{ url_for('cart.delete_order', order_id=order.id) }}" class="d-inline"
+                          onsubmit="return confirm('هل تريد حذف هذا الطلب نهائيًا؟')">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger btn-delete-order">
+                            <i class="bi bi-trash"></i> حذف الطلب
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/qrcodejs/qrcode.min.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.qr-container').forEach(container => {
+        const orderId = container.id.replace('qr-container-', '');
+        const code = container.closest('.order-card-new').querySelector('.delivery-code-display').textContent.trim();
+        if (code && typeof QRCode !== 'undefined') {
+            new QRCode(container, { text: code, width: 80, height: 80, correctLevel: QRCode.CorrectLevel.M });
+        }
+    });
+
+    // معالجة حذف المنتج من السلة
+    document.querySelectorAll('.btn-remove').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const productId = this.dataset.productId;
+            if (!confirm('هل تريد إزالة هذا المنتج من السلة؟')) return;
+
+            try {
+                const formData = new FormData();
+                formData.append('_csrf_token', window.csrfToken);
+                const response = await fetch(`/cart/remove/${productId}`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-Token': window.csrfToken,
+                        'Accept': 'application/json'
+                    }
+                });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    // تحديث التخزين المحلي
+                    if (typeof LocalStore !== 'undefined') {
+                        LocalStore.removeFromCart(parseInt(productId));
+                        LocalStore.updateCartBadges();
+                    }
+                    showToast('تمت إزالة المنتج من السلة', 'success');
+                    // إعادة تحميل الصفحة بعد فترة قصيرة
+                    setTimeout(() => location.reload(), 500);
+                } else {
+                    showToast(data.message || 'تعذر الحذف', 'error');
+                }
+            } catch (err) {
+                console.error('Error removing from cart:', err);
+                showToast('حدث خطأ أثناء الإزالة', 'error');
+            }
+        });
+    });
+
+    window.clearLocalStoreCart = function(storeId, productIds) {
+        const cart = LocalStore.getCart();
+        productIds.forEach(pid => { delete cart[String(pid)]; });
+        LocalStore.setCart(cart);
+        LocalStore.updateCartBadges();
+        location.reload();
+    };
+
+    const onlineCartContent = document.getElementById('onlineCartContent');
+    const offlineCartContainer = document.getElementById('offlineCartContainer');
+    const offlineCartItems = document.getElementById('offlineCartItems');
+
+    function showOfflineCart() {
+        if (onlineCartContent) onlineCartContent.style.display = 'none';
+        if (offlineCartContainer) offlineCartContainer.style.display = 'block';
+        renderOfflineCart();
+    }
+
+    function showOnlineCart() {
+        if (onlineCartContent) onlineCartContent.style.display = 'block';
+        if (offlineCartContainer) offlineCartContainer.style.display = 'none';
+    }
+
+    function renderOfflineCart() {
+        if (!offlineCartItems) return;
+        const cart = LocalStore.getCart();
+        const cache = LocalStore.getProductsCache();
+        const productIds = Object.keys(cart);
+        if (productIds.length === 0) {
+            offlineCartItems.innerHTML = '<p class="text-muted text-center">سلتك فارغة</p>';
+            return;
+        }
+        let html = '<div class="row g-2">';
+        productIds.forEach(pid => {
+            const qty = cart[pid];
+            const p = cache[pid] || {};
+            html += `
+                <div class="col-6 col-md-4 col-lg-3">
+                    <div class="cart-item-card">
+                        <div class="cart-item-image-placeholder"><i class="bi bi-image"></i></div>
+                        <div class="cart-item-body">
+                            <div class="cart-item-name">${p.name || 'منتج'}</div>
+                            <div class="cart-item-price">${p.price || 0} ل.س</div>
+                            <div class="cart-item-actions">
+                                <div class="pickup-only-note"><i class="bi bi-shop"></i> استلام حصرا من المتجر</div>
+                                <button class="btn btn-sm btn-outline-danger" onclick="removeOfflineCartItem('${pid}')"><i class="bi bi-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+        });
+        html += '</div>';
+        offlineCartItems.innerHTML = html;
+    }
+
+    window.removeOfflineCartItem = function(pid) {
+        LocalStore.removeFromCart(parseInt(pid));
+        LocalStore.updateCartBadges();
+        renderOfflineCart();
+    };
+
+    if (!navigator.onLine) {
+        showOfflineCart();
+    }
+
+    window.addEventListener('online', function() {
+        showOnlineCart();
+        window.location.reload();
+    });
+
+    window.addEventListener('offline', function() {
+        showOfflineCart();
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+
+{% block title %}الدفع غير متوفر{% endblock %}
+
+{% block head %}
+<style>
+    .unavailable-card {
+        border-radius: 20px;
+        border: none;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        background: #fff;
+        overflow: hidden;
+    }
+    body.dark-mode .unavailable-card {
+        background: #1e1e1e;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        color: #fff;
+    }
+    .unavailable-header {
+        background: linear-gradient(135deg, #ffc107, #e0a800);
+        color: #000;
+        padding: 15px 20px;
+        text-align: center;
+        font-weight: 700;
+    }
+    .unavailable-body {
+        padding: 30px 20px;
+        text-align: center;
+    }
+    .unavailable-icon {
+        font-size: 4rem;
+        color: #ffc107;
+        margin-bottom: 15px;
+    }
+    .unavailable-title {
+        font-weight: 700;
+        margin-bottom: 10px;
+    }
+    .unavailable-text {
+        color: #6c757d;
+        margin-bottom: 20px;
+    }
+    body.dark-mode .unavailable-text {
+        color: #adb5bd;
+    }
+    .btn-back {
+        border-radius: 25px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card unavailable-card">
+                <div class="unavailable-header">
+                    <i class="bi bi-exclamation-triangle"></i> غير متوفر حالياً
+                </div>
+                <div class="unavailable-body">
+                    <div class="unavailable-icon">
+                        {% if method == 'wallet' %}
+                            <i class="bi bi-wallet2"></i>
+                        {% elif method == 'bank_transfer' %}
+                            <i class="bi bi-bank"></i>
+                        {% else %}
+                            <i class="bi bi-x-circle"></i>
+                        {% endif %}
+                    </div>
+
+                    {% if method == 'wallet' %}
+                        <h4 class="unavailable-title">المحفظة الإلكترونية (شام كاش) ستتوفر قريباً</h4>
+                        <p class="unavailable-text">نعمل على توفير هذه الخدمة، يرجى اختيار طريقة أخرى.</p>
+                    {% elif method == 'bank_transfer' %}
+                        <h4 class="unavailable-title">التحويل البنكي غير متوفر حالياً</h4>
+                        <p class="unavailable-text">يرجى اختيار طريقة أخرى.</p>
+                    {% else %}
+                        <h4 class="unavailable-title">هذه الطريقة غير متاحة</h4>
+                        <p class="unavailable-text">يرجى اختيار طريقة دفع أخرى.</p>
+                    {% endif %}
+
+                    <a href="{{ url_for('store.store_subscription', store_id=store.id) }}" class="btn btn-custom btn-back">
+                        <i class="bi bi-arrow-right"></i> العودة لطرق الدفع
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

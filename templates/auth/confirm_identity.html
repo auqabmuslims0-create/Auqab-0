@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+
+{% block title %}تأكيد الهوية{% endblock %}
+
+{% block head %}
+<style>
+    /* نمط الحقول الموحدة */
+    .custom-input-wrap {
+        position: relative;
+        margin-bottom: 0;
+    }
+    .custom-input-wrap .form-control,
+    .custom-input-wrap .form-select {
+        border-radius: 12px;
+        padding-right: 40px;
+        padding-left: 40px;
+        height: 48px;
+        background-color: #fff;
+        border: 1px solid #ced4da;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .custom-input-wrap .form-control:focus,
+    .custom-input-wrap .form-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(46,93,52,0.15);
+    }
+    .custom-input-icon {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        color: #6c757d;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .custom-phone-prefix {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        color: #6c757d;
+        font-size: 0.9rem;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .custom-phone-prefix + .form-control {
+        padding-right: 55px;
+    }
+    body.dark-mode .custom-input-wrap .form-control,
+    body.dark-mode .custom-input-wrap .form-select {
+        background-color: #2d2d2d;
+        border-color: #444;
+        color: #fff;
+    }
+    body.dark-mode .custom-input-wrap .form-control:focus,
+    body.dark-mode .custom-input-wrap .form-select:focus {
+        border-color: #c9a227;
+        box-shadow: 0 0 0 0.2rem rgba(201,162,39,0.2);
+    }
+    body.dark-mode .custom-input-icon,
+    body.dark-mode .custom-phone-prefix {
+        color: #adb5bd;
+    }
+    .auth-card {
+        border-radius: var(--radius-lg);
+        background: rgba(255,255,255,0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+    body.dark-mode .auth-card {
+        background: rgba(30,30,30,0.85);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card p-4 shadow-sm auth-card">
+                <div class="text-center mb-4">
+                    <i class="bi bi-shield-lock auth-icon"></i>
+                    <h1 class="h3 mt-2">تأكيد هويتك</h1>
+                    <p class="text-muted small">يرجى تعبئة الحقول التالية بدقة.</p>
+                </div>
+
+                <form method="post">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">اسم المستخدم</label>
+                        <div class="custom-input-wrap">
+                            <i class="bi bi-person custom-input-icon"></i>
+                            <input type="text" name="username" class="form-control" required autocomplete="username" placeholder="أدخل اسم المستخدم">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">رقم الهاتف</label>
+                        <div class="custom-input-wrap">
+                            <span class="custom-phone-prefix">+963</span>
+                            <input type="tel" name="phone" class="form-control" pattern="9[0-9]{8}" maxlength="9" required autocomplete="tel" placeholder="9XXXXXXXX" style="padding-right:55px;">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">ID الخاص بك</label>
+                        <div class="custom-input-wrap">
+                            <i class="bi bi-person-badge custom-input-icon"></i>
+                            <input type="text" name="public_id" class="form-control" required autocomplete="off" placeholder="A-XXXX-XXXX">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">نوع الحساب</label>
+                        <div class="custom-input-wrap">
+                            <i class="bi bi-person-gear custom-input-icon"></i>
+                            <select name="role" class="form-select" required>
+                                <option value="">اختر نوع الحساب</option>
+                                <option value="customer">زبون</option>
+                                <option value="owner">صاحب متجر</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-custom w-100">تحقق</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

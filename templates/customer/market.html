@@ -1,0 +1,465 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as macros %}
+
+{% block title %}السوق{% endblock %}
+{% block head %}
+<style>
+    /* تنسيق خاص لصفحة السوق */
+    .market-header-section {
+        margin-bottom: 20px;
+    }
+    .search-wrapper {
+        position: relative;
+    }
+    .search-bar-modern {
+        border-radius: 25px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.4);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        transition: box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    .search-bar-modern:focus-within {
+        border-color: var(--primary);
+        box-shadow: 0 4px 16px rgba(46, 93, 52, 0.2);
+    }
+    .search-icon {
+        background: transparent;
+        border: none;
+        color: var(--primary);
+        padding-right: 12px;
+    }
+    .search-input-modern {
+        border: none;
+        background: transparent;
+        padding: 10px 12px;
+        font-size: 0.95rem;
+        outline: none;
+        box-shadow: none;
+    }
+    .search-input-modern:focus {
+        box-shadow: none;
+    }
+    .filter-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.4);
+        color: var(--primary);
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        transition: background-color 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+        flex-shrink: 0;
+    }
+    .filter-btn:hover {
+        transform: scale(1.05);
+        background: rgba(255,255,255,0.95);
+    }
+    body.dark-mode .search-bar-modern,
+    body.dark-mode .filter-btn {
+        background: rgba(30, 30, 30, 0.7);
+        border-color: rgba(255,255,255,0.1);
+    }
+    body.dark-mode .search-bar-modern {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+    body.dark-mode .filter-btn {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        color: var(--accent);
+    }
+    .store-strip .store-logo-circle {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f0f0f0;
+        margin: 0 auto;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+    .store-strip .store-logo-circle img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+    }
+    .store-strip .store-logo-circle .image-fallback {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: #adb5bd;
+        background: #e9ecef;
+    }
+    body.dark-mode .store-strip .store-logo-circle {
+        background: #2d2d2d;
+        border-color: #444;
+    }
+    body.dark-mode .store-strip .store-logo-circle .image-fallback {
+        background: #444;
+        color: #ccc;
+    }
+    .products-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 15px;
+    }
+    @media (max-width: 480px) {
+        .products-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+    }
+    .product-card-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    #offlineContent {
+        display: none;
+    }
+    .offline-product-card, .offline-store-card {
+        background: #fff;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: transform 0.2s;
+        height: 100%;
+    }
+    body.dark-mode .offline-product-card,
+    body.dark-mode .offline-store-card {
+        background: #1e1e1e;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .offline-product-image {
+        width: 100%;
+        height: 140px;
+        object-fit: cover;
+        display: block;
+        background: #f0f0f0;
+    }
+    .offline-product-body, .offline-store-body {
+        padding: 10px;
+        text-align: center;
+    }
+    .offline-product-name, .offline-store-name {
+        font-weight: 600;
+        margin-bottom: 4px;
+        font-size: 0.9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .offline-product-price {
+        color: var(--primary);
+        font-weight: bold;
+    }
+    body.dark-mode .offline-product-price {
+        color: var(--accent);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div id="onlineContent">
+        <div class="row market-header-section">
+            <div class="col-12">
+                <div class="d-flex gap-2 align-items-center">
+                    <div class="flex-grow-1 search-wrapper">
+                        <div class="input-group search-bar-modern">
+                            <span class="input-group-text search-icon"><i class="bi bi-search"></i></span>
+                            <input type="text" id="globalSearchInput" class="form-control search-input-modern" placeholder="ابحث عن منتج أو متجر..." value="{{ q or '' }}" autocomplete="off">
+                            <button class="btn btn-link text-danger" id="clearSearchBtn" style="display: none;" type="button"><i class="bi bi-x"></i></button>
+                        </div>
+                        <div id="searchSuggestions" class="search-suggestions d-none"></div>
+                    </div>
+                    <button class="btn filter-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#filterSidebar"><i class="bi bi-sliders"></i></button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <h5 class="fw-bold mb-2">متاجر مفتوحة الآن</h5>
+            <div class="d-flex overflow-auto gap-2 pb-2 store-strip">
+                {% for store in open_stores %}
+                <a href="{{ url_for('stores.store_public', store_id=store.id) }}" class="store-circle text-decoration-none">
+                    <div class="store-logo-circle">
+                        {{ macros.render_image(store.logo_url, store.name, '', 'bi-shop') }}
+                    </div>
+                    <span class="small d-block text-center text-truncate" style="max-width:80px;">{{ store.name }}</span>
+                </a>
+                {% else %}
+                <p class="text-muted">لا توجد متاجر مفتوحة حالياً</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold mb-0">المنتجات</h5>
+            <span class="text-muted small">{{ pagination.total }} منتج</span>
+        </div>
+        <div class="products-grid">
+            {% for product in products %}
+                {{ macros.render_product_card(product, None, user_reaction_map, show_add_to_cart=True) }}
+            {% else %}
+                <div class="col-12">
+                    {{ macros.render_empty_state('bi-shop', 'لا توجد منتجات مطابقة', url_for('market.market'), 'عرض الكل') }}
+                </div>
+            {% endfor %}
+        </div>
+
+        {{ macros.render_pagination(pagination, 'market.market', {'q': q, 'category_id': selected_category, 'store_id': selected_store, 'min_price': min_price, 'max_price': max_price}) }}
+    </div>
+
+    <div id="offlineContent">
+        <div class="alert alert-warning text-center mb-3">
+            <i class="bi bi-wifi-off"></i> أنت غير متصل بالإنترنت - يتم عرض نسخة محفوظة من البيانات
+        </div>
+        <div class="mb-4">
+            <h5 class="fw-bold mb-2">متاجر محفوظة</h5>
+            <div class="d-flex overflow-auto gap-2 pb-2" id="offlineStoresStrip"></div>
+        </div>
+        <h5 class="fw-bold mb-3">منتجات محفوظة</h5>
+        <div class="products-grid" id="offlineProductsGrid"></div>
+    </div>
+</div>
+
+<div class="offcanvas offcanvas-start filter-sidebar" tabindex="-1" id="filterSidebar">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title">تصفية النتائج</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+        <form method="GET" action="{{ url_for('market.market') }}">
+            <input type="hidden" name="q" value="{{ q or '' }}">
+            <div class="mb-3">
+                <label class="form-label">التصنيف</label>
+                <select name="category_id" class="form-select">
+                    <option value="">كل التصنيفات</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if selected_category == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">المتجر</label>
+                <select name="store_id" class="form-select">
+                    <option value="">كل المتاجر</option>
+                    {% for store in open_stores %}
+                    <option value="{{ store.id }}" {% if selected_store == store.id %}selected{% endif %}>{{ store.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">السعر الأدنى</label>
+                <input type="number" name="min_price" class="form-control" value="{{ min_price or '' }}" min="0" step="any">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">السعر الأقصى</label>
+                <input type="number" name="max_price" class="form-control" value="{{ max_price or '' }}" min="0" step="any">
+            </div>
+            <button type="submit" class="btn btn-custom w-100">تطبيق</button>
+            <a href="{{ url_for('market.market') }}" class="btn btn-outline-secondary w-100 mt-2">إعادة تعيين</a>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('globalSearchInput');
+    const suggestions = document.getElementById('searchSuggestions');
+    const clearBtn = document.getElementById('clearSearchBtn');
+    let debounceTimer;
+
+    function toggleClear() {
+        clearBtn.style.display = searchInput.value ? 'block' : 'none';
+    }
+    toggleClear();
+
+    clearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        suggestions.classList.add('d-none');
+        toggleClear();
+        window.location.href = "{{ url_for('market.market') }}";
+    });
+
+    searchInput.addEventListener('input', function() {
+        toggleClear();
+        clearTimeout(debounceTimer);
+        const q = this.value.trim();
+        if (q.length < 2) {
+            suggestions.classList.add('d-none');
+            return;
+        }
+        debounceTimer = setTimeout(() => {
+            fetch(`/search_suggestions?q=${encodeURIComponent(q)}`)
+                .then(res => res.json())
+                .then(data => {
+                    let html = '<ul class="list-unstyled">';
+                    if (data.stores.length) {
+                        html += '<li class="suggestion-header">المتاجر</li>';
+                        data.stores.forEach(s => {
+                            html += `<li><a href="/store/${s.id}/public"><i class="bi bi-shop me-2"></i>${s.name}</a></li>`;
+                        });
+                    }
+                    if (data.products.length) {
+                        html += '<li class="suggestion-header">المنتجات</li>';
+                        data.products.forEach(p => {
+                            html += `<li><a href="/product/${p.id}"><img src="${p.image_url}" class="me-2" style="width:30px;height:30px;object-fit:cover;border-radius:50%;">${p.name} <span class="text-muted small">${p.price} ل.س</span></a></li>`;
+                        });
+                    }
+                    if (data.services.length) {
+                        html += '<li class="suggestion-header">خدمات</li>';
+                        data.services.forEach(sv => {
+                            html += `<li><a href="/services"><i class="bi ${sv.icon} me-2"></i>${sv.name}</a></li>`;
+                        });
+                    }
+                    html += '</ul>';
+                    suggestions.innerHTML = html;
+                    suggestions.classList.remove('d-none');
+                })
+                .catch(err => console.error(err));
+        }, 300);
+    });
+
+    document.addEventListener('click', function(e) {
+        if (!suggestions.contains(e.target) && e.target !== searchInput) {
+            suggestions.classList.add('d-none');
+        }
+    });
+
+    if (navigator.onLine && typeof OfflineDB !== 'undefined') {
+        const productsData = [
+            {% for product in products %}
+            {
+                id: {{ product.id }},
+                name: {{ product.name | tojson }},
+                price: {{ product.price }},
+                original_price: {{ product.original_price or 'null' }},
+                is_offer: {{ product.is_offer | lower }},
+                stock_quantity: {{ product.stock_quantity }},
+                main_image: {{ product.main_image | tojson if product.main_image else '""' }},
+                description: {{ product.description | tojson if product.description else '""' }},
+                store_id: {{ product.store.id if product.store else 'null' }},
+                store_name: {{ product.store.name | tojson if product.store and product.store.name else '""' }},
+                store_logo: {{ product.store.logo_url | tojson if product.store and product.store.logo_url else '""' }}
+            }{{ ',' if not loop.last }}
+            {% endfor %}
+        ];
+
+        const storesData = [
+            {% for store in open_stores %}
+            {
+                id: {{ store.id }},
+                name: {{ store.name | tojson }},
+                description: {{ store.description | tojson if store.description else '""' }},
+                logo_url: {{ store.logo_url | tojson if store.logo_url else '""' }},
+                phone: {{ store.phone | tojson if store.phone else '""' }},
+                address: {{ store.address | tojson if store.address else '""' }},
+                working_hours: {{ store.working_hours | tojson if store.working_hours else '""' }},
+                subscription_status: {{ store.subscription_status | tojson if store.subscription_status else '""' }},
+                is_open: true
+            }{{ ',' if not loop.last }}
+            {% endfor %}
+        ];
+
+        if (productsData.length) {
+            OfflineDB.saveProducts(productsData).catch(err => console.warn('OfflineDB saveProducts failed:', err));
+        }
+        if (storesData.length) {
+            OfflineDB.saveStores(storesData).catch(err => console.warn('OfflineDB saveStores failed:', err));
+        }
+    }
+
+    const onlineContent = document.getElementById('onlineContent');
+    const offlineContent = document.getElementById('offlineContent');
+
+    function showOfflineContent() {
+        if (onlineContent) onlineContent.style.display = 'none';
+        if (offlineContent) offlineContent.style.display = 'block';
+        loadOfflineData();
+    }
+
+    function showOnlineContent() {
+        if (onlineContent) onlineContent.style.display = 'block';
+        if (offlineContent) offlineContent.style.display = 'none';
+    }
+
+    async function loadOfflineData() {
+        try {
+            if (typeof OfflineDB === 'undefined') return;
+            const stores = await OfflineDB.getAllStores();
+            const products = await OfflineDB.getAllProducts();
+
+            const storesStrip = document.getElementById('offlineStoresStrip');
+            if (storesStrip) {
+                if (stores && stores.length > 0) {
+                    storesStrip.innerHTML = stores.map(store => `
+                        <a href="/store/${store.id}/public" class="store-circle text-decoration-none">
+                            <div class="store-logo-circle">
+                                ${store.logo_url ? `<img src="${store.logo_url}" alt="${store.name}">` : `<div class="image-fallback"><i class="bi bi-shop"></i></div>`}
+                            </div>
+                            <span class="small d-block text-center text-truncate" style="max-width:80px;">${store.name}</span>
+                        </a>
+                    `).join('');
+                } else {
+                    storesStrip.innerHTML = '<p class="text-muted">لا توجد متاجر محفوظة</p>';
+                }
+            }
+
+            const productsGrid = document.getElementById('offlineProductsGrid');
+            if (productsGrid) {
+                if (products && products.length > 0) {
+                    productsGrid.innerHTML = products.map(product => `
+                        <a href="/product/${product.id}" class="text-decoration-none">
+                            <div class="offline-product-card">
+                                ${product.main_image ? `<img src="${product.main_image}" alt="${product.name}" class="offline-product-image">` : `<div class="offline-product-image d-flex align-items-center justify-content-center"><i class="bi bi-image" style="font-size:2rem;"></i></div>`}
+                                <div class="offline-product-body">
+                                    <div class="offline-product-name">${product.name}</div>
+                                    <div class="offline-product-price">${product.price} ل.س</div>
+                                </div>
+                            </div>
+                        </a>
+                    `).join('');
+                } else {
+                    productsGrid.innerHTML = '<p class="text-muted text-center">لا توجد منتجات محفوظة</p>';
+                }
+            }
+        } catch (err) {
+            console.error('خطأ في تحميل البيانات من IndexedDB:', err);
+        }
+    }
+
+    if (!navigator.onLine) {
+        showOfflineContent();
+    }
+
+    window.addEventListener('online', function() {
+        showOnlineContent();
+        window.location.reload();
+    });
+
+    window.addEventListener('offline', function() {
+        showOfflineContent();
+    });
+});
+</script>
+{% endblock %}

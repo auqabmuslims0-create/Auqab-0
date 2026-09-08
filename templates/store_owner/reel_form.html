@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}إضافة ريل جديد - {{ store.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .form-card { border-radius: 20px; border: none; box-shadow: 0 8px 24px rgba(0,0,0,0.08); background: #fff; }
+    body.dark-mode .form-card { background: #1e1e1e; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+    .custom-input-wrap { position: relative; margin-bottom: 0; }
+    .custom-input-wrap .form-control, .custom-input-wrap .form-select {
+        border-radius: 12px; padding-right: 40px; padding-left: 40px; height: 48px;
+        background-color: #fff; border: 1px solid #ced4da;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .custom-input-wrap .form-control:focus, .custom-input-wrap .form-select:focus {
+        border-color: var(--primary); box-shadow: 0 0 0 0.2rem rgba(46,93,52,0.15);
+    }
+    .custom-input-icon { position: absolute; top: 50%; right: 14px; transform: translateY(-50%); color: #6c757d; pointer-events: none; z-index: 2; }
+    body.dark-mode .custom-input-wrap .form-control, body.dark-mode .custom-input-wrap .form-select {
+        background-color: #2d2d2d; border-color: #444; color: #fff;
+    }
+    body.dark-mode .custom-input-wrap .form-control:focus, body.dark-mode .custom-input-wrap .form-select:focus {
+        border-color: #c9a227; box-shadow: 0 0 0 0.2rem rgba(201,162,39,0.2);
+    }
+    body.dark-mode .custom-input-icon { color: #adb5bd; }
+    .btn-custom { border-radius: 25px; font-weight: 600; transition: background 0.2s, transform 0.2s; }
+    .btn-custom:hover { transform: translateY(-2px); background: var(--primary-dark); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card form-card p-4 shadow-sm">
+        <h1 class="h4 mb-4 text-center"><i class="bi bi-film"></i> إضافة ريل جديد</h1>
+        <form method="post" enctype="multipart/form-data" action="{{ url_for('store.new_reel', store_id=store.id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+            <div class="mb-4">
+                <label class="form-label fw-bold">فيديو الريل (مطلوب)</label>
+                <input type="file" name="video" accept="video/*" class="form-control" required>
+                <p class="text-muted small mt-1">يُفضل فيديو بصيغة MP4 وبمدة لا تتجاوز 60 ثانية.</p>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold">صورة مصغرة (اختياري)</label>
+                <input type="file" name="thumbnail" accept="image/*" class="form-control">
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold">ربط بمنتج (اختياري)</label>
+                <select name="product_id" class="form-select">
+                    <option value="">بدون منتج</option>
+                    {% for p in products %}
+                        <option value="{{ p.id }}">{{ p.name }} ({{ p.price|format_price }} ل.س)</option>
+                    {% endfor %}
+                </select>
+                <p class="text-muted small mt-1">يمكنك ربط الريل بمنتج معين ليظهر في صفحة المنتج ويسهل شراءه.</p>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold">وصف أو تعليق (اختياري)</label>
+                <textarea name="caption" class="form-control" rows="3" placeholder="مثال: فيديو تعريفي عن منتج جديد"></textarea>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-fill">
+                    <i class="bi bi-check-circle"></i> حفظ الريل
+                </button>
+                <a href="{{ url_for('store.store_reels', store_id=store.id) }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-right"></i> عودة
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

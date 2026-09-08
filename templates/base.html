@@ -1,0 +1,660 @@
+{% import '_macros.html' as macros %}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta name="csrf-token" content="{{ csrf_token }}">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}سوق الحسينية{% endblock %}</title>
+
+  <!-- PWA Meta -->
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <meta name="theme-color" content="#2e5d34">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="سوق الحسينية">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="سوق الحسينية">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" sizes="96x96" href="{{ url_for('static', filename='icons/icon-96.png') }}">
+  <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+  <link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='icons/icon-512.png') }}">
+
+  <!-- Splash Screens for iOS -->
+  <link rel="apple-touch-startup-image" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)" href="{{ url_for('static', filename='splash/splash-640x1136.png') }}">
+  <link rel="apple-touch-startup-image" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)" href="{{ url_for('static', filename='splash/splash-750x1334.png') }}">
+  <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)" href="{{ url_for('static', filename='splash/splash-1242x2208.png') }}">
+  <link rel="apple-touch-startup-image" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2)" href="{{ url_for('static', filename='splash/splash-828x1792.png') }}">
+  <link rel="apple-touch-startup-image" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3)" href="{{ url_for('static', filename='splash/splash-1170x2532.png') }}">
+  <link rel="apple-touch-startup-image" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3)" href="{{ url_for('static', filename='splash/splash-1242x2688.png') }}">
+  <link rel="apple-touch-startup-image" media="(device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2)" href="{{ url_for('static', filename='splash/splash-1668x2224.png') }}">
+  <link rel="apple-touch-startup-image" media="(device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2)" href="{{ url_for('static', filename='splash/splash-1668x2388.png') }}">
+  <link rel="apple-touch-startup-image" media="(device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2)" href="{{ url_for('static', filename='splash/splash-2048x2732.png') }}">
+  <link rel="apple-touch-startup-image" media="(device-width: 1024px) and (device-height: 768px) and (-webkit-device-pixel-ratio: 2)" href="{{ url_for('static', filename='splash/splash-1536x2048.png') }}">
+
+  <link href="{{ url_for('static', filename='vendor/bootstrap/css/bootstrap.rtl.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='vendor/fonts/tajawal.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/variables.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/base.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/layout.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/components.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/pages.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/cards.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/responsive.css') }}" rel="stylesheet">
+  <link href="{{ url_for('static', filename='css/themes/dark/dark-mode.css') }}" rel="stylesheet">
+
+  <script>
+    (function() {
+      if (!localStorage.getItem('onboarding_done') && window.location.pathname !== '/onboarding') {
+        window.location.replace('/onboarding');
+      }
+    })();
+    (function() {
+      var theme = localStorage.getItem('theme') || 'system';
+      var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      var isDark = theme === 'dark' || (theme === 'system' && prefersDark);
+      document.documentElement.classList.toggle('dark-mode', isDark);
+      function applyToBody() {
+        if (document.body) document.body.classList.toggle('dark-mode', isDark);
+      }
+      if (document.body) applyToBody();
+      else document.addEventListener('DOMContentLoaded', applyToBody);
+    })();
+  </script>
+
+  <style>
+    .connection-indicator { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); z-index:9999; background:rgba(0,0,0,0.6); color:#fff; border-radius:30px; padding:12px 20px; display:flex; align-items:center; gap:6px; font-size:.85rem; font-weight:600; opacity:0; pointer-events:none; transition:opacity .3s; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); box-shadow:0 4px 10px rgba(0,0,0,0.2); }
+    .connection-indicator.show { opacity:1; pointer-events:auto; }
+    .connection-indicator svg { width:18px; height:18px; }
+    #appSplash { position:fixed; top:0; left:0; width:100%; height:100%; background:#f7f4ef; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:10000; opacity:1; transition:opacity .5s; }
+    #appSplash.fade-out { opacity:0; pointer-events:none; }
+    #appSplash img { width:120px; height:120px; border-radius:30px; margin-bottom:20px; animation:pulse 2s infinite; }
+    #appSplash h1 { color:#2d2d2d; font-family:'Tajawal',sans-serif; font-weight:bold; font-size:2rem; margin:0; }
+    @keyframes pulse { 0% { transform:scale(1); } 50% { transform:scale(1.1); } 100% { transform:scale(1); } }
+    input, textarea, select, [contenteditable="true"] { position:relative; z-index:1; }
+    .modal { z-index:3000 !important; pointer-events:auto !important; }
+    .modal-backdrop { z-index:2990 !important; }
+    .modal-dialog { z-index:3001 !important; pointer-events:auto !important; }
+    .modal-content { pointer-events:auto !important; }
+    .offcanvas { z-index:1045 !important; }
+    .toast-container-top { position:fixed; top:70px; left:50%; transform:translateX(-50%); z-index:2000; display:flex; flex-direction:column; align-items:center; gap:8px; pointer-events:none; width:auto; max-width:90vw; }
+    .toast-container-top .toast { pointer-events:auto; margin:0; min-width:250px; max-width:400px; width:auto; }
+    .toast-modern .toast-body { display:flex; align-items:center; justify-content:center; gap:8px; text-align:center; padding:10px 15px; }
+    .toast-modern .toast-body .toast-message { flex:1; text-align:center; }
+    .toast-modern .toast-body .toast-image { width:36px; height:36px; border-radius:50%; object-fit:cover; flex-shrink:0; border:2px solid rgba(255,255,255,0.5); box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    body.dark-mode .toast-modern .toast-body .toast-image { border-color:rgba(255,255,255,0.2); }
+    .toast-icon { font-size:1.2rem; flex-shrink:0; }
+    .notification-dot { position:absolute; top:8px; right:8px; width:10px; height:10px; background-color:#dc3545; border-radius:50%; border:2px solid #fff; display:none; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body class="{% if show_bottom_nav %}with-bottom-nav{% else %}no-bottom-nav{% endif %}">
+  <script>
+    if (document.documentElement.classList.contains('dark-mode')) {
+      document.body.classList.add('dark-mode');
+    }
+  </script>
+
+  <div id="appSplash" style="display: none;">
+    <img src="{{ url_for('static', filename='icons/icon-512.png') }}" alt="سوق الحسينية">
+    <h1>سوق الحسينية</h1>
+  </div>
+
+  <div id="connectionIndicator" class="connection-indicator" role="alert">
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 18.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z" fill="currentColor"/>
+      <path d="M8.5 15.5a4.5 4.5 0 0 1 7 0l-1.4 1.4a2.5 2.5 0 0 0-4.2 0l-1.4-1.4z" fill="currentColor" opacity="0.6"/>
+      <path d="M5 12a9 9 0 0 1 14 0l-1.4 1.4a7 7 0 0 0-11.2 0L5 12z" fill="currentColor" opacity="0.4"/>
+      <line x1="2" y1="3" x2="22" y2="21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    <span>انقطع الاتصال</span>
+  </div>
+
+  <nav class="navbar navbar-custom fixed-top">
+    <div class="container-fluid d-flex justify-content-between align-items-center">
+      <div class="d-flex align-items-center">
+        <button class="burger-btn" type="button" data-bs-toggle="offcanvas" data-bs-target="#sidebarMenu" aria-label="القائمة">
+          <i class="bi bi-list"></i>
+          <span class="notification-dot" id="navNotificationDot"></span>
+        </button>
+        <button class="burger-btn theme-toggle-btn ms-2" id="topbarThemeToggle" type="button" aria-label="تبديل الوضع الداكن">
+          <i class="bi bi-moon-stars"></i>
+        </button>
+      </div>
+      <a class="navbar-brand" href="{{ url_for('market.market') if current_user else url_for('auth.login') }}">
+        <i class="bi bi-shop-fill me-2" style="font-size:1.5rem;"></i><span class="fw-bold">سوق الحسينية</span>
+      </a>
+    </div>
+  </nav>
+
+  <div class="offcanvas offcanvas-start modern-sidebar" tabindex="-1" id="sidebarMenu">
+    <div class="offcanvas-header">
+      <h5 class="offcanvas-title">القائمة</h5>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+      <div class="text-center mb-3">
+        <a href="{{ url_for('auth.account') if current_user else url_for('auth.login') }}" class="text-decoration-none">
+          {% if current_user and current_user.avatar %}
+            <img src="{{ current_user.avatar | get_image_url }}" class="rounded-circle sidebar-avatar mb-2" alt="صورة المستخدم">
+          {% else %}
+            <div class="sidebar-avatar-placeholder mb-2"><i class="bi bi-person"></i></div>
+          {% endif %}
+          <h6 class="fw-bold mb-0">{% if current_user %}{{ current_user.username }}{% else %}تسجيل الدخول{% endif %}</h6>
+        </a>
+      </div>
+      {% if nav_items is defined and nav_items %}
+        {{ macros.render_nav_items(nav_items) }}
+      {% else %}
+        <ul class="list-unstyled w-100">
+          {% if current_user %}
+            {% if current_user.role == 'admin' %}
+              <li><a href="{{ url_for('admin.admin_dashboard') }}" class="sidebar-menu-item"><i class="bi bi-speedometer2 ms-1"></i> لوحة المدير</a></li>
+            {% endif %}
+            {% if current_user.role == 'owner' %}
+              <li><a href="{{ url_for('store.my_stores') }}" class="sidebar-menu-item"><i class="bi bi-shop ms-1"></i> متاجري</a></li>
+            {% endif %}
+            {% if current_user.role == 'delivery' %}
+              <li><a href="{{ url_for('delivery.delivery_dashboard') }}" class="sidebar-menu-item"><i class="bi bi-truck ms-1"></i> لوحة المندوب</a></li>
+            {% endif %}
+            {% if current_user.role == 'customer' %}
+              <li><a href="{{ url_for('market.market') }}" class="sidebar-menu-item"><i class="bi bi-shop ms-1"></i> السوق</a></li>
+              <li><a href="{{ url_for('cart.cart') }}" class="sidebar-menu-item"><i class="bi bi-cart ms-1"></i> سلة المشتريات</a></li>
+              <li><a href="{{ url_for('account.favorites') }}" class="sidebar-menu-item"><i class="bi bi-heart ms-1"></i> المفضلة</a></li>
+              <li><a href="{{ url_for('notifications.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1">{{ unread_notifications }}</span>{% endif %}</a></li>
+              <li><a href="{{ url_for('auth.account') }}" class="sidebar-menu-item"><i class="bi bi-gear ms-1"></i> الإعدادات</a></li>
+            {% else %}
+              <li><a href="{{ url_for('auth.account') }}" class="sidebar-menu-item"><i class="bi bi-gear ms-1"></i> الإعدادات</a></li>
+              <li><a href="{{ url_for('notifications.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1">{{ unread_notifications }}</span>{% endif %}</a></li>
+            {% endif %}
+          {% else %}
+            <li><a href="{{ url_for('auth.login') }}" class="sidebar-menu-item"><i class="bi bi-box-arrow-in-right ms-1"></i> تسجيل الدخول</a></li>
+          {% endif %}
+          <li>
+            <button class="sidebar-menu-item w-100" id="sidebarThemeToggle">
+              <i class="bi bi-moon-stars ms-1"></i>
+              <span>الوضع الداكن</span>
+            </button>
+          </li>
+          <li><a href="{{ url_for('services.services_page') }}" class="sidebar-menu-item"><i class="bi bi-info-circle ms-1"></i> حول / خدمات</a></li>
+          {% if current_user %}
+            <li><a href="{{ url_for('auth.logout') }}" class="sidebar-menu-item text-danger"><i class="bi bi-box-arrow-left ms-1"></i> تسجيل الخروج</a></li>
+          {% endif %}
+        </ul>
+      {% endif %}
+    </div>
+  </div>
+
+  <main class="container mt-4">
+    {% block content %}{% endblock %}
+  </main>
+
+  <div class="toast-container-top" id="toastContainerTop">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, msg in messages %}
+          <div class="toast align-items-center toast-modern border-0" role="alert" data-bs-delay="4000" data-bs-autohide="true">
+            <div class="d-flex">
+              <div class="toast-body">
+                {% if category == 'success' %}
+                  <i class="bi bi-check-circle-fill text-success toast-icon"></i>
+                {% elif category == 'error' or category == 'danger' %}
+                  <i class="bi bi-exclamation-circle-fill text-danger toast-icon"></i>
+                {% else %}
+                  <i class="bi bi-info-circle-fill text-info toast-icon"></i>
+                {% endif %}
+                <span class="toast-message">{{ msg }}</span>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  {% if show_bottom_nav %}
+  <nav class="bottom-nav">
+    <a href="{{ url_for('market.market') }}" class="bottom-nav-item {% if request.endpoint == 'market.market' %}active{% endif %}"><i class="bi bi-shop-fill"></i><span>السوق</span></a>
+    <a href="{{ url_for('reels.reels_page') }}" class="bottom-nav-item {% if request.endpoint == 'reels.reels_page' %}active{% endif %}"><i class="bi bi-film"></i><span>الريلز</span></a>
+    <div class="cart-dock">
+      <a href="{{ url_for('cart.cart') }}" class="cart-circle">
+        <i class="bi bi-basket3-fill">
+          {% set cart_count = session.get('cart', {})|length %}
+          <span class="badge bg-danger rounded-circle cart-badge {% if cart_count > 0 %}cart-badge-pulse{% else %}d-none{% endif %}">{{ cart_count }}</span>
+        </i>
+      </a>
+    </div>
+    <a href="{{ url_for('offers.offers_page') }}" class="bottom-nav-item {% if request.endpoint == 'offers.offers_page' %}active{% endif %}"><i class="bi bi-tags-fill"></i><span>عروض</span></a>
+    <a href="{{ url_for('stores.stores_page') }}" class="bottom-nav-item {% if request.endpoint == 'stores.stores_page' %}active{% endif %}"><i class="bi bi-shop-window"></i><span>المتاجر</span></a>
+  </nav>
+  {% endif %}
+
+  <script src="{{ url_for('static', filename='vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/offlineDB.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/localStore.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/navigation.js') }}"></script>
+
+  <script>
+    var csrfToken = "{{ csrf_token }}";
+    window.csrfToken = csrfToken;  // تعريف window.csrfToken
+    window.isAuthenticated = {{ 'true' if current_user else 'false' }};
+
+    function showToast(message, type = 'info', image = null) {
+      if (type === 'danger') type = 'error';
+      const container = document.getElementById('toastContainerTop');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = 'toast align-items-center toast-modern border-0';
+      toast.setAttribute('role', 'alert');
+      toast.setAttribute('data-bs-delay', '4000');
+      toast.setAttribute('data-bs-autohide', 'true');
+      let imageHtml = '';
+      if (image) {
+        imageHtml = `<img src="${image}" class="toast-image" alt="">`;
+      }
+      toast.innerHTML = `<div class="d-flex"><div class="toast-body">${imageHtml}<span class="toast-message">${message}</span></div></div>`;
+      container.prepend(toast);
+      const bsToast = new bootstrap.Toast(toast, { delay: 4000, autohide: true });
+      bsToast.show();
+      toast.addEventListener('hidden.bs.toast', () => toast.remove());
+    }
+
+    function updateCartBadges(count) {
+      LocalStore.updateCartBadges();
+    }
+
+    async function addToCart(productId, quantity = 1, callback = null) {
+        // تحديث التخزين المحلي
+        LocalStore.addToCart(productId, quantity);
+        LocalStore.updateCartBadges();
+        showToast('تمت الإضافة', 'success');
+
+        // إرسال إلى الخادم لتحديث الجلسة
+        try {
+            const formData = new FormData();
+            formData.append('quantity', quantity);
+            const response = await fetch(`/cart/add/${productId}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-Token': csrfToken
+                },
+                body: formData
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+                if (callback) callback(data);
+            } else {
+                console.warn('server add failed:', data.message);
+                if (callback) callback({ cart_count: Object.values(LocalStore.getCart()).reduce((a,b)=>a+b,0) });
+            }
+        } catch (err) {
+            console.error('server add error:', err);
+            if (callback) callback({ cart_count: Object.values(LocalStore.getCart()).reduce((a,b)=>a+b,0) });
+        }
+
+        return { status: 'success' };
+    }
+
+    function buyNow(productId, storeId, quantity = 1) {
+        addToCart(productId, quantity, (data) => {
+            window.location.href = `/cart/checkout/${storeId}`;
+        });
+    }
+
+    async function toggleFavoriteProduct(productId, btnElement) {
+        const productData = {
+            id: productId,
+            name: btnElement.dataset.name || '',
+            price: btnElement.dataset.price || 0,
+            image: btnElement.dataset.image || '',
+            store_id: btnElement.dataset.storeId || null,
+            store_name: btnElement.dataset.storeName || ''
+        };
+        LocalStore.toggleFavorite('product', productId, productData);
+        const icon = btnElement.querySelector('i');
+        if (icon) {
+            if (icon.classList.contains('bi-heart')) {
+                icon.classList.remove('bi-heart');
+                icon.classList.add('bi-heart-fill');
+            } else {
+                icon.classList.remove('bi-heart-fill');
+                icon.classList.add('bi-heart');
+            }
+        }
+        showToast('تم تحديث المفضلة', 'success');
+
+        // إرسال إلى الخادم
+        try {
+            const response = await fetch('/favorite/toggle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken
+                },
+                body: JSON.stringify({ type: 'product', id: productId })
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+                if (data.is_favorite) {
+                    // تأكد من الأيقونة
+                    if (icon) {
+                        icon.classList.remove('bi-heart');
+                        icon.classList.add('bi-heart-fill');
+                    }
+                } else {
+                    if (icon) {
+                        icon.classList.remove('bi-heart-fill');
+                        icon.classList.add('bi-heart');
+                    }
+                }
+                showToast(data.message || 'تم تحديث المفضلة', 'success');
+            } else {
+                // تراجع عن التغيير المحلي إذا فشل
+                LocalStore.toggleFavorite('product', productId, productData);
+                if (icon) {
+                    if (icon.classList.contains('bi-heart-fill')) {
+                        icon.classList.remove('bi-heart-fill');
+                        icon.classList.add('bi-heart');
+                    } else {
+                        icon.classList.remove('bi-heart');
+                        icon.classList.add('bi-heart-fill');
+                    }
+                }
+                showToast(data.message || 'حدث خطأ', 'error');
+            }
+        } catch (err) {
+            console.error('Favorite toggle error:', err);
+            // تراجع
+            LocalStore.toggleFavorite('product', productId, productData);
+            if (icon) {
+                if (icon.classList.contains('bi-heart-fill')) {
+                    icon.classList.remove('bi-heart-fill');
+                    icon.classList.add('bi-heart');
+                } else {
+                    icon.classList.remove('bi-heart');
+                    icon.classList.add('bi-heart-fill');
+                }
+            }
+            showToast('تعذر الاتصال بالخادم', 'error');
+        }
+    }
+
+    async function reactProduct(productId, reactionType, btnElement) {
+        try {
+            const response = await fetch(`/api/products/${productId}/reaction`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken},
+                body: JSON.stringify({ reaction_type: reactionType })
+            });
+            const data = await response.json();
+            const icon = btnElement.querySelector('i');
+            if (data.message && data.message.includes('إزالة')) {
+                icon.className = 'bi bi-heart';
+                btnElement.dataset.active = 'false';
+            } else {
+                icon.className = 'bi bi-heart-fill text-danger';
+                btnElement.dataset.active = 'true';
+            }
+        } catch (err) {
+            console.error('React error:', err);
+        }
+    }
+
+    function shareProduct(productId, productName) {
+        const url = `${window.location.origin}/product/${productId}`;
+        if (navigator.share) {
+            navigator.share({ title: productName, text: productName, url: url }).catch(() => {});
+        } else if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(() => showToast('تم نسخ الرابط', 'success'));
+        } else {
+            prompt('انسخ الرابط:', url);
+        }
+    }
+
+    const connectionIndicator = document.getElementById('connectionIndicator');
+    function updateConnectionStatus() {
+      if (connectionIndicator) {
+        if (navigator.onLine) {
+          connectionIndicator.classList.remove('show');
+        } else {
+          connectionIndicator.classList.add('show');
+        }
+      }
+    }
+    window.addEventListener('online', updateConnectionStatus);
+    window.addEventListener('offline', updateConnectionStatus);
+    updateConnectionStatus();
+
+    function requestNotificationPermission() {
+      if (!('Notification' in window)) return;
+      if (Notification.permission === 'granted') return;
+      if (Notification.permission === 'denied') return;
+      Notification.requestPermission().then(permission => {
+        if (permission === 'granted') {
+          showToast('تم تفعيل الإشعارات', 'success');
+        }
+      }).catch(() => {});
+    }
+
+    window.requestLocationPermission = function() {
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error('Geolocation not supported'));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(
+          position => resolve({ lat: position.coords.latitude, lng: position.coords.longitude }),
+          error => reject(error),
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      });
+    };
+
+    (function() {
+      const splash = document.getElementById('appSplash');
+      if (!splash) return;
+      const SPLASH_INTERVAL = 60 * 60 * 1000;
+      const lastShown = localStorage.getItem('splash_last_shown');
+      const now = Date.now();
+      if (lastShown && (now - parseInt(lastShown, 10)) < SPLASH_INTERVAL) return;
+      splash.style.display = 'flex';
+      localStorage.setItem('splash_last_shown', now.toString());
+      setTimeout(function() {
+        splash.classList.add('fade-out');
+        setTimeout(function() {
+          splash.remove();
+        }, 500);
+      }, 1500);
+    })();
+
+    document.addEventListener('DOMContentLoaded', function() {
+      document.querySelectorAll('#toastContainerTop .toast').forEach(toastEl => {
+        const toast = new bootstrap.Toast(toastEl, { delay: 4000, autohide: true });
+        toast.show();
+        toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+      });
+
+      document.querySelectorAll('form').forEach(form => {
+        if (form.method && form.method.toLowerCase() === 'post' && !form.querySelector('input[name="_csrf_token"]')) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = '_csrf_token';
+          input.value = csrfToken;
+          form.appendChild(input);
+        }
+      });
+
+      LocalStore.updateCartBadges();
+      LocalStore.updateThemeButton();
+      const themeBtn = document.getElementById('sidebarThemeToggle');
+      if (themeBtn) {
+        themeBtn.addEventListener('click', function() {
+          LocalStore.toggleTheme();
+          LocalStore.updateThemeButton();
+        });
+      }
+      const topThemeBtn = document.getElementById('topbarThemeToggle');
+      if (topThemeBtn) {
+        topThemeBtn.addEventListener('click', function() {
+          LocalStore.toggleTheme();
+          LocalStore.updateThemeButton();
+        });
+      }
+    });
+
+    let lastUnreadCount = {{ unread_notifications if unread_notifications is not none else 0 }};
+    let updateInterval = null;
+
+    function fetchUpdates() {
+      if (!navigator.onLine) return;
+      fetch('/api/updates', {headers: {'Accept': 'application/json'}})
+      .then(res => res.json())
+      .then(data => {
+        const unreadCount = data.unread_notifications || 0;
+        const unreadBadge = document.querySelector('.badge.bg-warning');
+        const dot = document.getElementById('navNotificationDot');
+        if (unreadCount > 0) {
+          if (unreadBadge) {
+            unreadBadge.textContent = unreadCount;
+            unreadBadge.style.display = 'inline';
+          }
+          if (dot) dot.style.display = 'block';
+        } else {
+          if (unreadBadge) unreadBadge.style.display = 'none';
+          if (dot) dot.style.display = 'none';
+        }
+
+        if (unreadCount > lastUnreadCount) {
+          showToast('لديك إشعار جديد', 'info');
+        }
+        lastUnreadCount = unreadCount;
+
+        if (data.new_orders_count > 0) {
+          showToast('لديك ' + data.new_orders_count + ' طلب جديد بانتظار التأكيد', 'info');
+        }
+        if (data.delivery_new_orders_count > 0) {
+          showToast('لديك ' + data.delivery_new_orders_count + ' طلب جاهز للتسليم', 'info');
+        }
+        if (data.admin_pending_subscriptions > 0) {
+          showToast('لديك ' + data.admin_pending_subscriptions + ' اشتراك معلق', 'info');
+        }
+      })
+      .catch(err => console.log('Update fetch failed', err));
+    }
+
+    function startUpdateInterval() {
+      if (updateInterval) clearInterval(updateInterval);
+      if (navigator.onLine) {
+        fetchUpdates();
+        updateInterval = setInterval(fetchUpdates, 15000);
+      }
+    }
+
+    function stopUpdateInterval() {
+      if (updateInterval) {
+        clearInterval(updateInterval);
+        updateInterval = null;
+      }
+    }
+
+    window.addEventListener('online', startUpdateInterval);
+    window.addEventListener('offline', stopUpdateInterval);
+
+    startUpdateInterval();
+
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      window.addEventListener('load', async () => {
+        try {
+          const registration = await navigator.serviceWorker.register('/sw.js');
+          console.log('Service Worker registered');
+          const existingSubscription = await registration.pushManager.getSubscription();
+          if (existingSubscription) {
+            console.log('Push subscription already exists');
+          }
+        } catch (err) {
+          console.error('Service Worker registration failed', err);
+        }
+      });
+    }
+
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    }
+
+    window.enablePushNotifications = async function() {
+      try {
+        const registration = await navigator.serviceWorker.ready;
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          const vapidResponse = await fetch('/api/notifications/push/vapid_public_key');
+          const vapidData = await vapidResponse.json();
+          const vapidPublicKey = vapidData.public_key;
+          const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+          const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: convertedVapidKey
+          });
+          await fetch('/api/notifications/push/subscribe', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRF-Token': window.csrfToken
+            },
+            body: JSON.stringify({ subscription: subscription.toJSON() })
+          });
+          showToast('تم تفعيل الإشعارات بنجاح', 'success');
+        }
+      } catch (err) {
+        console.error('Push subscription failed', err);
+      }
+    };
+  </script>
+
+  <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="confirmModalTitle">تأكيد</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+        </div>
+        <div class="modal-body">
+          <p id="confirmModalMessage">هل أنت متأكد؟</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+          <button type="button" class="btn btn-danger" id="confirmModalBtn">تأكيد</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function showConfirmModal(message, formId) {
+      const modalEl = document.getElementById('confirmModal');
+      if (!modalEl) return;
+      document.getElementById('confirmModalMessage').textContent = message;
+      const btn = document.getElementById('confirmModalBtn');
+      btn.onclick = function() {
+        const form = document.getElementById(formId);
+        if (form) {
+          form.submit();
+        }
+        bootstrap.Modal.getInstance(modalEl).hide();
+      };
+      bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+  </script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

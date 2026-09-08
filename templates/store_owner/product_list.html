@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as macros %}
+
+{% block title %}منتجات {{ store.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .stat-card {
+        border-radius: 16px;
+        border: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        transition: transform 0.2s, box-shadow 0.2s;
+        background: #fff;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    }
+    body.dark-mode .stat-card {
+        background: #1e1e1e;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        color: #fff;
+    }
+    .stat-icon {
+        font-size: 2rem;
+    }
+    .product-card {
+        border-radius: 15px;
+        border: none;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        transition: transform 0.2s, box-shadow 0.2s;
+        background: #fff;
+    }
+    .product-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    }
+    body.dark-mode .product-card {
+        background: #1e1e1e;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        color: #fff;
+    }
+    .product-image-wrapper {
+        aspect-ratio: 1 / 1;
+        overflow: hidden;
+        background: #f8f9fa;
+    }
+    body.dark-mode .product-image-wrapper {
+        background: #2d2d2d;
+    }
+    .product-image {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s;
+    }
+    .product-card:hover .product-image {
+        transform: scale(1.03);
+    }
+    .form-select:focus,
+    .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(46,93,52,0.15);
+    }
+    .btn-custom {
+        border-radius: 25px;
+        padding: 10px 20px;
+        font-weight: 600;
+        transition: background 0.2s, transform 0.2s;
+    }
+    .btn-custom:hover {
+        transform: translateY(-2px);
+        background: var(--primary-dark);
+    }
+    body.dark-mode .form-select,
+    body.dark-mode .form-control {
+        background-color: #2d2d2d;
+        border-color: #444;
+        color: #f0ede8;
+    }
+    body.dark-mode .btn-outline-secondary {
+        color: #f0ede8;
+        border-color: #555;
+    }
+    body.dark-mode .btn-outline-secondary:hover {
+        background: #3a3a3a;
+        color: #fff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4 text-center"><i class="bi bi-box-seam"></i> منتجات {{ store.name }}</h1>
+
+    <!-- إحصائيات سريعة -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-4">
+            <div class="card p-3 text-center stat-card">
+                <i class="bi bi-box-seam stat-icon text-primary"></i>
+                <h5 class="mt-2">{{ products|length }}</h5>
+                <p class="text-muted mb-0">منتج</p>
+            </div>
+        </div>
+        <div class="col-6 col-md-4">
+            <div class="card p-3 text-center stat-card">
+                <i class="bi bi-cash-stack stat-icon text-success"></i>
+                <h5 class="mt-2">{{ total_products_value|format_price }} ل.س</h5>
+                <p class="text-muted mb-0">قيمة المنتجات</p>
+            </div>
+        </div>
+        <div class="col-6 col-md-4">
+            <a href="{{ url_for('store.new_product', store_id=store.id) }}" class="btn btn-custom w-100 py-3">
+                <i class="bi bi-plus-circle"></i> إضافة منتج جديد
+            </a>
+        </div>
+    </div>
+
+    <!-- شريط البحث والتصفية -->
+    <form method="get" class="mb-4 d-flex flex-wrap gap-2">
+        <select name="category_id" class="form-select status-select" style="max-width:200px;">
+            <option value="">جميع التصنيفات</option>
+            {% for category in categories %}
+                <option value="{{ category.id }}" {% if selected_category == category.id %}selected{% endif %}>
+                    {{ category.name }}
+                </option>
+            {% endfor %}
+        </select>
+        <input type="text" name="q" value="{{ q }}" class="form-control search-input flex-grow-1" placeholder="بحث باسم المنتج..." style="min-width:200px;">
+        <button type="submit" class="btn btn-outline-secondary">بحث</button>
+    </form>
+
+    {% if products %}
+        <div class="row g-3">
+            {% for product in products %}
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="card h-100 product-card">
+                    <a href="{{ url_for('store.edit_product', store_id=store.id, product_id=product.id) }}" class="text-decoration-none text-dark">
+                        <div class="position-relative product-image-wrapper">
+                            {{ macros.render_image(product.images.split(',')[0] if product.images else '', product.name, 'product-image') }}
+                            <span class="badge
+                                {% if product.stock_quantity <= 5 %}bg-danger
+                                {% elif product.stock_quantity <= 10 %}bg-warning text-dark
+                                {% else %}bg-success{% endif %} position-absolute top-0 start-0 m-2">
+                                {% if product.stock_quantity <= 5 %}مخزون منخفض
+                                {% elif product.stock_quantity <= 10 %}مخزون متوسط
+                                {% else %}متوفر{% endif %}
+                            </span>
+                        </div>
+                        <div class="card-body text-center p-2">
+                            <h6 class="card-title mb-1">{{ product.name }}</h6>
+                            <p class="text-success fw-bold mb-1 price">{{ product.price|format_price }} ل.س</p>
+                            <p class="text-muted small mb-2">{{ product.category.name if product.category else 'بدون تصنيف' }}</p>
+                        </div>
+                    </a>
+                    <div class="card-footer d-flex justify-content-center gap-1 p-2 bg-transparent border-0">
+                        <a href="{{ url_for('store.edit_product', store_id=store.id, product_id=product.id) }}" class="btn btn-sm btn-outline-secondary">تعديل</a>
+                        <form action="{{ url_for('store.delete_product', store_id=store.id, product_id=product.id) }}" method="post" class="d-inline">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('هل أنت متأكد من حذف هذا المنتج؟')">حذف</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        {{ macros.render_empty_state('bi-box', 'لا توجد منتجات مطابقة.', url_for('store.new_product', store_id=store.id), 'إضافة منتج') }}
+    {% endif %}
+
+    <div class="text-center mt-4">
+        <a href="{{ url_for('store.store_manage', store_id=store.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-right"></i> عودة لإدارة المتجر
+        </a>
+    </div>
+</div>
+{% endblock %}

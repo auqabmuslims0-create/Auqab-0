@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+
+{% block title %}تصنيفات {{ store.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .category-tree-card {
+        border-radius: 20px;
+        border: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        background: #fff;
+        overflow: hidden;
+    }
+    body.dark-mode .category-tree-card {
+        background: #1e1e1e;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        color: #fff;
+    }
+    .category-row {
+        display: flex;
+        align-items: center;
+        padding: 12px 16px;
+        border-bottom: 1px solid #f0f0f0;
+        gap: 10px;
+        transition: background 0.2s;
+    }
+    .category-row:hover {
+        background: rgba(46,93,52,0.03);
+    }
+    body.dark-mode .category-row {
+        border-bottom-color: #333;
+    }
+    body.dark-mode .category-row:hover {
+        background: rgba(201,162,39,0.05);
+    }
+    .category-row.parent {
+        background: #f8f9fa;
+        border-right: 4px solid var(--primary);
+    }
+    body.dark-mode .category-row.parent {
+        background: #252525;
+        border-right-color: var(--accent);
+    }
+    .category-row.child {
+        padding-right: 45px;
+        position: relative;
+    }
+    .category-row.child::before {
+        content: '';
+        position: absolute;
+        right: 25px;
+        top: -1px;
+        bottom: 50%;
+        width: 2px;
+        background: #ddd;
+    }
+    .category-row.child::after {
+        content: '';
+        position: absolute;
+        right: 25px;
+        top: 50%;
+        width: 15px;
+        height: 2px;
+        background: #ddd;
+    }
+    body.dark-mode .category-row.child::before,
+    body.dark-mode .category-row.child::after {
+        background: #555;
+    }
+    .tree-indicator {
+        width: 20px;
+        text-align: center;
+        color: #adb5bd;
+        flex-shrink: 0;
+    }
+    .category-icon {
+        font-size: 1.4rem;
+        color: var(--primary);
+        flex-shrink: 0;
+    }
+    body.dark-mode .category-icon {
+        color: var(--accent);
+    }
+    .category-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .category-name {
+        font-weight: 700;
+        margin-bottom: 0;
+    }
+    .category-row.child .category-name {
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+    .product-count {
+        font-size: 0.8rem;
+        color: #6c757d;
+        white-space: nowrap;
+    }
+    body.dark-mode .product-count {
+        color: #adb5bd;
+    }
+    .btn-action {
+        border-radius: 20px;
+        font-size: 0.8rem;
+        padding: 4px 12px;
+        white-space: nowrap;
+    }
+    .empty-tree {
+        text-align: center;
+        padding: 50px 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4 text-center"><i class="bi bi-diagram-3"></i> تصنيفات {{ store.name }}</h1>
+
+    <div class="d-flex justify-content-end mb-4">
+        <a href="{{ url_for('store.new_category', store_id=store.id) }}" class="btn btn-custom">
+            <i class="bi bi-plus-circle"></i> إضافة تصنيف جديد
+        </a>
+    </div>
+
+    {% if categories %}
+    <div class="card category-tree-card">
+        <div class="card-header bg-transparent border-0 pt-3 pb-0">
+            <h5 class="mb-0"><i class="bi bi-diagram-2"></i> الشجرة التصنيفية</h5>
+        </div>
+        <div class="card-body p-0">
+            {# عرض التصنيفات الرئيسية أولاً ثم الفرعية #}
+            {% for category in categories %}
+                {% if not category.parent %}
+                    <!-- صف التصنيف الرئيسي -->
+                    <div class="category-row parent">
+                        <span class="tree-indicator"><i class="bi bi-folder2-open"></i></span>
+                        <div class="category-info">
+                            <span class="category-name">{{ category.name }}</span>
+                        </div>
+                        <span class="product-count">{{ category.products|length }} منتج</span>
+                        <a href="{{ url_for('store.edit_category', store_id=store.id, category_id=category.id) }}" class="btn btn-sm btn-outline-secondary btn-action">
+                            <i class="bi bi-pencil"></i> تعديل
+                        </a>
+                        <form method="post" action="{{ url_for('store.delete_category', store_id=store.id, category_id=category.id) }}" class="d-inline">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger btn-action" onclick="return confirm('هل أنت متأكد من حذف هذا التصنيف؟')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+
+                    {# عرض التصنيفات الفرعية التابعة لهذا التصنيف #}
+                    {% for child in categories %}
+                        {% if child.parent_id == category.id %}
+                            <div class="category-row child">
+                                <span class="tree-indicator"><i class="bi bi-arrow-return-left"></i></span>
+                                <div class="category-info">
+                                    <span class="category-name">{{ child.name }}</span>
+                                </div>
+                                <span class="product-count">{{ child.products|length }} منتج</span>
+                                <a href="{{ url_for('store.edit_category', store_id=store.id, category_id=child.id) }}" class="btn btn-sm btn-outline-secondary btn-action">
+                                    <i class="bi bi-pencil"></i> تعديل
+                                </a>
+                                <form method="post" action="{{ url_for('store.delete_category', store_id=store.id, category_id=child.id) }}" class="d-inline">
+                                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger btn-action" onclick="return confirm('هل أنت متأكد من حذف هذا التصنيف؟')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+    {% else %}
+        <div class="card category-tree-card">
+            <div class="empty-tree">
+                <i class="bi bi-folder" style="font-size:4rem; color:#ccc;"></i>
+                <p class="mt-3">لا توجد تصنيفات بعد.</p>
+                <a href="{{ url_for('store.new_category', store_id=store.id) }}" class="btn btn-custom">
+                    <i class="bi bi-plus-circle"></i> إضافة تصنيف
+                </a>
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="text-center mt-4">
+        <a href="{{ url_for('store.store_manage', store_id=store.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-right"></i> عودة لإدارة المتجر
+        </a>
+    </div>
+</div>
+{% endblock %}

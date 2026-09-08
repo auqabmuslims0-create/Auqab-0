@@ -1,0 +1,359 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as macros %}
+
+{% block title %}طلباتي{% endblock %}
+
+{% block head %}
+<style>
+    .order-card {
+        border: none;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        background: #fff;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .order-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    }
+    body.dark-mode .order-card {
+        background: #1e1e1e;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        color: #fff;
+    }
+    .order-accordion-button {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        padding: 0.9rem 1rem;
+        font-weight: 600;
+        color: var(--text-light);
+        width: 100%;
+        text-align: right;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    body.dark-mode .order-accordion-button {
+        color: #fff;
+    }
+    .order-accordion-button:not(.collapsed) {
+        background: rgba(46, 93, 52, 0.05);
+        color: var(--primary-dark);
+    }
+    body.dark-mode .order-accordion-button:not(.collapsed) {
+        background: rgba(201, 162, 39, 0.1);
+        color: var(--accent);
+    }
+    .order-item-thumb {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid #e0e0e0;
+    }
+    body.dark-mode .order-item-thumb {
+        border-color: #444;
+    }
+    .step-circle {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: #e0e0e0;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        margin: 0 auto;
+        transition: background 0.3s, color 0.3s;
+    }
+    .step.active .step-circle {
+        background: var(--primary);
+        color: #fff;
+        box-shadow: 0 0 0 4px rgba(46, 93, 52, 0.15);
+    }
+    .step-label {
+        font-size: 0.7rem;
+        margin-top: 5px;
+        color: #6c757d;
+        white-space: nowrap;
+        text-align: center;
+    }
+    .step.active .step-label {
+        color: var(--primary);
+        font-weight: 600;
+    }
+    body.dark-mode .step-circle {
+        background: #444;
+        color: #aaa;
+    }
+    body.dark-mode .step.active .step-circle {
+        background: var(--accent);
+        color: #000;
+        box-shadow: 0 0 0 4px rgba(201, 162, 39, 0.2);
+    }
+    body.dark-mode .step-label {
+        color: #adb5bd;
+    }
+    body.dark-mode .step.active .step-label {
+        color: var(--accent);
+    }
+    .order-progress {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        direction: rtl;
+        position: relative;
+        margin-bottom: 20px;
+    }
+    .order-progress .step {
+        flex: 1;
+        min-width: 0;
+        position: relative;
+        z-index: 2;
+    }
+    .order-progress .step:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        top: 16px;
+        right: 50%;
+        width: 100%;
+        height: 2px;
+        background: #e0e0e0;
+        z-index: 1;
+    }
+    .order-progress .step.active:not(:last-child)::after {
+        background: var(--primary);
+    }
+    body.dark-mode .order-progress .step:not(:last-child)::after {
+        background: #555;
+    }
+    body.dark-mode .order-progress .step.active:not(:last-child)::after {
+        background: var(--accent);
+    }
+    .qr-code-section {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 15px;
+    }
+    body.dark-mode .qr-code-section {
+        background: #2d2d2d;
+    }
+    .delivery-note {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85rem;
+        color: #856404;
+        background: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 20px;
+        padding: 6px 14px;
+        font-weight: 500;
+        margin-top: 6px;
+    }
+    .delivery-note i {
+        color: #f0ad4e;
+        font-size: 1rem;
+    }
+    body.dark-mode .delivery-note {
+        color: #ffe69c;
+        background: #3e2e00;
+        border-color: #8a6d3b;
+    }
+    body.dark-mode .delivery-note i {
+        color: #ffc107;
+    }
+    .btn-delete-order {
+        border-radius: 20px;
+        padding: 5px 15px;
+        font-size: 0.8rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4 text-center"><i class="bi bi-receipt"></i> طلباتي</h1>
+
+    {% if orders %}
+    <div class="accordion" id="ordersAccordion">
+        {% for order in orders %}
+        <div class="accordion-item mb-3 border-0 rounded shadow-sm order-card">
+            <h2 class="accordion-header" id="heading{{ order.id }}">
+                <button class="accordion-button collapsed order-accordion-button" type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#collapse{{ order.id }}"
+                        aria-expanded="false"
+                        aria-controls="collapse{{ order.id }}">
+                    <span>
+                        {% if order.items %}
+                            {% set first_item = order.items[0] %}
+                            {% if first_item.product and first_item.product.images %}
+                                {% set first_image = first_item.product.images.split(',')[0].strip() %}
+                                <img src="{{ first_image | get_image_url }}"
+                                     alt="{{ first_item.product.name }}"
+                                     class="order-item-thumb"
+                                     loading="lazy">
+                            {% else %}
+                                <span class="badge bg-secondary">لا صورة</span>
+                            {% endif %}
+                        {% endif %}
+                    </span>
+                    <span class="fw-bold">طلب رقم {{ order.id }}</span>
+                    {{ macros.render_order_status(order.status) }}
+                </button>
+            </h2>
+
+            <div id="collapse{{ order.id }}"
+                 class="accordion-collapse collapse"
+                 aria-labelledby="heading{{ order.id }}"
+                 data-bs-parent="#ordersAccordion">
+                <div class="accordion-body">
+                    <!-- شريط التقدم -->
+                    <div class="order-progress">
+                        {% set steps = [
+                            ('new', 'جديد', 'bi-bag-plus'),
+                            ('confirmed', 'مؤكد', 'bi-check-circle'),
+                            ('preparing', 'قيد التجهيز', 'bi-box-seam'),
+                            ('ready', 'جاهز للتسليم', 'bi-check-circle-fill'),
+                            ('delivering', 'قيد التسليم', 'bi-truck'),
+                            ('delivered', 'تم التسليم', 'bi-house-check')
+                        ] %}
+                        {% set current_index = namespace(value=0) %}
+                        {% for status, label, icon in steps %}
+                            {% if order.status == status %}
+                                {% set current_index.value = loop.index0 %}
+                            {% endif %}
+                        {% endfor %}
+
+                        {% for status, label, icon in steps %}
+                            <div class="step {% if loop.index0 <= current_index.value %}active{% endif %}">
+                                <div class="step-circle">
+                                    <i class="bi {{ icon }}"></i>
+                                </div>
+                                <span class="step-label">{{ label }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6 mb-2">
+                            <strong><i class="bi bi-shop"></i> المتجر:</strong> {{ order.store.name }}
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <strong><i class="bi bi-calendar"></i> التاريخ:</strong> {{ order.created_at.strftime('%Y-%m-%d %H:%M') }}
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <strong><i class="bi bi-cash"></i> الإجمالي:</strong> {{ order.total|format_price }} ل.س
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <strong><i class="bi bi-truck"></i> رسوم التوصيل:</strong> {{ order.delivery_fee|format_price }} ل.س
+                        </div>
+                        <div class="col-md-6 mb-2">
+                            <strong><i class="bi bi-geo-alt"></i> عنوان التوصيل:</strong> {{ order.delivery_address or 'استلام من المتجر' }}
+                        </div>
+                        {% if order.delivery_person %}
+                        <div class="col-md-6 mb-2">
+                            <strong><i class="bi bi-person-badge"></i> المندوب:</strong> {{ order.delivery_person.username }}
+                            {% if order.delivery_person.phone %}
+                                <a href="tel:{{ order.delivery_person.phone }}" class="ms-2"><i class="bi bi-telephone"></i></a>
+                            {% endif %}
+                            <div class="delivery-note">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                <span>سيصلك مندوبنا خلال ساعة أو أقل</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if order.delivery_code and order.status in ['ready', 'delivering'] %}
+                    <div class="text-center mt-3 mb-3 qr-code-section">
+                        <p class="fw-bold">رمز التسليم (QR)</p>
+                        <div id="qrcode-{{ order.id }}" class="d-inline-block"></div>
+                    </div>
+                    {% endif %}
+
+                    <h6 class="fw-bold">المنتجات:</h6>
+                    {% if order.items %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>المنتج</th>
+                                        <th>الكمية</th>
+                                        <th>السعر</th>
+                                        <th>الخيارات</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in order.items %}
+                                    <tr>
+                                        <td>{{ item.product.name if item.product else 'منتج محذوف' }}</td>
+                                        <td>{{ item.quantity }}</td>
+                                        <td>{{ item.price|format_price }} ل.س</td>
+                                        <td>{{ item.options_selected or '-' }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">لا توجد عناصر في هذا الطلب.</p>
+                    {% endif %}
+
+                    <!-- أزرار الإجراءات -->
+                    <div class="mt-3 d-flex flex-wrap gap-2">
+                        {% if order.status == 'new' %}
+                        <form action="{{ url_for('cart.cancel_order', order_id=order.id) }}" method="post"
+                              onsubmit="return confirm('هل تريد إلغاء هذا الطلب؟')">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-x-circle"></i> إلغاء الطلب
+                            </button>
+                        </form>
+                        {% endif %}
+
+                        {% if order.status in ['delivered', 'cancelled'] %}
+                        <form action="{{ url_for('cart.delete_order', order_id=order.id) }}" method="post"
+                              onsubmit="return confirm('هل تريد حذف هذا الطلب نهائيًا؟')">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger btn-delete-order">
+                                <i class="bi bi-trash"></i> حذف الطلب
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+        <div class="text-center py-5 empty-state">
+            <i class="bi bi-inbox display-1 text-muted"></i>
+            <p class="mt-3">لا توجد طلبات بعد.</p>
+            <a href="{{ url_for('market.market') }}" class="btn btn-custom">ابدأ التسوق</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/qrcodejs/qrcode.min.js') }}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        {% for order in orders %}
+            {% if order.delivery_code and order.status in ['ready', 'delivering'] %}
+            new QRCode(document.getElementById("qrcode-{{ order.id }}"), {
+                text: "{{ order.delivery_code }}",
+                width: 120,
+                height: 120
+            });
+            {% endif %}
+        {% endfor %}
+    });
+</script>
+{% endblock %}

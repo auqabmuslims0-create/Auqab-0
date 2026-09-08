@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block title %}لوحة المدير{% endblock %}
+
+{% block head %}
+<style>
+    .page-header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 25px;
+    }
+    .page-header h1 {
+        font-size: 1.7rem;
+        font-weight: 800;
+        margin: 0;
+    }
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 12px;
+    }
+    .stat-card {
+        background: #fff;
+        border: 1px solid #eaeaea;
+        border-radius: 18px;
+        padding: 18px 12px;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 28px rgba(0,0,0,0.1);
+        border-color: transparent;
+        color: inherit;
+    }
+    body.dark-mode .stat-card {
+        background: #1e1e1e;
+        border-color: #333;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        color: #fff;
+    }
+    .stat-icon {
+        font-size: 2rem;
+        margin-bottom: 8px;
+        display: block;
+    }
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 800;
+        line-height: 1.2;
+        margin-bottom: 4px;
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin: 0;
+    }
+    body.dark-mode .stat-label {
+        color: #adb5bd;
+    }
+    .alert-warning {
+        border-radius: 15px;
+        border: none;
+        background: #fff3cd;
+        color: #856404;
+    }
+    body.dark-mode .alert-warning {
+        background: #3e2e00;
+        color: #ffe69c;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="page-header">
+        <h1><i class="bi bi-speedometer2"></i> لوحة المدير</h1>
+        <span class="badge bg-dark text-white rounded-pill px-3 py-2">نظرة عامة</span>
+    </div>
+
+    <!-- بطاقات إحصائية -->
+    <div class="stats-grid">
+        <a href="{{ url_for('admin.admin_users') }}" class="stat-card">
+            <i class="bi bi-people stat-icon text-success"></i>
+            <div class="stat-value">{{ total_users }}</div>
+            <p class="stat-label">المستخدمين</p>
+        </a>
+
+        <a href="{{ url_for('admin.admin_stores') }}" class="stat-card">
+            <i class="bi bi-shop-window stat-icon text-primary"></i>
+            <div class="stat-value">{{ total_stores }}</div>
+            <p class="stat-label">المتاجر</p>
+        </a>
+
+        <a href="{{ url_for('admin.admin_orders') }}" class="stat-card">
+            <i class="bi bi-receipt stat-icon text-warning"></i>
+            <div class="stat-value">{{ total_orders }}</div>
+            <p class="stat-label">الطلبات</p>
+        </a>
+
+        <a href="{{ url_for('admin.admin_subscriptions') }}" class="stat-card">
+            <i class="bi bi-clock-history stat-icon text-danger"></i>
+            <div class="stat-value">{{ pending_subscriptions }}</div>
+            <p class="stat-label">اشتراكات معلقة</p>
+        </a>
+
+        <a href="{{ url_for('admin.admin_delivery_persons') }}" class="stat-card">
+            <i class="bi bi-truck stat-icon text-info"></i>
+            <div class="stat-value">{{ delivery_persons_count }}</div>
+            <p class="stat-label">المناديب</p>
+        </a>
+
+        <a href="{{ url_for('admin.admin_finance') }}" class="stat-card">
+            <i class="bi bi-cash stat-icon text-success"></i>
+            <div class="stat-value">{{ delivery_fee_total|format_price }} <small>ل.س</small></div>
+            <p class="stat-label">رسوم التوصيل</p>
+        </a>
+
+        <a href="{{ url_for('admin.admin_finance') }}" class="stat-card">
+            <i class="bi bi-graph-up stat-icon text-secondary"></i>
+            <div class="stat-value">{{ total_paid_payments|format_price }}</div>
+            <p class="stat-label">المدفوعات المكتملة</p>
+        </a>
+
+        <a href="{{ url_for('admin.admin_payments') }}" class="stat-card">
+            <i class="bi bi-cash-stack stat-icon text-primary"></i>
+            <div class="stat-value">{{ pending_payments_count }}</div>
+            <p class="stat-label">مدفوعات معلقة</p>
+        </a>
+
+        <a href="{{ url_for('admin.admin_settings') }}" class="stat-card">
+            <i class="bi bi-gear stat-icon text-warning"></i>
+            <div class="stat-value">—</div>
+            <p class="stat-label">الإعدادات</p>
+        </a>
+
+        <a href="{{ url_for('admin.admin_chats') }}" class="stat-card">
+            <i class="bi bi-chat-dots stat-icon text-success"></i>
+            <div class="stat-value">—</div>
+            <p class="stat-label">المحادثات</p>
+        </a>
+    </div>
+
+    <!-- تنبيهات سريعة -->
+    {% if pending_subscriptions > 0 %}
+    <div class="alert alert-warning mt-4 d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <span><i class="bi bi-exclamation-triangle"></i> لديك <strong>{{ pending_subscriptions }}</strong> اشتراك معلق بانتظار المراجعة.</span>
+        <a href="{{ url_for('admin.admin_subscriptions') }}" class="btn btn-sm btn-warning">مراجعة الآن</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

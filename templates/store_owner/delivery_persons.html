@@ -1,0 +1,323 @@
+{% extends 'base.html' %}
+
+{% block title %}فريق التوصيل - {{ store.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .page-header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 25px;
+    }
+    .page-header h1 {
+        font-size: 1.6rem;
+        font-weight: 800;
+        margin: 0;
+    }
+    .search-wrap {
+        position: relative;
+        flex: 1;
+        max-width: 300px;
+        min-width: 200px;
+    }
+    .search-wrap .form-control {
+        border-radius: 25px;
+        padding-right: 38px;
+        border: 1px solid #e0e0e0;
+        background: #fff;
+        transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    .search-wrap .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(46,93,52,0.15);
+    }
+    .search-icon {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        color: #6c757d;
+        pointer-events: none;
+    }
+    body.dark-mode .search-wrap .form-control {
+        background: #2d2d2d;
+        border-color: #444;
+        color: #fff;
+    }
+    body.dark-mode .search-icon {
+        color: #adb5bd;
+    }
+
+    .delivery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 15px;
+    }
+    .delivery-card {
+        background: #fff;
+        border-radius: 20px;
+        border: 1px solid #e0e0e0;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        overflow: hidden;
+        transition: transform 0.25s, box-shadow 0.25s, border-color 0.25s;
+        display: flex;
+        flex-direction: column;
+    }
+    .delivery-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 28px rgba(0,0,0,0.1);
+        border-color: transparent;
+    }
+    body.dark-mode .delivery-card {
+        background: #1e1e1e;
+        border-color: #333;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .delivery-card-top {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 15px;
+        cursor: pointer;
+        user-select: none;
+    }
+    .delivery-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.6rem;
+        flex-shrink: 0;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    body.dark-mode .delivery-avatar {
+        background: linear-gradient(135deg, var(--accent), #b8941f);
+        color: #000;
+    }
+    .delivery-info {
+        flex: 1;
+        min-width: 0;
+    }
+    .delivery-name {
+        font-weight: 700;
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .delivery-phone {
+        font-size: 0.8rem;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    body.dark-mode .delivery-phone {
+        color: #adb5bd;
+    }
+    .status-badge {
+        font-size: 0.7rem;
+        padding: 0.3rem 0.7rem;
+        border-radius: 20px;
+        font-weight: 600;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    .delivery-card-body {
+        padding: 15px;
+        border-top: 1px solid #f0f0f0;
+        background: #fafafa;
+        flex-grow: 1;
+    }
+    body.dark-mode .delivery-card-body {
+        border-top-color: #333;
+        background: #252525;
+    }
+    .detail-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        font-size: 0.85rem;
+        color: #333;
+    }
+    body.dark-mode .detail-row {
+        color: #ddd;
+    }
+    .detail-row i {
+        width: 22px;
+        text-align: center;
+        color: var(--primary);
+        font-size: 1rem;
+    }
+    body.dark-mode .detail-row i {
+        color: var(--accent);
+    }
+    .card-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 12px;
+    }
+    .btn-soft {
+        border-radius: 20px;
+        padding: 7px 14px;
+        font-size: 0.8rem;
+        font-weight: 500;
+        transition: background 0.2s, color 0.2s, border-color 0.2s;
+        flex: 1;
+    }
+    .btn-edit {
+        background: #e9ecef;
+        border: 1px solid #ced4da;
+        color: #495057;
+    }
+    .btn-edit:hover {
+        background: #ced4da;
+        color: #000;
+    }
+    .btn-delete {
+        background: #f8d7da;
+        border: 1px solid #f5c2c7;
+        color: #dc3545;
+    }
+    .btn-delete:hover {
+        background: #dc3545;
+        border-color: #dc3545;
+        color: #fff;
+    }
+    body.dark-mode .btn-edit {
+        background: #3a3a3a;
+        border-color: #555;
+        color: #ddd;
+    }
+    body.dark-mode .btn-edit:hover {
+        background: #555;
+        color: #fff;
+    }
+    body.dark-mode .btn-delete {
+        background: #3e1a1d;
+        border-color: #5c2b2f;
+        color: #ff6b7a;
+    }
+    body.dark-mode .btn-delete:hover {
+        background: #dc3545;
+        color: #fff;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="page-header">
+        <h1><i class="bi bi-truck"></i> فريق التوصيل</h1>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <div class="search-wrap">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" id="searchInput" class="form-control" placeholder="ابحث عن مندوب..." autocomplete="off">
+            </div>
+            <a href="{{ url_for('admin.admin_delivery_person_new') }}" class="btn btn-custom">
+                <i class="bi bi-plus-circle"></i> إضافة مندوب
+            </a>
+        </div>
+    </div>
+
+    {% if persons %}
+    <div class="delivery-grid" id="deliveryGrid">
+        {% for person in persons %}
+        <div class="delivery-card" data-search="{{ person.username }} {{ person.phone or '' }}">
+            <div class="delivery-card-top" data-bs-toggle="collapse" data-bs-target="#collapse{{ person.id }}" aria-expanded="false">
+                <div class="delivery-avatar">
+                    <i class="bi bi-person"></i>
+                </div>
+                <div class="delivery-info">
+                    <div class="delivery-name">{{ person.username }}</div>
+                    {% if person.phone %}
+                    <div class="delivery-phone"><i class="bi bi-telephone"></i> {{ person.phone }}</div>
+                    {% endif %}
+                </div>
+                {% if person.is_active %}
+                    <span class="status-badge bg-success text-white">نشط</span>
+                {% else %}
+                    <span class="status-badge bg-danger text-white">محظور</span>
+                {% endif %}
+            </div>
+
+            <div id="collapse{{ person.id }}" class="collapse">
+                <div class="delivery-card-body">
+                    <div class="detail-row">
+                        <i class="bi bi-clock-history"></i>
+                        <span><strong>الوردية:</strong> 
+                            {% if person.shift_start_time and person.shift_end_time %}
+                                {{ person.shift_start_time.strftime('%H:%M') }} - {{ person.shift_end_time.strftime('%H:%M') }}
+                            {% else %}
+                                غير محددة
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="detail-row">
+                        <i class="bi bi-list-check"></i>
+                        <span><strong>الحد الأقصى للطلبات:</strong> {{ person.max_active_orders if person.max_active_orders else 'غير محدد' }}</span>
+                    </div>
+                    <div class="detail-row">
+                        <i class="bi bi-truck"></i>
+                        <span><strong>الطلبات النشطة:</strong> {{ person.active_orders_count if person.active_orders_count is defined else 0 }}</span>
+                    </div>
+                    <div class="card-actions">
+                        <a href="{{ url_for('admin.admin_delivery_person_edit', user_id=person.id) }}" class="btn btn-soft btn-edit">
+                            <i class="bi bi-pencil"></i> تعديل
+                        </a>
+                        <form action="{{ url_for('admin.admin_delivery_person_delete', user_id=person.id) }}" method="post"
+                              onsubmit="return confirm('هل أنت متأكد من حذف هذا المندوب؟')" class="flex-fill">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-soft btn-delete w-100">
+                                <i class="bi bi-trash"></i> حذف
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="bi bi-truck display-1 text-muted"></i>
+        <p class="mt-3">لا يوجد مندوبون.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    const cards = document.querySelectorAll('.delivery-card');
+
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim().toLowerCase();
+            cards.forEach(card => {
+                const searchText = card.dataset.search.toLowerCase();
+                if (query === '' || searchText.includes(query)) {
+                    card.style.display = '';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

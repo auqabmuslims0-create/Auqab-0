@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as macros %}
+
+{% block title %}العروض والتخفيضات{% endblock %}
+
+{% block head %}
+<style>
+    .offers-hero {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(135deg, #fff5f5, #ffe8e8);
+        border-radius: 20px;
+        padding: 16px 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    body.dark-mode .offers-hero {
+        background: linear-gradient(135deg, #2d1a1a, #1e1e1e);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .offers-hero-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        color: #fff;
+        background: linear-gradient(135deg, #dc3545, #b02a37);
+        flex-shrink: 0;
+    }
+    .offers-count {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+        border-radius: 25px;
+    }
+    .filter-bar {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    body.dark-mode .filter-bar {
+        background: #252525;
+    }
+    .offers-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 15px;
+    }
+    @media (max-width: 480px) {
+        .offers-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+    }
+    .product-card-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="offers-hero">
+        <div class="d-flex align-items-center gap-3">
+            <div class="offers-hero-icon">
+                <i class="bi bi-tags-fill"></i>
+            </div>
+            <div>
+                <h4 class="fw-bold mb-1">العروض والتخفيضات</h4>
+                <p class="text-muted mb-0 small">اغتنم أفضل العروض من متاجرنا النشطة</p>
+            </div>
+        </div>
+        <span class="badge bg-danger offers-count">{{ pagination.total }} عرض</span>
+    </div>
+
+    <div class="filter-bar">
+        <form method="GET" action="{{ url_for('offers.offers_page') }}" class="row g-2 align-items-end">
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold">بحث</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" value="{{ q or '' }}" class="form-control" placeholder="ابحث في العروض...">
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small fw-bold">التصنيف</label>
+                <select name="category_id" class="form-select">
+                    <option value="">كل التصنيفات</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if selected_category == cat.id %}selected{% endif %}>{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-6 col-md-3">
+                <label class="form-label small fw-bold">المتجر</label>
+                <select name="store_id" class="form-select">
+                    <option value="">كل المتاجر</option>
+                    {% for store in stores %}
+                    <option value="{{ store.id }}" {% if selected_store == store.id %}selected{% endif %}>{{ store.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12 col-md-2 d-grid">
+                <button type="submit" class="btn btn-custom"><i class="bi bi-funnel"></i> تصفية</button>
+            </div>
+        </form>
+    </div>
+
+    {% if products %}
+    <div class="offers-grid">
+        {% for product in products %}
+            {{ macros.render_product_card(product, None, None, show_add_to_cart=True) }}
+        {% endfor %}
+    </div>
+    {% else %}
+        {{ macros.render_empty_state('bi-tags', 'لا توجد عروض حالياً', url_for('offers.offers_page'), 'تحديث') }}
+    {% endif %}
+
+    {{ macros.render_pagination(pagination, 'offers.offers_page', {'q': q, 'category_id': selected_category, 'store_id': selected_store}) }}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    if (navigator.onLine && typeof OfflineDB !== 'undefined') {
+        const productsData = [
+            {% for product in products %}
+            {
+                id: {{ product.id }},
+                name: {{ product.name | tojson }},
+                price: {{ product.price }},
+                original_price: {{ product.original_price or 'null' }},
+                is_offer: {{ product.is_offer | lower }},
+                stock_quantity: {{ product.stock_quantity }},
+                main_image: {{ product.main_image | tojson if product.main_image else '""' }},
+                description: {{ product.description | tojson if product.description else '""' }},
+                store_id: {{ product.store.id if product.store else 'null' }},
+                store_name: {{ product.store.name | tojson if product.store and product.store.name else '""' }},
+                store_logo: {{ product.store.logo_url | tojson if product.store and product.store.logo_url else '""' }}
+            }{{ ',' if not loop.last }}
+            {% endfor %}
+        ];
+
+        const storesData = [
+            {% for store in stores %}
+            {
+                id: {{ store.id }},
+                name: {{ store.name | tojson }},
+                description: {{ store.description | tojson if store.description else '""' }},
+                logo_url: {{ store.logo_url | tojson if store.logo_url else '""' }},
+                phone: {{ store.phone | tojson if store.phone else '""' }},
+                address: {{ store.address | tojson if store.address else '""' }},
+                working_hours: {{ store.working_hours | tojson if store.working_hours else '""' }},
+                subscription_status: {{ store.subscription_status | tojson if store.subscription_status else '""' }},
+                is_open: false
+            }{{ ',' if not loop.last }}
+            {% endfor %}
+        ];
+
+        if (productsData.length) {
+            OfflineDB.saveProducts(productsData).catch(err => console.warn('OfflineDB saveProducts failed:', err));
+        }
+        if (storesData.length) {
+            OfflineDB.saveStores(storesData).catch(err => console.warn('OfflineDB saveStores failed:', err));
+        }
+    }
+});
+</script>
+{% endblock %}

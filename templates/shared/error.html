@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}خطأ {{ code }}{% endblock %}
+
+{% block head %}
+<style>
+    .error-page {
+        min-height: 70vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+    }
+    .error-icon-wrapper {
+        width: 110px;
+        height: 110px;
+        border-radius: 50%;
+        background: rgba(220,53,69,0.1);
+        color: #dc3545;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3.5rem;
+        margin: 0 auto;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    body.dark-mode .error-icon-wrapper {
+        background: rgba(220,53,69,0.2);
+        color: #ff6b7a;
+    }
+    .error-code {
+        font-size: 4rem;
+        font-weight: 900;
+        color: #dc3545;
+        margin-bottom: 10px;
+        letter-spacing: 2px;
+        line-height: 1.2;
+    }
+    body.dark-mode .error-code {
+        color: #ff6b7a;
+    }
+    .error-message {
+        font-size: 1.2rem;
+        color: #6c757d;
+        margin-bottom: 25px;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    body.dark-mode .error-message {
+        color: #adb5bd;
+    }
+    .btn-back {
+        border-radius: 25px;
+        padding: 10px 25px;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="error-page">
+        <div class="error-icon-wrapper">
+            {% if code == 403 %}
+                <i class="bi bi-shield-lock"></i>
+            {% elif code == 404 %}
+                <i class="bi bi-search"></i>
+            {% else %}
+                <i class="bi bi-exclamation-triangle"></i>
+            {% endif %}
+        </div>
+
+        <h1 class="error-code">{{ code }}</h1>
+        <p class="error-message">{{ message }}</p>
+
+        {% if current_user %}
+            {% if current_user.role == 'admin' %}
+                {% set dashboard_url = url_for('admin.admin_dashboard') %}
+            {% elif current_user.role == 'owner' %}
+                {% set dashboard_url = url_for('store.my_stores') %}
+            {% elif current_user.role == 'delivery' %}
+                {% set dashboard_url = url_for('delivery.delivery_dashboard') %}
+            {% else %}
+                {% set dashboard_url = url_for('market.market') %}
+            {% endif %}
+        {% else %}
+            {% set dashboard_url = url_for('auth.login') %}
+        {% endif %}
+
+        <a href="{{ dashboard_url }}" class="btn btn-custom btn-back">
+            <i class="bi bi-house"></i> العودة للرئيسية
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,47 @@
+:root {
+    /* الألوان الأساسية */
+    --primary: #2e5d34;
+    --primary-dark: #224527;
+    --primary-light: #3e7a44;
+    --accent: #d4af37;
+
+    /* الخلفيات */
+    --bg-light: #f7f4ef;
+    --bg-dark: #121212;
+    --card-light: #ffffff;
+    --card-dark: #2a2a2a;
+
+    /* النصوص */
+    --text-light: #2d2d2d;
+    --text-dark: #ffffff;
+    --muted-light: #6c757d;
+    --muted-dark: #e0e0e0;
+
+    /* ألوان الحالة */
+    --danger: #dc3545;
+    --success: #198754;
+    --warning: #ffc107;
+    --info: #0dcaf0;
+
+    /* الأنصاف */
+    --radius-sm: 10px;
+    --radius-md: 15px;
+    --radius-lg: 20px;
+    --radius-pill: 50px;
+
+    /* الظلال */
+    --shadow-sm: 0 2px 6px rgba(0,0,0,0.08);
+    --shadow-md: 0 6px 18px rgba(0,0,0,0.12);
+    --shadow-lg: 0 12px 30px rgba(0,0,0,0.18);
+
+    /* الحركات */
+    --transition-fast: 0.2s ease;
+    --transition: 0.3s ease;
+
+    /* قيم زجاجية */
+    --glass-bg-light: rgba(255, 255, 255, 0.7);
+    --glass-bg-dark: rgba(45, 45, 45, 0.6);
+    --glass-border-light: rgba(255, 255, 255, 0.5);
+    --glass-border-dark: rgba(255, 255, 255, 0.15);
+    --glass-blur: 12px;
+}

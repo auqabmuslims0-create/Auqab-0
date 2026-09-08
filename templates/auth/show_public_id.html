@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+
+{% block title %}معرف الحساب{% endblock %}
+
+{% block head %}
+<style>
+    .auth-card {
+        border-radius: var(--radius-lg);
+        background: rgba(255,255,255,0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+    body.dark-mode .auth-card {
+        background: rgba(30,30,30,0.85);
+        color: #fff;
+    }
+    .public-id-box {
+        background-color: #f8f9fa;
+        border: 2px dashed var(--primary);
+        border-radius: 12px;
+        padding: 0.75rem;
+        display: inline-block;
+        margin: 0.5rem auto;
+        position: relative;
+    }
+    body.dark-mode .public-id-box {
+        background-color: #2d2d2d;
+        border-color: var(--accent);
+    }
+    .public-id-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--primary);
+        letter-spacing: 1px;
+        user-select: all;
+    }
+    body.dark-mode .public-id-value {
+        color: var(--accent);
+    }
+    .copy-btn {
+        margin-top: 0.5rem;
+        border-radius: var(--radius-pill);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card p-4 shadow-sm text-center auth-card">
+                <i class="bi bi-check-circle display-4 text-success mb-3"></i>
+                <h1 class="h3 mb-3">تم إنشاء الحساب بنجاح</h1>
+                <p>احفظ معرف الحساب الخاص بك، ستحتاجه في حال استعادة كلمة المرور:</p>
+                <div class="public-id-box">
+                    <span class="public-id-value">{{ public_id }}</span>
+                </div>
+                <div>
+                    <button id="copyPublicIdBtn" class="btn btn-outline-secondary copy-btn">
+                        <i class="bi bi-clipboard"></i> نسخ المعرف
+                    </button>
+                </div>
+                <div class="mt-3 text-warning small">
+                    <i class="bi bi-exclamation-triangle"></i> يرجى حفظ هذا المعرف في مكان آمن، لن تتمكن من استعادة كلمة المرور بدونه.
+                </div>
+                <div class="mt-4">
+                    <a href="{{ url_for('auth.dashboard') }}" class="btn btn-custom" style="color:#fff !important;">الانتقال للوحة التحكم</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('copyPublicIdBtn').addEventListener('click', function() {
+        const publicId = "{{ public_id }}";
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(publicId).then(() => {
+                showToast('تم نسخ المعرف', 'success');
+            }).catch(() => {
+                fallbackCopy(publicId);
+            });
+        } else {
+            fallbackCopy(publicId);
+        }
+    });
+
+    function fallbackCopy(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        showToast('تم نسخ المعرف', 'success');
+    }
+</script>
+{% endblock %}

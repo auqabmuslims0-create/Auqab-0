@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as macros %}
+
+{% block title %}الإشعارات{% endblock %}
+
+{% block head %}
+<style>
+    .notification-list { display: flex; flex-direction: column; gap: 10px; }
+    .notification-item {
+        display: flex; align-items: center; gap: 12px; padding: 12px 15px;
+        border-radius: 15px; background: #fff; border: 1px solid #eaeaea;
+        transition: background 0.2s, border-color 0.2s, opacity 0.2s; position: relative;
+    }
+    .notification-item.unread {
+        background: #f0f7f0; border-right: 4px solid var(--primary);
+        border-left: 1px solid #eaeaea; box-shadow: 0 2px 8px rgba(0,0,0,0.05); opacity: 1;
+    }
+    .notification-item.read {
+        opacity: 0.7; background: #f8f9fa; border-right: 4px solid transparent;
+    }
+    body.dark-mode .notification-item { background: #1e1e1e; border-color: #333; }
+    body.dark-mode .notification-item.unread {
+        background: #263626; border-right-color: var(--accent); border-left-color: #333; opacity: 1;
+    }
+    body.dark-mode .notification-item.read { background: #252525; opacity: 0.7; }
+
+    .notification-check { flex-shrink: 0; display: flex; align-items: center; }
+    .notification-icon {
+        width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center;
+        justify-content: center; font-size: 1.2rem; flex-shrink: 0;
+    }
+    .icon-order { background: rgba(13,110,253,0.1); color: #0d6efd; }
+    .icon-subscription { background: rgba(25,135,84,0.1); color: #198754; }
+    .icon-delivery { background: rgba(255,193,7,0.1); color: #ffc107; }
+    .icon-message { background: rgba(13,202,240,0.1); color: #0dcaf0; }
+    .icon-alert { background: rgba(220,53,69,0.1); color: #dc3545; }
+    .icon-default { background: rgba(108,117,125,0.1); color: #6c757d; }
+    .icon-store_follow { background: rgba(111,66,193,0.1); color: #6f42c1; }
+    .icon-new_product { background: rgba(40,167,69,0.1); color: #28a745; }
+    .icon-new_offer { background: rgba(255,152,0,0.1); color: #ff9800; }
+    .icon-reel { background: rgba(233,30,99,0.1); color: #e91e63; }
+    body.dark-mode .icon-order { background: rgba(13,110,253,0.2); color: #6ea8fe; }
+    body.dark-mode .icon-subscription { background: rgba(25,135,84,0.2); color: #75b798; }
+    body.dark-mode .icon-delivery { background: rgba(255,193,7,0.2); color: #ffda6a; }
+    body.dark-mode .icon-message { background: rgba(13,202,240,0.2); color: #6edff6; }
+    body.dark-mode .icon-alert { background: rgba(220,53,69,0.2); color: #ea868f; }
+    body.dark-mode .icon-default { background: rgba(173,181,189,0.2); color: #adb5bd; }
+    body.dark-mode .icon-store_follow { background: rgba(111,66,193,0.2); color: #b197fc; }
+    body.dark-mode .icon-new_product { background: rgba(40,167,69,0.2); color: #90ee90; }
+    body.dark-mode .icon-new_offer { background: rgba(255,152,0,0.2); color: #ffd180; }
+    body.dark-mode .icon-reel { background: rgba(233,30,99,0.2); color: #f48fb1; }
+
+    .notification-content { flex: 1; min-width: 0; }
+    .notification-title { font-weight: 600; margin-bottom: 2px; }
+    .notification-message { font-size: 0.9rem; color: #555; line-height: 1.4; word-break: break-word; }
+    body.dark-mode .notification-message { color: #ccc; }
+    .notification-meta { display: flex; align-items: center; gap: 10px; margin-top: 5px; font-size: 0.75rem; color: #888; }
+    .notification-actions { flex-shrink: 0; display: flex; gap: 5px; }
+    .btn-action {
+        border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center;
+        justify-content: center; padding: 0; border: 1px solid transparent;
+    }
+    .btn-mark-read { background: #e9ecef; color: #198754; border-color: #ced4da; }
+    .btn-mark-read:hover { background: #198754; color: #fff; border-color: #198754; }
+    .btn-delete { background: #f8d7da; color: #dc3545; border-color: #f5c2c7; }
+    .btn-delete:hover { background: #dc3545; color: #fff; border-color: #dc3545; }
+    .btn-link-view { font-size: 0.8rem; text-decoration: none; color: var(--primary); }
+    body.dark-mode .btn-link-view { color: var(--accent); }
+
+    #offlineNotificationsContainer { display: none; }
+    .offline-notification-item {
+        background: #fff; border-radius: 15px;
+        padding: 12px 15px; margin-bottom: 10px;
+        border: 1px solid #eaeaea;
+    }
+    body.dark-mode .offline-notification-item {
+        background: #1e1e1e;
+        border-color: #333;
+    }
+    .pagination { display: flex; justify-content: center; gap: 5px; margin-top: 20px; }
+    .pagination .page-link { border-radius: 8px; }
+
+    /* تحسينات إضافية */
+    .select-all-checkbox { width: 18px; height: 18px; cursor: pointer; }
+    .notification-actions .btn { font-size: 0.85rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <h4 class="fw-bold mb-0"><i class="bi bi-bell"></i> الإشعارات</h4>
+        <div class="d-flex gap-2 flex-wrap">
+            <button id="enablePushBtn" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-bell-fill"></i> تفعيل الإشعارات الفورية
+            </button>
+            <button id="markAllReadBtn" class="btn btn-sm btn-outline-success">
+                <i class="bi bi-check2-all"></i> تحديد الكل كمقروء
+            </button>
+            <button id="deleteReadBtn" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-trash"></i> حذف المقروءة
+            </button>
+            <button id="deleteSelectedBtn" class="btn btn-sm btn-outline-danger">
+                <i class="bi bi-trash"></i> حذف المحدد
+            </button>
+        </div>
+    </div>
+
+    <div id="onlineNotificationsContent">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="form-check">
+                <input class="form-check-input select-all-checkbox" type="checkbox" id="selectAllCheckbox">
+                <label class="form-check-label" for="selectAllCheckbox">
+                    تحديد الكل
+                </label>
+            </div>
+        </div>
+        <div id="notificationsList" class="notification-list">
+            <!-- يتم تحميل الإشعارات ديناميكياً عبر JavaScript -->
+        </div>
+        <div id="paginationContainer" class="pagination"></div>
+    </div>
+
+    <div id="offlineNotificationsContainer">
+        <div class="alert alert-warning text-center">
+            <i class="bi bi-wifi-off"></i> أنت غير متصل - يتم عرض الإشعارات المحفوظة
+        </div>
+        <div id="offlineNotificationsList"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
+<script>
+    // تمرير بيانات الصفحة الحالية إلى JS
+    window.notificationsConfig = {
+        currentPage: {{ page }},
+        totalPages: {{ total_pages }},
+        userId: {{ session.get('user_id') }}
+    };
+</script>
+{% endblock %}

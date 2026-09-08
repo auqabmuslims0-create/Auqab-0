@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+
+{% block title %}التقارير المالية{% endblock %}
+
+{% block head %}
+<style>
+    .page-header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 25px;
+    }
+    .page-header h1 {
+        font-size: 1.6rem;
+        font-weight: 800;
+        margin: 0;
+    }
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 12px;
+        margin-bottom: 25px;
+    }
+    .stat-card {
+        background: #fff;
+        border: 1px solid #eaeaea;
+        border-radius: 18px;
+        padding: 18px 12px;
+        text-align: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 28px rgba(0,0,0,0.1);
+        border-color: transparent;
+    }
+    body.dark-mode .stat-card {
+        background: #1e1e1e;
+        border-color: #333;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        color: #fff;
+    }
+    .stat-icon {
+        font-size: 2rem;
+        margin-bottom: 8px;
+        display: block;
+    }
+    .stat-value {
+        font-size: 1.4rem;
+        font-weight: 800;
+        line-height: 1.2;
+        margin-bottom: 4px;
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin: 0;
+    }
+    body.dark-mode .stat-label {
+        color: #adb5bd;
+    }
+    .charts-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 15px;
+    }
+    .chart-card {
+        background: #fff;
+        border: 1px solid #eaeaea;
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+    }
+    body.dark-mode .chart-card {
+        background: #1e1e1e;
+        border-color: #333;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        color: #fff;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="page-header">
+        <h1><i class="bi bi-graph-up"></i> التقارير المالية</h1>
+        <span class="badge bg-dark text-white rounded-pill px-3 py-2">نظرة شاملة</span>
+    </div>
+
+    <!-- بطاقات ملخصة -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <i class="bi bi-credit-card stat-icon text-success"></i>
+            <div class="stat-value">{{ subscription_revenue|format_price }} ل.س</div>
+            <p class="stat-label">إيرادات الاشتراكات</p>
+        </div>
+        <div class="stat-card">
+            <i class="bi bi-receipt stat-icon text-primary"></i>
+            <div class="stat-value">{{ order_revenue|format_price }} ل.س</div>
+            <p class="stat-label">إيرادات الطلبات</p>
+        </div>
+        <div class="stat-card">
+            <i class="bi bi-truck stat-icon text-info"></i>
+            <div class="stat-value">{{ delivery_fee_revenue|format_price }} ل.س</div>
+            <p class="stat-label">رسوم التوصيل</p>
+        </div>
+        <div class="stat-card">
+            <i class="bi bi-people stat-icon text-warning"></i>
+            <div class="stat-value">{{ total_users }}</div>
+            <p class="stat-label">إجمالي المستخدمين</p>
+        </div>
+        <div class="stat-card">
+            <i class="bi bi-cash-stack stat-icon text-success"></i>
+            <div class="stat-value">{{ total_payments|format_price }} ل.س</div>
+            <p class="stat-label">إجمالي المدفوعات المؤكدة</p>
+        </div>
+        <div class="stat-card">
+            <i class="bi bi-clock-history stat-icon text-danger"></i>
+            <div class="stat-value">{{ pending_subscriptions }}</div>
+            <p class="stat-label">اشتراكات معلقة</p>
+        </div>
+        <div class="stat-card">
+            <i class="bi bi-shop-window stat-icon text-primary"></i>
+            <div class="stat-value">{{ total_stores }}</div>
+            <p class="stat-label">المتاجر</p>
+        </div>
+        <div class="stat-card">
+            <i class="bi bi-check-circle stat-icon text-success"></i>
+            <div class="stat-value">{{ active_stores }}</div>
+            <p class="stat-label">المتاجر النشطة</p>
+        </div>
+        <div class="stat-card">
+            <i class="bi bi-receipt-cutoff stat-icon text-secondary"></i>
+            <div class="stat-value">{{ total_orders }}</div>
+            <p class="stat-label">إجمالي الطلبات</p>
+        </div>
+        <div class="stat-card">
+            <i class="bi bi-truck stat-icon text-info"></i>
+            <div class="stat-value">{{ delivered_orders_count }}</div>
+            <p class="stat-label">طلبات التوصيل</p>
+        </div>
+    </div>
+
+    <!-- الرسوم البيانية -->
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h5 class="mb-3"><i class="bi bi-bar-chart"></i> الإيرادات</h5>
+            <canvas id="revenueChart" height="200"></canvas>
+        </div>
+        <div class="chart-card">
+            <h5 class="mb-3"><i class="bi bi-pie-chart"></i> توزيع حالات الطلبات</h5>
+            <canvas id="orderStatusChart" height="200"></canvas>
+        </div>
+        <div class="chart-card">
+            <h5 class="mb-3"><i class="bi bi-people"></i> المستخدمون حسب الدور</h5>
+            <canvas id="userRoleChart" height="200"></canvas>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/chartjs/chart.min.js') }}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // رسم بياني للإيرادات
+    const revenueCtx = document.getElementById('revenueChart').getContext('2d');
+    new Chart(revenueCtx, {
+        type: 'bar',
+        data: {
+            labels: ['الاشتراكات', 'الطلبات', 'التوصيل'],
+            datasets: [{
+                label: 'المبلغ (ل.س)',
+                data: [
+                    {{ subscription_revenue|default(0) }},
+                    {{ order_revenue|default(0) }},
+                    {{ delivery_fee_revenue|default(0) }}
+                ],
+                backgroundColor: ['#3b5e2b', '#c9a227', '#2d4a1f'],
+                borderRadius: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    // رسم بياني لتوزيع حالات الطلبات
+    const statusLabels = [];
+    const statusData = [];
+    {% for status, count in order_status_counts %}
+    statusLabels.push('{{ status }}');
+    statusData.push({{ count|default(0) }});
+    {% endfor %}
+    const statusCtx = document.getElementById('orderStatusChart').getContext('2d');
+    new Chart(statusCtx, {
+        type: 'pie',
+        data: {
+            labels: statusLabels,
+            datasets: [{
+                data: statusData,
+                backgroundColor: ['#3b5e2b', '#c9a227', '#2d4a1f', '#6c757d', '#17a2b8', '#dc3545', '#ffc107']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+
+    // رسم بياني لتوزيع المستخدمين حسب الدور
+    const roleLabels = [];
+    const roleData = [];
+    {% for role, count in user_role_counts %}
+    roleLabels.push('{{ role }}');
+    roleData.push({{ count|default(0) }});
+    {% endfor %}
+    const roleCtx = document.getElementById('userRoleChart').getContext('2d');
+    new Chart(roleCtx, {
+        type: 'doughnut',
+        data: {
+            labels: roleLabels,
+            datasets: [{
+                data: roleData,
+                backgroundColor: ['#3b5e2b', '#c9a227', '#2d4a1f', '#6c757d']
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

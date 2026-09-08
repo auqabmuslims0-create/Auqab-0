@@ -1,0 +1,234 @@
+{% macro _image_fallback(alt='', class='', fallback_icon='bi-image', fallback_class='', style='') -%}
+<div class="image-fallback {{ fallback_class }}" role="img" aria-label="{{ alt }}" {% if style %}style="{{ style }}"{% endif %}>
+    <i class="bi {{ fallback_icon }}"></i>
+</div>
+{%- endmacro %}
+
+{% macro render_image(filename, alt='', class='', fallback_icon='bi-image', fallback_class='', style='') -%}
+{%- if filename -%}
+    {%- set normalized = filename | string | trim -%}
+    {%- if normalized.startswith('static/uploads/') -%}
+        {%- set src = url_for('static', filename=normalized[15:]) -%}
+    {%- elif normalized.startswith('uploads/') -%}
+        {%- set src = url_for('static', filename=normalized[8:]) -%}
+    {%- elif normalized.startswith('http') -%}
+        {%- set src = normalized -%}
+    {%- else -%}
+        {%- set src = url_for('static', filename='uploads/' ~ normalized) -%}
+    {%- endif -%}
+    <img src="{{ src }}" alt="{{ alt }}" class="{{ class }}" loading="lazy" {% if style %}style="{{ style }}"{% endif %}>
+{%- else -%}
+    {{ _image_fallback(alt, class, fallback_icon, fallback_class, style) }}
+{%- endif -%}
+{%- endmacro %}
+
+{% macro render_price(price, original_price=None, is_offer=False) -%}
+<div class="product-card-price">
+    {%- if is_offer and original_price and original_price > price -%}
+        <span class="price-current text-danger">{{ price|format_price }} ل.س</span>
+        <span class="price-old">{{ original_price|format_price }} ل.س</span>
+        <span class="price-discount">-{{ ((original_price - price) / original_price * 100) | round(0) }}%</span>
+    {%- else -%}
+        <span class="price-current">{{ price|format_price }} ل.س</span>
+    {%- endif -%}
+</div>
+{%- endmacro %}
+
+{% macro render_store_status(store, open_status=None) -%}
+{%- if open_status is not none -%}
+    {%- if open_status -%}
+        <span class="store-status-badge bg-success text-white">مفتوح الآن</span>
+    {%- else -%}
+        <span class="store-status-badge bg-secondary text-white">مغلق</span>
+    {%- endif -%}
+{%- else -%}
+    {%- if store.subscription_status == 'active' -%}
+        <span class="store-status-badge bg-success text-white">نشط</span>
+    {%- elif store.subscription_status == 'pending' -%}
+        <span class="store-status-badge bg-warning text-dark">قيد الانتظار</span>
+    {%- else -%}
+        <span class="store-status-badge bg-secondary text-white">غير نشط</span>
+    {%- endif -%}
+{%- endif -%}
+{%- endmacro %}
+
+{% macro render_order_status(status) -%}
+<span class="badge
+    {%- if status == 'new' %} bg-primary
+    {%- elif status == 'confirmed' %} bg-info text-dark
+    {%- elif status == 'preparing' %} bg-warning text-dark
+    {%- elif status == 'ready' %} bg-info
+    {%- elif status == 'delivering' %} bg-secondary
+    {%- elif status == 'delivered' %} bg-success
+    {%- elif status == 'cancelled' %} bg-danger
+    {%- else %} bg-light text-dark{% endif %}">
+    {%- if status == 'new' %} جديد
+    {%- elif status == 'confirmed' %} مؤكد
+    {%- elif status == 'preparing' %} قيد التجهيز
+    {%- elif status == 'ready' %} جاهز للتسليم
+    {%- elif status == 'delivering' %} قيد التسليم
+    {%- elif status == 'delivered' %} تم التسليم
+    {%- elif status == 'cancelled' %} ملغي
+    {%- else %}{{ status }}{% endif %}
+</span>
+{%- endmacro %}
+
+{% macro render_empty_state(icon, message, button_url=None, button_text='') -%}
+<div class="text-center py-5 empty-state">
+    <i class="bi {{ icon }} display-1 text-muted"></i>
+    <p class="mt-3">{{ message }}</p>
+    {% if button_url %}<a href="{{ button_url }}" class="btn btn-custom">{{ button_text }}</a>{% endif %}
+</div>
+{%- endmacro %}
+
+{% macro render_product_card(product, csrf_token=None, user_reaction_map=None, show_add_to_cart=True, is_favorite=False) -%}
+<div class="product-card h-100">
+    <div class="product-card-image">
+        {% if product.is_offer %}
+            <span class="offer-badge"><span class="badge bg-danger">عرض</span></span>
+        {% endif %}
+        <a href="{{ url_for('stores.product_public', product_id=product.id) }}">
+            {{ render_image(product.main_image if product.main_image else '', product.name, 'product-image') }}
+        </a>
+        {% if product.stock_quantity == 0 %}
+            <div class="out-of-stock">نفد المخزون</div>
+        {% endif %}
+    </div>
+    <div class="product-card-body">
+        <div class="d-flex align-items-start justify-content-between">
+            <div class="flex-grow-1">
+                <div class="product-card-name">{{ product.name }}</div>
+                <div class="product-card-store">
+                    {% if product.store and product.store.logo_url %}
+                        <img src="{{ product.store.logo_url | get_image_url }}" class="rounded-circle" alt="شعار المتجر" style="width:20px;height:20px;object-fit:cover;">
+                    {% else %}
+                        <i class="bi bi-shop"></i>
+                    {% endif %}
+                    <span class="text-truncate">{{ product.store.name if product.store else 'غير معروف' }}</span>
+                </div>
+                {{ render_price(product.price, product.original_price, product.is_offer) }}
+                {% if product.views > 0 %}
+                    <div class="small text-muted mt-1"><i class="bi bi-eye"></i> {{ product.views }}</div>
+                {% endif %}
+            </div>
+            {% if session.get('user_id') %}
+            <div class="product-card-actions-vertical">
+                {% if show_add_to_cart and product.stock_quantity > 0 %}
+                    <button class="action-icon-btn cart-icon-btn" onclick="addToCart({{ product.id }}, 1, (d) => showToast('تمت الإضافة', 'success'))" title="أضف إلى السلة" aria-label="أضف إلى السلة">
+                        <i class="bi bi-cart-plus"></i>
+                    </button>
+                {% endif %}
+                <button class="action-icon-btn favorite-icon-btn" onclick="toggleFavoriteProduct({{ product.id }}, this)" title="إضافة إلى المفضلة" aria-label="إضافة إلى المفضلة">
+                    <i class="bi {% if is_favorite %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{%- endmacro %}
+
+{% macro render_store_card(store, open_status=None) -%}
+<div class="store-card h-100">
+    <div class="store-card-image">
+        <a href="{{ url_for('stores.store_public', store_id=store.id) }}">
+            {{ render_image(store.logo_url, store.name, 'store-logo') }}
+        </a>
+    </div>
+    <div class="store-card-body text-center">
+        <div class="store-card-name">{{ store.name }}</div>
+        <div class="mb-2">{{ render_store_status(store, open_status) }}</div>
+        {% if store.description %}
+            <p class="small text-muted mb-2" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ store.description }}</p>
+        {% endif %}
+        <a href="{{ url_for('stores.store_public', store_id=store.id) }}" class="store-visit-btn">زيارة المتجر</a>
+    </div>
+</div>
+{%- endmacro %}
+
+{% macro render_user_avatar(user, size='md', class='') -%}
+{% set sizes = {'sm':'40px','md':'70px','lg':'120px'} %}
+{% set dim = sizes.get(size, '70px') %}
+{% if user and user.avatar %}
+    <img src="{{ user.avatar | get_image_url }}" class="rounded-circle {{ class }}" alt="صورة المستخدم" style="width:{{ dim }};height:{{ dim }};object-fit:cover;">
+{% else %}
+    <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center {{ class }}" style="width:{{ dim }};height:{{ dim }};">
+        <i class="bi bi-person" style="font-size: calc({{ dim }} * 0.5);"></i>
+    </div>
+{% endif %}
+{%- endmacro %}
+
+{% macro render_nav_items(items) -%}
+<ul class="list-unstyled w-100">
+    {% for item in items %}
+        {% if item.type == 'link' %}
+        <li>
+            <a href="{{ item.url }}" class="sidebar-menu-item {% if item.active %}active{% endif %}">
+                {% if item.icon %}<i class="bi {{ item.icon }} ms-1"></i>{% endif %}
+                {{ item.label }}
+                {% if item.badge is defined and item.badge > 0 %}
+                    <span class="badge bg-warning text-dark ms-1">{{ item.badge }}</span>
+                {% endif %}
+            </a>
+        </li>
+        {% elif item.type == 'button' %}
+        <li>
+            <button class="sidebar-menu-item w-100" id="{{ item.id }}">
+                {% if item.icon %}<i class="bi {{ item.icon }} ms-1"></i>{% endif %}
+                <span>{{ item.label }}</span>
+            </button>
+        </li>
+        {% elif item.type == 'divider' %}
+        <li><hr class="my-2 border-{{ item.variant|default('light') }}"></li>
+        {% endif %}
+    {% endfor %}
+</ul>
+{%- endmacro %}
+
+{% macro render_pagination(pagination, endpoint, params=None) -%}
+{% if pagination and pagination.pages > 1 %}
+<nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center flex-wrap gap-1">
+        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for(endpoint, page=pagination.prev_num, **(params or {})) if pagination.has_prev else '#' }}">السابق</a>
+        </li>
+        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if page_num %}
+                <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for(endpoint, page=page_num, **(params or {})) }}">{{ page_num }}</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% endif %}
+        {% endfor %}
+        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for(endpoint, page=pagination.next_num, **(params or {})) if pagination.has_next else '#' }}">التالي</a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
+{%- endmacro %}
+
+{% macro render_pagination(pagination, endpoint, params=None) -%}
+{% if pagination and pagination.pages > 1 %}
+<nav aria-label="Page navigation" class="mt-4">
+    <ul class="pagination justify-content-center flex-wrap gap-1">
+        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for(endpoint, page=pagination.prev_num, **(params or {})) if pagination.has_prev else '#' }}">السابق</a>
+        </li>
+        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+            {% if page_num %}
+                <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
+                    <a class="page-link" href="{{ url_for(endpoint, page=page_num, **(params or {})) }}">{{ page_num }}</a>
+                </li>
+            {% else %}
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% endif %}
+        {% endfor %}
+        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+            <a class="page-link" href="{{ url_for(endpoint, page=pagination.next_num, **(params or {})) if pagination.has_next else '#' }}">التالي</a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
+{%- endmacro %}

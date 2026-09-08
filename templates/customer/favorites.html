@@ -1,0 +1,215 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as macros %}
+
+{% block title %}المفضلة{% endblock %}
+
+{% block head %}
+<style>
+    .favorites-section-title {
+        margin-top: 20px;
+        margin-bottom: 15px;
+        font-weight: 700;
+    }
+    .favorite-item-wrapper {
+        position: relative;
+    }
+    .remove-favorite-btn {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        z-index: 10;
+        background: rgba(255,255,255,0.9);
+        border: none;
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #dc3545;
+        cursor: pointer;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        transition: background 0.2s, transform 0.2s;
+        padding: 0;
+    }
+    .remove-favorite-btn:hover {
+        background: #dc3545;
+        color: #fff;
+        transform: scale(1.1);
+    }
+    body.dark-mode .remove-favorite-btn {
+        background: rgba(30,30,30,0.9);
+        color: #ff6b7a;
+    }
+    body.dark-mode .remove-favorite-btn:hover {
+        background: #dc3545;
+        color: #fff;
+    }
+    .products-grid,
+    .stores-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 15px;
+    }
+    @media (max-width: 480px) {
+        .products-grid,
+        .stores-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h4 class="fw-bold mb-4"><i class="bi bi-heart-fill text-danger"></i> المفضلة</h4>
+
+    <div id="localFavoritesContainer" style="display:none;"></div>
+
+    {% if favs %}
+        {% set favorite_products = [] %}
+        {% set favorite_stores = [] %}
+        {% for fav in favs %}
+            {% if fav.product %}
+                {% set _ = favorite_products.append(fav.product) %}
+            {% elif fav.store %}
+                {% set _ = favorite_stores.append(fav.store) %}
+            {% endif %}
+        {% endfor %}
+
+        {% if favorite_products %}
+            <h5 class="favorites-section-title"><i class="bi bi-box-seam"></i> المنتجات المفضلة</h5>
+            <div class="products-grid server-favs">
+                {% for product in favorite_products %}
+                    <div class="favorite-item-wrapper">
+                        {{ macros.render_product_card(product, None, None, show_add_to_cart=True, is_favorite=True) }}
+                        <button class="remove-favorite-btn" data-type="product" data-id="{{ product.id }}" title="إزالة من المفضلة">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if favorite_stores %}
+            <h5 class="favorites-section-title"><i class="bi bi-shop"></i> المتاجر المفضلة</h5>
+            <div class="stores-grid server-favs">
+                {% for store in favorite_stores %}
+                    <div class="favorite-item-wrapper">
+                        {{ macros.render_store_card(store) }}
+                        <button class="remove-favorite-btn" data-type="store" data-id="{{ store.id }}" title="إزالة من المفضلة">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        {% if not favorite_products and not favorite_stores %}
+            <p class="text-muted">لا توجد عناصر مفضلة.</p>
+        {% endif %}
+    {% else %}
+        {{ macros.render_empty_state('bi-heart', 'لا توجد عناصر في المفضلة', url_for('market.market'), 'اكتشف المنتجات') }}
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // معالجة إزالة المفضلة عبر الخادم
+    document.querySelectorAll('.remove-favorite-btn').forEach(btn => {
+        btn.addEventListener('click', async function() {
+            const type = this.dataset.type;
+            const id = parseInt(this.dataset.id);
+            const wrapper = this.closest('.favorite-item-wrapper');
+
+            try {
+                const response = await fetch('/favorite/toggle', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': window.csrfToken
+                    },
+                    body: JSON.stringify({ type: type, id: id })
+                });
+                const data = await response.json();
+                if (response.ok && data.status === 'success') {
+                    if (wrapper) wrapper.remove();
+                    // تحديث التخزين المحلي
+                    if (typeof LocalStore !== 'undefined') {
+                        LocalStore.toggleFavorite(type, id);
+                    }
+                    showToast(data.message || 'تمت إزالة العنصر من المفضلة', 'success');
+
+                    // التحقق إذا لم تعد هناك عناصر معروضة
+                    const remaining = document.querySelectorAll('.favorite-item-wrapper').length;
+                    if (remaining === 0) {
+                        location.reload();
+                    }
+                } else {
+                    showToast(data.message || 'حدث خطأ', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('حدث خطأ أثناء الإزالة', 'error');
+            }
+        });
+    });
+
+    // وضع عدم الاتصال: عرض المفضلة المحلية
+    if (!navigator.onLine) {
+        document.querySelectorAll('.server-favs').forEach(el => el.style.display = 'none');
+        const localFavContainer = document.getElementById('localFavoritesContainer');
+        localFavContainer.style.display = 'block';
+        const favs = LocalStore.getFavorites();
+        const cache = LocalStore.getProductsCache();
+        let html = '';
+        if (favs.products && favs.products.length) {
+            html += '<h5 class="favorites-section-title">المنتجات المفضلة</h5><div class="products-grid">';
+            favs.products.forEach(pid => {
+                const p = cache[pid] || {};
+                html += `
+                    <div class="favorite-item-wrapper">
+                        <div class="cart-item-card">
+                            <div class="cart-item-image-placeholder"><i class="bi bi-image"></i></div>
+                            <div class="cart-item-body">
+                                <div class="cart-item-name">${p.name || 'منتج'}</div>
+                                <div class="cart-item-price">${p.price || 0} ل.س</div>
+                            </div>
+                        </div>
+                        <button class="remove-favorite-btn" data-type="product" data-id="${pid}"><i class="bi bi-x-lg"></i></button>
+                    </div>`;
+            });
+            html += '</div>';
+        }
+        if (favs.stores && favs.stores.length) {
+            html += '<h5 class="favorites-section-title">المتاجر المفضلة</h5><div class="stores-grid">';
+            favs.stores.forEach(sid => {
+                html += `
+                    <div class="favorite-item-wrapper">
+                        <div class="cart-item-card">
+                            <div class="cart-item-image-placeholder"><i class="bi bi-shop"></i></div>
+                            <div class="cart-item-body text-center">متجر #${sid}</div>
+                        </div>
+                        <button class="remove-favorite-btn" data-type="store" data-id="${sid}"><i class="bi bi-x-lg"></i></button>
+                    </div>`;
+            });
+            html += '</div>';
+        }
+        if (!html) html = '<p class="text-muted">لا توجد عناصر مفضلة.</p>';
+        localFavContainer.innerHTML = html;
+
+        localFavContainer.querySelectorAll('.remove-favorite-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const type = this.dataset.type;
+                const id = parseInt(this.dataset.id);
+                LocalStore.toggleFavorite(type, id);
+                location.reload();
+            });
+        });
+    }
+});
+</script>
+{% endblock %}

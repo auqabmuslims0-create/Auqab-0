@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+
+{% block title %}اشتراك {{ store.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .subscription-card {
+        border-radius: 20px;
+        border: none;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        background: #fff;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .subscription-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+    }
+    body.dark-mode .subscription-card {
+        background: #1e1e1e;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        color: #fff;
+    }
+    .payment-icon {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        margin: 0 auto;
+    }
+    .icon-manual {
+        background: rgba(46,93,52,0.1);
+        color: var(--primary);
+    }
+    .icon-wallet {
+        background: rgba(25,135,84,0.1);
+        color: #198754;
+    }
+    .icon-bank {
+        background: rgba(108,117,125,0.1);
+        color: #6c757d;
+    }
+    body.dark-mode .icon-manual {
+        background: rgba(201,162,39,0.1);
+        color: var(--accent);
+    }
+    body.dark-mode .icon-wallet {
+        background: rgba(25,135,84,0.15);
+        color: #4caf50;
+    }
+    body.dark-mode .icon-bank {
+        background: rgba(173,181,189,0.2);
+        color: #adb5bd;
+    }
+    .price-highlight {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--primary);
+        margin: 10px 0;
+    }
+    body.dark-mode .price-highlight {
+        color: var(--accent);
+    }
+    .wallet-number {
+        font-size: 1.2rem;
+        font-weight: 600;
+        letter-spacing: 1px;
+    }
+    .active-alert {
+        border-radius: 15px;
+        background: #d4edda;
+        color: #155724;
+        border: none;
+        padding: 20px;
+        text-align: center;
+    }
+    body.dark-mode .active-alert {
+        background: #102e1a;
+        color: #a3cfbb;
+    }
+    .expired-alert {
+        border-radius: 15px;
+        background: #f8d7da;
+        color: #721c24;
+        border: none;
+        padding: 20px;
+        text-align: center;
+    }
+    body.dark-mode .expired-alert {
+        background: #2c0b0e;
+        color: #f5c6cb;
+    }
+    .subscription-history {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 15px;
+        margin-top: 20px;
+    }
+    body.dark-mode .subscription-history {
+        background: #2d2d2d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    {% if active %}
+        <div class="active-alert">
+            <i class="bi bi-check-circle display-4"></i>
+            <h4 class="mt-2">اشتراكك نشط</h4>
+            <p>ينتهي في {{ sub.end_date.strftime('%Y-%m-%d') }}</p>
+            <p class="text-muted">مدة الاشتراك: {{ sub.duration_days }} يوم</p>
+            <a href="{{ url_for('store.store_manage', store_id=store.id) }}" class="btn btn-custom">
+                <i class="bi bi-gear"></i> إدارة المتجر
+            </a>
+        </div>
+    {% else %}
+        <h1 class="mb-4 text-center"><i class="bi bi-credit-card"></i> اشتراك متجر {{ store.name }}</h1>
+
+        {% if sub and sub.status == 'expired' %}
+        <div class="expired-alert mb-4">
+            <i class="bi bi-exclamation-triangle display-4"></i>
+            <h4 class="mt-2">انتهى اشتراكك</h4>
+            <p>كان تاريخ الانتهاء: {{ sub.end_date.strftime('%Y-%m-%d') }}</p>
+            <p>يرجى التجديد لاستئناف خدمات المتجر.</p>
+        </div>
+        {% endif %}
+
+        <!-- معلومات الاشتراك -->
+        <div class="card subscription-card p-4 mb-4 text-center">
+            <h5 class="fw-bold">رسوم الاشتراك الشهري</h5>
+            <div class="price-highlight">{{ subscription_price|format_price }} ل.س</div>
+            <p class="mb-2">مدة الاشتراك: {{ duration_days }} يوم</p>
+            {% if wallet_number %}
+            <p class="mb-2"><i class="bi bi-wallet2"></i> رقم المحفظة للتحويل: <span class="wallet-number">{{ wallet_number }}</span></p>
+            {% endif %}
+            <p class="text-muted mb-0">اختر طريقة الدفع المناسبة لك</p>
+        </div>
+
+        <!-- طرق الدفع -->
+        <div class="row g-4">
+            <div class="col-md-6 col-lg-4">
+                <div class="card subscription-card h-100">
+                    <div class="card-body text-center p-4">
+                        <div class="payment-icon icon-manual">
+                            <i class="bi bi-truck"></i>
+                        </div>
+                        <h5 class="mt-3">تسليم يدوي</h5>
+                        <p class="text-muted">تواصل مع المدير وسيتم إرسال مندوب لاستلام المبلغ وتفعيل المتجر.</p>
+                        <a href="{{ url_for('store.store_subscription_method', store_id=store.id, method='manual_delivery') }}" class="btn btn-outline-primary w-100">اختيار</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="card subscription-card h-100">
+                    <div class="card-body text-center p-4">
+                        <div class="payment-icon icon-wallet">
+                            <i class="bi bi-wallet2"></i>
+                        </div>
+                        <h5 class="mt-3">محفظة إلكترونية (شام كاش)</h5>
+                        <p class="text-muted">سيتوفر قريباً.</p>
+                        <a href="{{ url_for('store.store_subscription_method', store_id=store.id, method='wallet') }}" class="btn btn-outline-success w-100">اختيار</a>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 col-lg-4">
+                <div class="card subscription-card h-100">
+                    <div class="card-body text-center p-4">
+                        <div class="payment-icon icon-bank">
+                            <i class="bi bi-bank"></i>
+                        </div>
+                        <h5 class="mt-3">تحويل بنكي</h5>
+                        <p class="text-muted">غير متوفر حالياً.</p>
+                        <a href="{{ url_for('store.store_subscription_method', store_id=store.id, method='bank_transfer') }}" class="btn btn-outline-secondary w-100">اختيار</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if sub %}
+        <div class="subscription-history">
+            <h6><i class="bi bi-clock-history"></i> آخر اشتراك:</h6>
+            <p>الحالة: 
+                {% if sub.status == 'paid' %}نشط
+                {% elif sub.status == 'pending' %}قيد الانتظار
+                {% elif sub.status == 'expired' %}منتهي
+                {% elif sub.status == 'cancelled' %}ملغي
+                {% elif sub.status == 'suspended' %}موقوف
+                {% else %}{{ sub.status }}{% endif %}
+            </p>
+            {% if sub.start_date %}<p>تاريخ البداية: {{ sub.start_date.strftime('%Y-%m-%d') }}</p>{% endif %}
+            {% if sub.end_date %}<p>تاريخ النهاية: {{ sub.end_date.strftime('%Y-%m-%d') }}</p>{% endif %}
+        </div>
+        {% endif %}
+
+        <div class="text-center mt-4">
+            <a href="{{ url_for('store.my_stores') }}" class="btn btn-outline-secondary">العودة لمتاجري</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

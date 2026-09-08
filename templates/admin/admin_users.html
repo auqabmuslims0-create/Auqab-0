@@ -1,0 +1,415 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as macros %}
+
+{% block title %}إدارة المستخدمين{% endblock %}
+
+{% block head %}
+<style>
+    .page-header {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+    .page-header h1 {
+        font-size: 1.6rem;
+        font-weight: 800;
+        margin: 0;
+    }
+    .filter-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        background: #fff;
+        border-radius: 30px;
+        padding: 5px 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    body.dark-mode .filter-form {
+        background: #1e1e1e;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    .filter-form select,
+    .filter-form input {
+        border: none;
+        background: transparent;
+        color: var(--text-light);
+        outline: none;
+        padding: 8px 10px;
+        border-radius: 25px;
+    }
+    body.dark-mode .filter-form select,
+    body.dark-mode .filter-form input {
+        color: #fff;
+    }
+    .filter-form select:focus,
+    .filter-form input:focus {
+        background: rgba(46,93,52,0.05);
+    }
+    .users-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+        gap: 15px;
+    }
+    .user-card {
+        background: #fff;
+        border: 1px solid #eaeaea;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.04);
+        transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+        position: relative;
+    }
+    .user-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 28px rgba(0,0,0,0.1);
+        border-color: transparent;
+    }
+    body.dark-mode .user-card {
+        background: #1e1e1e;
+        border-color: #333;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        color: #fff;
+    }
+    .info-btn {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.8);
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #333;
+        z-index: 5;
+        transition: background 0.2s;
+    }
+    .info-btn:hover {
+        background: #fff;
+    }
+    body.dark-mode .info-btn {
+        background: rgba(30,30,30,0.8);
+        color: #ddd;
+    }
+    body.dark-mode .info-btn:hover {
+        background: #333;
+    }
+    .user-avatar {
+        width: 70px;
+        height: 70px;
+        object-fit: cover;
+        border-radius: 50%;
+        border: 3px solid var(--primary);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        display: inline-block;
+    }
+    .user-avatar-placeholder {
+        width: 70px;
+        height: 70px;
+        border-radius: 50%;
+        background: #6c757d;
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        margin: 0 auto;
+    }
+    body.dark-mode .user-avatar {
+        border-color: var(--accent);
+    }
+    body.dark-mode .user-avatar-placeholder {
+        background: #444;
+    }
+    .user-name {
+        font-weight: 700;
+        margin-bottom: 2px;
+    }
+    .user-email,
+    .user-phone {
+        font-size: 0.8rem;
+        color: #6c757d;
+        margin-bottom: 2px;
+    }
+    body.dark-mode .user-email,
+    body.dark-mode .user-phone {
+        color: #adb5bd;
+    }
+    .role-badge {
+        font-size: 0.75rem;
+        padding: 0.35rem 0.7rem;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+    .user-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        justify-content: center;
+        margin-top: 12px;
+    }
+    .btn-action {
+        border-radius: 20px;
+        font-size: 0.75rem;
+        padding: 5px 10px;
+    }
+    .modal-content {
+        border-radius: 20px;
+        border: none;
+    }
+    body.dark-mode .modal-content {
+        background: #1e1e1e;
+        color: #fff;
+    }
+    body.dark-mode .modal-header,
+    body.dark-mode .modal-footer {
+        border-color: #333;
+    }
+    body.dark-mode .table {
+        color: #fff;
+    }
+    body.dark-mode .table th {
+        color: #adb5bd;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="page-header">
+        <h1><i class="bi bi-people"></i> إدارة المستخدمين</h1>
+        <form method="get" class="filter-form">
+            <select name="role">
+                <option value="">جميع الأدوار</option>
+                <option value="admin" {% if role_filter == 'admin' %}selected{% endif %}>مشرف</option>
+                <option value="owner" {% if role_filter == 'owner' %}selected{% endif %}>صاحب متجر</option>
+                <option value="customer" {% if role_filter == 'customer' %}selected{% endif %}>زبون</option>
+                <option value="delivery" {% if role_filter == 'delivery' %}selected{% endif %}>مندوب</option>
+            </select>
+            <input type="text" name="q" value="{{ q }}" placeholder="بحث بالاسم أو البريد أو الهاتف">
+            <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill">بحث</button>
+        </form>
+    </div>
+
+    {% if users %}
+    <div class="users-grid">
+        {% for user in users %}
+        <div class="user-card">
+            <button type="button" class="info-btn"
+                    data-bs-toggle="modal"
+                    data-bs-target="#userDetailsModal"
+                    data-user-id="{{ user.id }}"
+                    data-username="{{ user.username }}"
+                    data-email="{{ user.email }}"
+                    data-phone="{{ user.phone or '-' }}"
+                    data-role="{{ user.role }}"
+                    data-created="{{ user.created_at.strftime('%Y-%m-%d %H:%M') if user.created_at else '-' }}"
+                    data-public-id="{{ user.public_id or '-' }}"
+                    data-is-active="{{ 'نشط' if user.is_active else 'محظور' }}"
+                    data-orders="{{ user_stats[user.id].orders_count }}"
+                    data-stores="{{ user_stats[user.id].stores_count }}"
+                    data-delivery="{{ user_stats[user.id].delivery_count }}"
+                    data-favorites="{{ user_stats[user.id].favorites_count }}"
+                    data-reviews="{{ user_stats[user.id].reviews_count }}"
+                    data-comments="{{ user_stats[user.id].comments_count }}"
+                    title="التفاصيل">
+                <i class="bi bi-info-circle"></i>
+            </button>
+
+            <div class="card-body text-center p-3">
+                <div class="mb-3">
+                    {{ macros.render_image(user.avatar, user.username, 'user-avatar', fallback_icon='bi-person', fallback_class='user-avatar-placeholder') }}
+                </div>
+
+                <h5 class="user-name">{{ user.username }}</h5>
+                <p class="user-email">{{ user.email }}</p>
+                <p class="user-phone">{{ user.phone or '-' }}</p>
+
+                <div class="mb-2">
+                    <span class="role-badge
+                        {% if user.role == 'admin' %}bg-danger text-white
+                        {% elif user.role == 'owner' %}bg-primary text-white
+                        {% elif user.role == 'delivery' %}bg-info text-dark
+                        {% else %}bg-secondary text-white{% endif %}">
+                        {% if user.role == 'admin' %}مشرف
+                        {% elif user.role == 'owner' %}صاحب متجر
+                        {% elif user.role == 'delivery' %}مندوب
+                        {% else %}زبون{% endif %}
+                    </span>
+                    <span class="role-badge {% if user.is_active %}bg-success text-white{% else %}bg-danger text-white{% endif %}">
+                        {{ 'نشط' if user.is_active else 'محظور' }}
+                    </span>
+                </div>
+
+                <div class="user-actions">
+                    <form action="{{ url_for('admin.admin_toggle_user', user_id=user.id) }}" method="post">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-sm btn-outline-secondary btn-action">
+                            {% if user.is_active %}حظر{% else %}تفعيل{% endif %}
+                        </button>
+                    </form>
+
+                    <a href="{{ url_for('admin.admin_contact_user', user_id=user.id) }}" class="btn btn-sm btn-outline-primary btn-action">مراسلة</a>
+
+                    <button type="button" class="btn btn-sm btn-outline-warning btn-action"
+                            data-bs-toggle="modal"
+                            data-bs-target="#resetPasswordModal"
+                            data-user-id="{{ user.id }}"
+                            data-username="{{ user.username }}"
+                            data-reset-url="{{ url_for('admin.admin_reset_password', user_id=user.id) }}">
+                        كلمة مرور
+                    </button>
+
+                    <form action="{{ url_for('admin.admin_delete_user', user_id=user.id) }}" method="post"
+                          onsubmit="return confirm('سيتم حذف المستخدم وجميع بياناته نهائيًا. هل أنت متأكد؟')">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <button type="submit" class="btn btn-sm btn-outline-danger btn-action">حذف</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {{ macros.render_pagination(pagination, 'admin.admin_users', {'q': q, 'role': role_filter}) }}
+
+    {% else %}
+    <p class="text-center">لا يوجد مستخدمون مطابقون.</p>
+    {% endif %}
+</div>
+
+<!-- مودال التفاصيل -->
+<div class="modal fade" id="userDetailsModal" tabindex="-1" aria-labelledby="userDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="userDetailsModalLabel">تفاصيل المستخدم</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body">
+                <table class="table table-bordered">
+                    <tbody>
+                        <tr><th>اسم المستخدم</th><td id="detailUsername"></td></tr>
+                        <tr><th>البريد الإلكتروني</th><td id="detailEmail"></td></tr>
+                        <tr><th>الهاتف</th><td id="detailPhone"></td></tr>
+                        <tr><th>الدور</th><td id="detailRole"></td></tr>
+                        <tr><th>تاريخ الإنشاء</th><td id="detailCreated"></td></tr>
+                        <tr><th>المعرف العام</th><td id="detailPublicId"></td></tr>
+                        <tr><th>الحالة</th><td id="detailStatus"></td></tr>
+                        <tr><th>عدد الطلبات (زبون)</th><td id="detailOrders"></td></tr>
+                        <tr><th>عدد المتاجر</th><td id="detailStores"></td></tr>
+                        <tr><th>طلبات المندوب</th><td id="detailDelivery"></td></tr>
+                        <tr><th>المفضلة</th><td id="detailFavorites"></td></tr>
+                        <tr><th>التقييمات</th><td id="detailReviews"></td></tr>
+                        <tr><th>التعليقات</th><td id="detailComments"></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-custom" data-bs-dismiss="modal">إغلاق</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- مودال إعادة تعيين كلمة المرور -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resetPasswordModalLabel">إعادة تعيين كلمة المرور</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body">
+                <p>سيتم توليد كلمة مرور مؤقتة جديدة للمستخدم: <strong id="resetUsername"></strong></p>
+                <p>ستُرسل للمستخدم عبر الإشعارات.</p>
+                <div class="alert alert-warning">بعد التأكيد، ستظهر كلمة المرور مرة واحدة فقط، فاحفظها.</div>
+            </div>
+            <div class="modal-footer">
+                <form id="resetPasswordForm" method="post">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-warning">تأكيد وإعادة تعيين</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- مودال عرض كلمة المرور المؤقتة -->
+{% if temp_password %}
+<div class="modal fade" id="tempPasswordModal" tabindex="-1" aria-labelledby="tempPasswordModalLabel" aria-hidden="true"
+     data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tempPasswordModalLabel">كلمة المرور المؤقتة</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+            </div>
+            <div class="modal-body text-center">
+                <p>تم إعادة تعيين كلمة المرور للمستخدم.</p>
+                <h3 class="text-success mt-3">{{ temp_password }}</h3>
+                <p class="text-muted small mt-3">يرجى إبلاغ المستخدم بها فورًا.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-custom" data-bs-dismiss="modal">موافق</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var modalElement = document.getElementById('tempPasswordModal');
+        if (modalElement) {
+            var modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        }
+    });
+</script>
+{% endif %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const resetModal = document.getElementById('resetPasswordModal');
+        const resetForm = document.getElementById('resetPasswordForm');
+        const resetUsername = document.getElementById('resetUsername');
+
+        if (resetModal) {
+            resetModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                const username = button.getAttribute('data-username');
+                const resetUrl = button.getAttribute('data-reset-url');
+                resetUsername.textContent = username;
+                resetForm.action = resetUrl;
+            });
+        }
+
+        const detailsModal = document.getElementById('userDetailsModal');
+        if (detailsModal) {
+            detailsModal.addEventListener('show.bs.modal', function(event) {
+                const button = event.relatedTarget;
+                document.getElementById('detailUsername').textContent = button.getAttribute('data-username');
+                document.getElementById('detailEmail').textContent = button.getAttribute('data-email');
+                document.getElementById('detailPhone').textContent = button.getAttribute('data-phone');
+                document.getElementById('detailRole').textContent = button.getAttribute('data-role');
+                document.getElementById('detailCreated').textContent = button.getAttribute('data-created');
+                document.getElementById('detailPublicId').textContent = button.getAttribute('data-public-id');
+                document.getElementById('detailStatus').textContent = button.getAttribute('data-is-active');
+                document.getElementById('detailOrders').textContent = button.getAttribute('data-orders');
+                document.getElementById('detailStores').textContent = button.getAttribute('data-stores');
+                document.getElementById('detailDelivery').textContent = button.getAttribute('data-delivery');
+                document.getElementById('detailFavorites').textContent = button.getAttribute('data-favorites');
+                document.getElementById('detailReviews').textContent = button.getAttribute('data-reviews');
+                document.getElementById('detailComments').textContent = button.getAttribute('data-comments');
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,328 @@
+{% extends 'base.html' %}
+
+{% block title %}إنشاء حساب{% endblock %}
+
+{% block head %}
+<style>
+    /* نفس نمط الحقول الموحدة المستخدم في صفحة تسجيل الدخول */
+    .custom-input-wrap {
+        position: relative;
+        margin-bottom: 0;
+    }
+    .custom-input-wrap .form-control {
+        border-radius: 12px;
+        padding-right: 40px;
+        padding-left: 40px;
+        height: 48px;
+        background-color: #fff;
+        border: 1px solid #ced4da;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .custom-input-wrap .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(46,93,52,0.15);
+    }
+    .custom-input-icon {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        color: #6c757d;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .custom-input-toggle {
+        position: absolute;
+        top: 50%;
+        left: 8px;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #6c757d;
+        z-index: 2;
+        cursor: pointer;
+        padding: 4px 8px;
+    }
+    .custom-input-toggle:hover {
+        color: var(--primary);
+    }
+    /* حقل الهاتف مع بادئة */
+    .custom-phone-prefix {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        color: #6c757d;
+        font-size: 0.9rem;
+        pointer-events: none;
+        z-index: 2;
+    }
+    .custom-phone-prefix + .form-control {
+        padding-right: 55px;
+    }
+    body.dark-mode .custom-input-wrap .form-control {
+        background-color: #2d2d2d;
+        border-color: #444;
+        color: #fff;
+    }
+    body.dark-mode .custom-input-wrap .form-control:focus {
+        border-color: #c9a227;
+        box-shadow: 0 0 0 0.2rem rgba(201,162,39,0.2);
+    }
+    body.dark-mode .custom-input-icon,
+    body.dark-mode .custom-input-toggle,
+    body.dark-mode .custom-phone-prefix {
+        color: #adb5bd;
+    }
+    .auth-card {
+        border-radius: var(--radius-lg);
+        background: rgba(255,255,255,0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+    body.dark-mode .auth-card {
+        background: rgba(30,30,30,0.85);
+    }
+    /* تحسين دائرة الصورة */
+    .avatar-upload-circle {
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background-color: rgba(46, 93, 52, 0.05);
+        border: 2px dashed var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        overflow: hidden;
+        transition: background-color 0.2s, border-color 0.2s;
+        margin: 0 auto;
+        position: relative;
+    }
+    .avatar-upload-circle:hover {
+        background-color: rgba(46, 93, 52, 0.1);
+        border-color: var(--primary-dark);
+    }
+    .avatar-upload-circle img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 50%;
+        position: absolute;
+        inset: 0;
+    }
+    .avatar-upload-circle i {
+        font-size: 2.5rem;
+        color: var(--primary);
+    }
+    body.dark-mode .avatar-upload-circle {
+        background-color: rgba(201,162,39,0.1);
+        border-color: var(--accent);
+    }
+    body.dark-mode .avatar-upload-circle i {
+        color: var(--accent);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card p-4 shadow-sm auth-card">
+                <div class="text-center mb-4">
+                    {% if step == 1 %}
+                        <i class="bi bi-person-plus auth-icon"></i>
+                        <h1 class="h3 mt-2">إنشاء حساب</h1>
+                        <p class="text-muted small">الخطوة 1 من 3</p>
+                    {% elif step == 2 %}
+                        <i class="bi bi-lock auth-icon"></i>
+                        <h1 class="h3 mt-2">إنشاء كلمة مرور</h1>
+                        <p class="text-muted small">الخطوة 2 من 3</p>
+                    {% elif step == 3 %}
+                        <i class="bi bi-image auth-icon"></i>
+                        <h1 class="h3 mt-2">الصورة الشخصية</h1>
+                        <p class="text-muted small">الخطوة 3 من 3 (اختياري)</p>
+                    {% endif %}
+                </div>
+
+                {% if step == 1 %}
+                <form method="post" action="{{ url_for('auth.register') }}">
+                    <input type="hidden" name="step" value="1">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">اسم المستخدم</label>
+                        <div class="custom-input-wrap">
+                            <i class="bi bi-person custom-input-icon"></i>
+                            <input type="text" name="username" class="form-control" required autofocus autocomplete="username" placeholder="أدخل اسم المستخدم">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">البريد الإلكتروني</label>
+                        <div class="custom-input-wrap">
+                            <i class="bi bi-envelope custom-input-icon"></i>
+                            <input type="email" name="email" class="form-control" required autocomplete="email" placeholder="example@mail.com">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">رقم الهاتف</label>
+                        <div class="custom-input-wrap">
+                            <span class="custom-phone-prefix">+963</span>
+                            <input type="tel" name="phone" class="form-control" pattern="9[0-9]{8}" maxlength="9" placeholder="9XXXXXXXX" style="padding-right:55px;">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-custom w-100 py-2">
+                        <i class="bi bi-arrow-left"></i> متابعة
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if step == 2 %}
+                <form method="post" action="{{ url_for('auth.register') }}">
+                    <input type="hidden" name="step" value="2">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">كلمة المرور</label>
+                        <div class="custom-input-wrap">
+                            <i class="bi bi-lock custom-input-icon"></i>
+                            <input type="password" name="password" id="password" class="form-control" required autocomplete="new-password" placeholder="أدخل كلمة المرور">
+                            <button class="custom-input-toggle" type="button" id="togglePasswordBtn" aria-label="إظهار كلمة المرور">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">تأكيد كلمة المرور</label>
+                        <div class="custom-input-wrap">
+                            <i class="bi bi-lock custom-input-icon"></i>
+                            <input type="password" name="confirm_password" id="confirm_password" class="form-control" required autocomplete="new-password" placeholder="أعد إدخال كلمة المرور">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label d-block">نوع الحساب</label>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="role" id="roleCustomer" value="customer" checked>
+                            <label class="form-check-label" for="roleCustomer">زبون</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="role" id="roleOwner" value="owner">
+                            <label class="form-check-label" for="roleOwner">صاحب متجر</label>
+                        </div>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" name="agree" id="agree" required>
+                        <label class="form-check-label small" for="agree">أوافق على <a href="#" target="_blank">الشروط والأحكام</a></label>
+                    </div>
+
+                    <button type="submit" class="btn btn-custom w-100 py-2">
+                        <i class="bi bi-arrow-left"></i> متابعة
+                    </button>
+                </form>
+                {% endif %}
+
+                {% if step == 3 %}
+                <form method="post" enctype="multipart/form-data" action="{{ url_for('auth.register') }}">
+                    <input type="hidden" name="step" value="3">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+                    <div class="mb-3 text-center">
+                        <label class="form-label d-block">الصورة الشخصية</label>
+                        <div class="avatar-upload-circle" id="avatarUploadCircle">
+                            <img id="avatarPreview" src="" alt="معاينة الصورة" style="display:none;">
+                            <i class="bi bi-camera" id="avatarPlaceholderIcon"></i>
+                        </div>
+                        <input type="file" name="avatar" id="avatarInput" accept="image/*" class="d-none">
+                        <button type="button" class="btn btn-sm btn-outline-secondary mt-2" id="removeAvatarBtn" style="display:none;">
+                            <i class="bi bi-x-circle"></i> إزالة
+                        </button>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">نبذة شخصية</label>
+                        <textarea name="bio" class="form-control" rows="3" placeholder="اكتب شيئاً عن نفسك (اختياري)"></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-custom flex-grow-1 py-2">
+                            <i class="bi bi-check-circle"></i> إنشاء الحساب
+                        </button>
+                        <button type="submit" class="btn btn-outline-secondary px-4" name="skip" value="1">
+                            تخطي
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // معاينة الصورة الشخصية
+        const circle = document.getElementById('avatarUploadCircle');
+        const input = document.getElementById('avatarInput');
+        const preview = document.getElementById('avatarPreview');
+        const placeholderIcon = document.getElementById('avatarPlaceholderIcon');
+        const removeBtn = document.getElementById('removeAvatarBtn');
+
+        if (circle && input) {
+            circle.addEventListener('click', function() {
+                input.click();
+            });
+        }
+
+        if (input) {
+            input.addEventListener('change', function(e) {
+                if (e.target.files && e.target.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        preview.src = event.target.result;
+                        preview.style.display = 'block';
+                        placeholderIcon.style.display = 'none';
+                        removeBtn.style.display = 'inline-block';
+                    };
+                    reader.readAsDataURL(e.target.files[0]);
+                }
+            });
+        }
+
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                input.value = '';
+                preview.src = '';
+                preview.style.display = 'none';
+                placeholderIcon.style.display = 'block';
+                removeBtn.style.display = 'none';
+            });
+        }
+
+        // إظهار/إخفاء كلمة المرور
+        const toggleBtn = document.getElementById('togglePasswordBtn');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', function() {
+                const pwd = document.getElementById('password');
+                const icon = this.querySelector('i');
+                if (pwd.type === 'password') {
+                    pwd.type = 'text';
+                    icon.className = 'bi bi-eye-slash';
+                } else {
+                    pwd.type = 'password';
+                    icon.className = 'bi bi-eye';
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

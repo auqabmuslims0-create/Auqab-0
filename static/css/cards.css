@@ -1,0 +1,360 @@
+/* ========== شبكات العرض ========== */
+.products-grid,
+.stores-grid,
+.offers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 15px;
+}
+@media (max-width: 480px) {
+    .products-grid,
+    .stores-grid,
+    .offers-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+}
+
+/* ========== بطاقة المنتج الزجاجية ========== */
+.product-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--glass-bg-light);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid var(--glass-border-light);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+body.dark-mode .product-card {
+    background: var(--glass-bg-dark);
+    border-color: var(--glass-border-dark);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+}
+
+.product-card-image {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #f0f0f0;
+    border-radius: 20px 20px 0 0;
+}
+body.dark-mode .product-card-image { background: #2d2d2d; }
+.product-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 20px 20px 0 0;
+}
+
+.product-card-body {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 120px;
+}
+.product-card-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-light);
+}
+body.dark-mode .product-card-name { color: var(--text-dark); }
+.product-card-store {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+body.dark-mode .product-card-store { color: #b0b0b0; }
+.product-card-store img {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+.product-card-price {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+.price-current {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--primary);
+}
+body.dark-mode .price-current { color: var(--accent); }
+.price-old {
+    font-size: 0.8rem;
+    color: #888;
+    text-decoration: line-through;
+}
+.price-discount {
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    background: #dc3545;
+    color: #fff;
+    font-weight: 600;
+}
+
+.add-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    z-index: 2;
+}
+.add-btn:hover { background: var(--primary-dark); }
+
+.out-of-stock {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 600;
+    z-index: 1;
+}
+
+.offer-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
+}
+
+/* ========== بطاقة المتجر الزجاجية ========== */
+.store-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: var(--glass-bg-light);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1px solid var(--glass-border-light);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+body.dark-mode .store-card {
+    background: var(--glass-bg-dark);
+    border-color: var(--glass-border-dark);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.store-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+}
+
+.store-card-image {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #f0f0f0;
+    border-radius: 20px 20px 0 0;
+}
+body.dark-mode .store-card-image { background: #2d2d2d; }
+.store-card-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 20px 20px 0 0;
+}
+
+.store-card-body {
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    text-align: center;
+}
+.store-card-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text-light);
+}
+body.dark-mode .store-card-name { color: var(--text-dark); }
+.store-status-badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-weight: 600;
+}
+.store-visit-btn {
+    margin-top: auto;
+    width: 100%;
+    padding: 6px;
+    border-radius: 20px;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    background: transparent;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+.store-visit-btn:hover { background: var(--primary); color: #fff; }
+body.dark-mode .store-visit-btn { border-color: var(--accent); color: var(--accent); }
+body.dark-mode .store-visit-btn:hover { background: var(--accent); color: #000; }
+
+/* ========== شريط المتاجر المفتوحة ========== */
+.store-strip .store-logo-circle {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f0f0f0;
+    margin: 0 auto;
+}
+.store-strip .store-logo-circle img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+.store-strip .store-logo-circle .image-fallback {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: #adb5bd;
+    background: #e9ecef;
+}
+body.dark-mode .store-strip .store-logo-circle { background: #2d2d2d; }
+
+/* ========== معرض صور المنتج ========== */
+.product-gallery-new { display: flex; flex-direction: column; gap: 12px; }
+.main-image-container {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 20px;
+    overflow: hidden;
+    background: #f8f9fa;
+    border: 1px solid #eee;
+}
+.main-product-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    border-radius: 20px;
+}
+.main-image-fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 4rem;
+    color: #adb5bd;
+}
+.thumbnails-row {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 5px;
+}
+.thumbnail-item {
+    flex-shrink: 0;
+    width: 70px;
+    height: 70px;
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: border-color 0.2s, transform 0.2s;
+    background: #f0f0f0;
+}
+.thumbnail-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 14px;
+}
+.thumbnail-item.active {
+    border-color: var(--primary);
+    transform: scale(1.05);
+}
+body.dark-mode .main-image-container { background: #2d2d2d; border-color: #555; }
+body.dark-mode .thumbnail-item { background: #333; }
+body.dark-mode .thumbnail-item.active { border-color: var(--accent); }
+
+/* ========== بديل الصورة ========== */
+.image-fallback {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    color: #adb5bd;
+}
+
+/* ========== أزرار بطاقة المنتج ========== */
+.product-card-actions-vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
+    margin-right: 4px;
+}
+.action-icon-btn {
+    background: transparent;
+    border: none;
+    padding: 4px;
+    cursor: pointer;
+    font-size: 1.4rem;
+    line-height: 1;
+    transition: transform 0.2s, color 0.2s;
+    color: var(--primary);
+}
+.action-icon-btn:hover { transform: scale(1.2); }
+.favorite-icon-btn { color: #dc3545; }
+body.dark-mode .action-icon-btn { color: var(--accent); }
+body.dark-mode .favorite-icon-btn { color: #ff6b7a; }

@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% import '_macros.html' as macros %}
+
+{% block title %}تعليقات الزبائن - {{ store.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .comments-accordion .accordion-item {
+        border: none;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        margin-bottom: 15px;
+        background: #fff;
+    }
+    body.dark-mode .comments-accordion .accordion-item {
+        background: #1e1e1e;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        color: #fff;
+    }
+    .comments-accordion .accordion-button {
+        background: transparent;
+        box-shadow: none;
+        font-weight: 700;
+        padding: 15px 20px;
+        color: var(--text-light);
+    }
+    body.dark-mode .comments-accordion .accordion-button {
+        color: #fff;
+    }
+    .comments-accordion .accordion-button:not(.collapsed) {
+        background: rgba(46,93,52,0.05);
+        color: var(--primary-dark);
+        box-shadow: none;
+    }
+    body.dark-mode .comments-accordion .accordion-button:not(.collapsed) {
+        background: rgba(201,162,39,0.1);
+        color: var(--accent);
+    }
+    .comments-accordion .accordion-body {
+        padding: 15px 20px;
+    }
+    .comment-card {
+        border: 1px solid #eaeaea;
+        border-radius: 15px;
+        padding: 12px;
+        margin-bottom: 12px;
+        background: #fafafa;
+        transition: background 0.2s;
+    }
+    .comment-card:last-child {
+        margin-bottom: 0;
+    }
+    .comment-card:hover {
+        background: #f1f3f5;
+    }
+    body.dark-mode .comment-card {
+        background: #252525;
+        border-color: #333;
+    }
+    body.dark-mode .comment-card:hover {
+        background: #2d2d2d;
+    }
+    .comment-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+    }
+    .comment-avatar {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        flex-shrink: 0;
+        font-size: 1rem;
+    }
+    body.dark-mode .comment-avatar {
+        background: var(--accent);
+        color: #000;
+    }
+    .comment-user {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+    .comment-date {
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+    body.dark-mode .comment-date {
+        color: #adb5bd;
+    }
+    .comment-text {
+        margin: 0;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4 text-center"><i class="bi bi-chat-dots"></i> تعليقات الزبائن على منتجات {{ store.name }}</h1>
+
+    {% if grouped %}
+        <div class="accordion comments-accordion" id="storeCommentsAccordion">
+            {% for product_id, group in grouped.items() %}
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="commentHeading{{ product_id }}">
+                    <button class="accordion-button collapsed" type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#commentCollapse{{ product_id }}"
+                            aria-expanded="false"
+                            aria-controls="commentCollapse{{ product_id }}">
+                        <span class="fw-bold me-2">{{ group.product.name }}</span>
+                        <span class="badge bg-primary rounded-pill">{{ group.comments|length }}</span>
+                    </button>
+                </h2>
+                <div id="commentCollapse{{ product_id }}"
+                     class="accordion-collapse collapse"
+                     aria-labelledby="commentHeading{{ product_id }}"
+                     data-bs-parent="#storeCommentsAccordion">
+                    <div class="accordion-body">
+                        {% for comment in group.comments %}
+                        <div class="comment-card">
+                            <div class="comment-header">
+                                <div class="comment-avatar">
+                                    {{ comment.user.username[:1] if comment.user else 'م' }}
+                                </div>
+                                <div>
+                                    <div class="comment-user">{{ comment.user.username if comment.user else 'مستخدم' }}</div>
+                                    <span class="comment-date">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                </div>
+                            </div>
+                            <p class="comment-text">{{ comment.text }}</p>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        {{ macros.render_empty_state('bi-chat-square-text', 'لا توجد تعليقات على منتجاتك بعد.') }}
+    {% endif %}
+
+    <div class="text-center mt-4">
+        <a href="{{ url_for('store.store_manage', store_id=store.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-right"></i> عودة لإدارة المتجر
+        </a>
+    </div>
+</div>
+{% endblock %}

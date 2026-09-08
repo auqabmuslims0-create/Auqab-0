@@ -1,0 +1,234 @@
+{% extends 'base.html' %}
+
+{% block title %}إدارة {{ store.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .stat-card {
+        border-radius: 16px;
+        border: none;
+        transition: transform 0.2s, box-shadow 0.2s;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        background: #fff;
+        cursor: pointer;
+    }
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+    }
+    body.dark-mode .stat-card {
+        background: #1e1e1e;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        color: #fff;
+    }
+    .stat-icon {
+        font-size: 2.2rem;
+    }
+    .stat-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin: 8px 0 0;
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin: 0;
+    }
+    body.dark-mode .stat-label {
+        color: #adb5bd;
+    }
+    .rating-icon {
+        font-size: 2rem;
+    }
+    .rating-box {
+        padding: 10px;
+        border-radius: 12px;
+        background: #f8f9fa;
+        transition: background 0.2s;
+    }
+    body.dark-mode .rating-box {
+        background: #2d2d2d;
+    }
+    .alert-warning {
+        border-radius: 15px;
+        border: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- رأس الصفحة مع حالة الاشتراك -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+        <h1 class="h3 mb-0"><i class="bi bi-shop"></i> {{ store.name }}</h1>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge fs-6
+                {% if store.subscription_status == 'active' %}bg-success
+                {% elif store.subscription_status == 'pending' %}bg-warning text-dark
+                {% else %}bg-secondary{% endif %}">
+                {% if store.subscription_status == 'active' %}نشط
+                {% elif store.subscription_status == 'pending' %}قيد الانتظار
+                {% else %}غير نشط{% endif %}
+            </span>
+            {% if subscription and subscription.end_date %}
+                <span class="badge bg-light text-dark border">
+                    <i class="bi bi-calendar-check"></i> حتى {{ subscription.end_date.strftime('%Y-%m-%d') }}
+                </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- تنبيه الاشتراك -->
+    {% if store.subscription_status != 'active' %}
+    <div class="alert alert-warning d-flex justify-content-between align-items-center flex-wrap">
+        <span><i class="bi bi-exclamation-triangle"></i> متجرك غير نشط حاليًا، بعض العمليات غير متاحة.</span>
+        <a href="{{ url_for('store.store_subscription', store_id=store.id) }}" class="btn btn-sm btn-warning">إدارة الاشتراك</a>
+    </div>
+    {% endif %}
+
+    <!-- بطاقات الإدارة الرئيسية -->
+    <div class="row g-3 mb-4">
+        <!-- المنتجات -->
+        <div class="col-6 col-md-4 col-lg-3">
+            <a href="{{ url_for('store.store_products', store_id=store.id) }}" class="text-decoration-none">
+                <div class="card p-3 text-center stat-card h-100">
+                    <i class="bi bi-box-seam stat-icon text-primary"></i>
+                    <div class="stat-value">{{ products_count }}</div>
+                    <p class="stat-label">المنتجات</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- الريلز -->
+        <div class="col-6 col-md-4 col-lg-3">
+            <a href="{{ url_for('store.store_reels', store_id=store.id) }}" class="text-decoration-none">
+                <div class="card p-3 text-center stat-card h-100">
+                    <i class="bi bi-film stat-icon text-primary"></i>
+                    <div class="stat-value">{{ reels_count }}</div>
+                    <p class="stat-label">الريلز</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- الطلبات -->
+        <div class="col-6 col-md-4 col-lg-3">
+            <a href="{{ url_for('store.store_orders', store_id=store.id) }}" class="text-decoration-none">
+                <div class="card p-3 text-center stat-card h-100">
+                    <i class="bi bi-receipt stat-icon text-warning"></i>
+                    <div class="stat-value">{{ orders_count }}</div>
+                    <p class="stat-label">الطلبات</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- التصنيفات -->
+        <div class="col-6 col-md-4 col-lg-3">
+            <a href="{{ url_for('store.store_categories', store_id=store.id) }}" class="text-decoration-none">
+                <div class="card p-3 text-center stat-card h-100">
+                    <i class="bi bi-folder stat-icon text-info"></i>
+                    <div class="stat-value">{{ categories_count }}</div>
+                    <p class="stat-label">التصنيفات</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- الإيرادات -->
+        <div class="col-6 col-md-4 col-lg-3">
+            <a href="{{ url_for('store.store_orders', store_id=store.id) }}" class="text-decoration-none">
+                <div class="card p-3 text-center stat-card h-100">
+                    <i class="bi bi-cash stat-icon text-success"></i>
+                    <div class="stat-value">{{ total_revenue|format_price }} <small>ل.س</small></div>
+                    <p class="stat-label">الإيرادات</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- تعليقات الزبائن -->
+        <div class="col-6 col-md-4 col-lg-3">
+            <a href="{{ url_for('store.store_comments', store_id=store.id) }}" class="text-decoration-none">
+                <div class="card p-3 text-center stat-card h-100">
+                    <i class="bi bi-chat-dots stat-icon text-primary"></i>
+                    <div class="stat-value">{{ comments_count }}</div>
+                    <p class="stat-label">تعليقات الزبائن</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- الاشتراك -->
+        <div class="col-6 col-md-4 col-lg-3">
+            <a href="{{ url_for('store.store_subscription', store_id=store.id) }}" class="text-decoration-none">
+                <div class="card p-3 text-center stat-card h-100">
+                    <i class="bi bi-credit-card stat-icon text-danger"></i>
+                    <div class="stat-value">
+                        {% if store.subscription_status == 'active' %}
+                            <span class="badge bg-success">نشط</span>
+                        {% elif store.subscription_status == 'pending' %}
+                            <span class="badge bg-warning text-dark">قيد الانتظار</span>
+                        {% else %}
+                            <span class="badge bg-secondary">غير نشط</span>
+                        {% endif %}
+                    </div>
+                    <p class="stat-label">الاشتراك</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- تعديل المتجر -->
+        <div class="col-6 col-md-4 col-lg-3">
+            <a href="{{ url_for('store.edit_store', store_id=store.id) }}" class="text-decoration-none">
+                <div class="card p-3 text-center stat-card h-100">
+                    <i class="bi bi-pencil-square stat-icon text-secondary"></i>
+                    <div class="stat-value"><i class="bi bi-arrow-left"></i></div>
+                    <p class="stat-label">تعديل المتجر</p>
+                </div>
+            </a>
+        </div>
+
+        <!-- عرض المتجر العام -->
+        <div class="col-6 col-md-4 col-lg-3">
+            <a href="{{ url_for('stores.store_public', store_id=store.id) }}" target="_blank" class="text-decoration-none">
+                <div class="card p-3 text-center stat-card h-100">
+                    <i class="bi bi-eye stat-icon text-info"></i>
+                    <div class="stat-value"><i class="bi bi-box-arrow-up-right"></i></div>
+                    <p class="stat-label">عرض المتجر العام</p>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- بطاقة تقييمات المتجر -->
+    <div class="card p-4 mt-4 stat-card">
+        <h5 class="mb-4"><i class="bi bi-stars"></i> تقييمات المتجر</h5>
+        <div class="row g-3 text-center">
+            <div class="col-6 col-md-3">
+                <div class="rating-box">
+                    <i class="bi bi-star-fill text-warning rating-icon"></i>
+                    <h4 class="mt-2">{{ reviews_count }}</h4>
+                    <p class="text-muted mb-0">تقييمات</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="rating-box">
+                    <i class="bi bi-chat-dots text-primary rating-icon"></i>
+                    <h4 class="mt-2">{{ comments_count }}</h4>
+                    <p class="text-muted mb-0">تعليقات</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="rating-box">
+                    <i class="bi bi-hand-thumbs-up text-success rating-icon"></i>
+                    <h4 class="mt-2">{{ reactions_count }}</h4>
+                    <p class="text-muted mb-0">تفاعلات</p>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="rating-box">
+                    <i class="bi bi-eye text-info rating-icon"></i>
+                    <h4 class="mt-2">{{ views_count }}</h4>
+                    <p class="text-muted mb-0">مشاهدات</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

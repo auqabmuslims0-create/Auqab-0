@@ -1,0 +1,256 @@
+{% extends 'base.html' %}
+
+{% block title %}تواصل معنا{% endblock %}
+
+{% block head %}
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<style>
+    :root {
+        --chat-primary: #2e5d34;
+        --chat-primary-dark: #224527;
+        --chat-bg: #f7f4ef;
+        --chat-card-bg: #ffffff;
+        --chat-border: #e0e0e0;
+        --chat-text: #2d2d2d;
+        --chat-sent-bg: #2e5d34;
+        --chat-sent-text: #ffffff;
+        --chat-received-bg: #f1f3f5;
+        --chat-received-text: #2d2d2d;
+    }
+    body.dark-mode {
+        --chat-bg: #121212;
+        --chat-card-bg: #1e1e1e;
+        --chat-border: #333;
+        --chat-text: #ffffff;
+        --chat-sent-bg: #c9a227;
+        --chat-sent-text: #000000;
+        --chat-received-bg: #2d2d2d;
+        --chat-received-text: #f0ede8;
+    }
+    .chat-page-container {
+        max-width: 700px;
+        margin: 0 auto;
+        padding: 10px;
+    }
+    .chat-card {
+        border: 1px solid var(--chat-border);
+        border-radius: 25px;
+        overflow: hidden;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        background: var(--chat-card-bg);
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 140px);
+        min-height: 400px;
+        max-height: 750px;
+    }
+    .chat-header {
+        background: linear-gradient(135deg, var(--chat-primary), var(--chat-primary-dark));
+        color: #fff;
+        padding: 15px 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-shrink: 0;
+    }
+    .chat-header .support-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+    }
+    .chat-header .title {
+        font-weight: 700;
+        font-size: 1.1rem;
+    }
+    .chat-header .subtitle {
+        font-size: 0.8rem;
+        opacity: 0.85;
+    }
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        background: var(--chat-bg);
+    }
+    .message-row {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        max-width: 80%;
+    }
+    .message-row.sent {
+        align-self: flex-end;
+        flex-direction: row-reverse;
+    }
+    .message-row.received {
+        align-self: flex-start;
+    }
+    .message-avatar {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        color: #fff;
+    }
+    .message-row.sent .message-avatar { background: var(--chat-primary); }
+    .message-row.received .message-avatar { background: #6c757d; }
+    .message-bubble {
+        padding: 10px 14px;
+        border-radius: 18px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        word-wrap: break-word;
+    }
+    .message-row.sent .message-bubble {
+        background: var(--chat-sent-bg);
+        color: var(--chat-sent-text);
+        border-bottom-left-radius: 4px;
+    }
+    .message-row.received .message-bubble {
+        background: var(--chat-received-bg);
+        color: var(--chat-received-text);
+        border-bottom-right-radius: 4px;
+    }
+    .message-text { font-size: 0.95rem; line-height: 1.5; }
+    .message-time {
+        display: block;
+        font-size: 0.7rem;
+        opacity: 0.7;
+        margin-top: 4px;
+        text-align: left;
+    }
+    .message-row.sent .message-time { text-align: right; }
+    .chat-input-area {
+        padding: 12px 15px;
+        background: var(--chat-card-bg);
+        border-top: 1px solid var(--chat-border);
+        flex-shrink: 0;
+    }
+    .chat-input-area form { display: flex; gap: 10px; align-items: center; }
+    .chat-input-area input {
+        flex: 1;
+        border-radius: 30px;
+        border: 1px solid var(--chat-border);
+        padding: 12px 20px;
+        font-size: 0.95rem;
+        background: var(--chat-bg);
+        color: var(--chat-text);
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .chat-input-area input:focus {
+        border-color: var(--chat-primary);
+        box-shadow: 0 0 0 0.2rem rgba(46,93,52,0.15);
+    }
+    .send-btn {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        border: none;
+        background: linear-gradient(135deg, var(--chat-primary), var(--chat-primary-dark));
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        flex-shrink: 0;
+        box-shadow: 0 4px 12px rgba(46,93,52,0.3);
+    }
+    .send-btn:hover { transform: scale(1.08); box-shadow: 0 8px 20px rgba(46,93,52,0.5); }
+    .send-btn:active { transform: scale(0.95); }
+    body.dark-mode .send-btn { background: linear-gradient(135deg, #c9a227, #b8941f); color: #000; }
+    .empty-chat { text-align: center; color: #6c757d; margin: auto; }
+    @media (max-width: 576px) {
+        .chat-card { height: calc(100vh - 100px); border-radius: 0; }
+        .message-row { max-width: 90%; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container chat-page-container mt-4">
+    <div class="chat-card">
+        <div class="chat-header">
+            <div class="support-icon"><i class="bi bi-headset"></i></div>
+            <div>
+                <div class="title">الدعم الفني</div>
+                <div class="subtitle">متصل الآن</div>
+            </div>
+        </div>
+        <div id="chatMessages" class="chat-messages">
+            <div class="empty-chat">ابدأ المحادثة مع فريق الدعم</div>
+        </div>
+        <div class="chat-input-area">
+            <form id="chatForm" action="{{ url_for('services.send_contact_message') }}" method="post">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <input type="text" id="messageInput" name="message" placeholder="اكتب رسالتك هنا..." required autocomplete="off">
+                <button type="submit" class="send-btn" aria-label="إرسال">
+                    <i class="bi bi-send"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const chatMessages = document.getElementById('chatMessages');
+
+    function renderMessages(messages) {
+        chatMessages.innerHTML = '';
+        if (!messages || messages.length === 0) {
+            chatMessages.innerHTML = '<div class="empty-chat">ابدأ المحادثة مع فريق الدعم</div>';
+            return;
+        }
+        messages.forEach(msg => {
+            const row = document.createElement('div');
+            row.className = `message-row ${msg.is_mine ? 'sent' : 'received'}`;
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.innerHTML = msg.is_mine ? '<i class="bi bi-person"></i>' : '<i class="bi bi-headset"></i>';
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            const textSpan = document.createElement('span');
+            textSpan.className = 'message-text';
+            textSpan.textContent = msg.message;
+            const timeSpan = document.createElement('span');
+            timeSpan.className = 'message-time';
+            timeSpan.textContent = msg.created_at;
+            bubble.appendChild(textSpan);
+            bubble.appendChild(timeSpan);
+            row.appendChild(avatar);
+            row.appendChild(bubble);
+            chatMessages.appendChild(row);
+        });
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function loadMessages() {
+        fetch("{{ url_for('services.fetch_contact_messages') }}", {cache: 'no-store'})
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') renderMessages(data.messages);
+            })
+            .catch(err => console.error('Error loading messages:', err));
+    }
+
+    loadMessages();
+    setInterval(loadMessages, 5000);
+</script>
+{% endblock %}

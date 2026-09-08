@@ -1,0 +1,108 @@
+/* ========== تعديلات الاستجابة للجوال والأجهزة اللوحية ========== */
+
+/* الشاشات الصغيرة جداً (أقل من 576px) */
+@media (max-width: 575.98px) {
+    body {
+        padding-top: 70px;
+        padding-bottom: 85px; /* للشريط السفلي */
+    }
+    body.no-bottom-nav {
+        padding-bottom: 15px;
+    }
+    .navbar-custom {
+        height: 56px;
+        padding: 0 10px;
+    }
+    .navbar-custom .navbar-brand {
+        font-size: 1.1rem;
+    }
+    .navbar-brand i {
+        font-size: 1.3rem !important;
+    }
+    .burger-btn {
+        font-size: 1.8rem;
+    }
+    .theme-toggle-btn {
+        font-size: 1.4rem;
+    }
+    .modern-sidebar {
+        width: 85% !important;
+        max-width: 320px;
+    }
+}
+
+/* الشاشات الصغيرة (576px - 767.98px) */
+@media (min-width: 576px) and (max-width: 767.98px) {
+    body {
+        padding-top: 75px;
+        padding-bottom: 90px;
+    }
+    body.no-bottom-nav {
+        padding-bottom: 20px;
+    }
+    .navbar-custom {
+        height: 60px;
+    }
+    .navbar-custom .navbar-brand {
+        font-size: 1.2rem;
+    }
+    .modern-sidebar {
+        width: 70% !important;
+        max-width: 300px;
+    }
+}
+
+/* الأجهزة اللوحية الصغيرة (768px - 991.98px) */
+@media (min-width: 768px) and (max-width: 991.98px) {
+    body {
+        padding-top: 80px;
+        padding-bottom: 100px;
+    }
+    body.no-bottom-nav {
+        padding-bottom: 30px;
+    }
+    .modern-sidebar {
+        width: 40% !important;
+        max-width: 300px;
+    }
+}
+
+/* الأجهزة اللوحية الكبيرة والديسكتوب (أكبر من 992px) */
+@media (min-width: 992px) {
+    body {
+        padding-top: 85px;
+        padding-bottom: 30px;
+    }
+    body.with-bottom-nav {
+        padding-bottom: 100px; /* في حال ظهور الشريط السفلي على الشاشات الكبيرة */
+    }
+    .modern-sidebar {
+        width: 25% !important;
+        max-width: 280px;
+    }
+}
+
+/* تحسينات إضافية للشريط السفلي */
+@media (max-width: 480px) {
+    .bottom-nav {
+        left: 10px;
+        right: 10px;
+        height: 68px;
+        border-radius: 24px;
+    }
+    .bottom-nav-item i { font-size: 1.4rem; }
+    .cart-circle { width: 56px; height: 56px; margin-top: -24px; }
+    .cart-circle i { font-size: 24px; }
+}
+
+/* تحسينات عامة للجداول والعناصر */
+@media (max-width: 768px) {
+    .table thead { display: none; }
+    .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+    .table tr { margin-bottom: 15px; border: 1px solid #ddd; border-radius: var(--radius-md); overflow: hidden; }
+    .table td { border: none; border-bottom: 1px solid #ddd; text-align: right; padding: 10px; }
+    .table td::before { content: attr(data-label) ": "; font-weight: bold; display: block; margin-bottom: 4px; color: var(--muted-light); }
+    .main-product-image, .main-product-image-placeholder { height: 250px; }
+    .product-title { font-size: 1.5rem; }
+    .product-price { font-size: 1.5rem; }
+}

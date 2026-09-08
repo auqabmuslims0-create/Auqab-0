@@ -1,0 +1,15 @@
+Flask>=3.0.0
+Flask-SQLAlchemy>=3.1.0
+Flask-Migrate>=4.0.0
+Flask-WTF>=1.2.0
+Flask-Limiter>=4.0.0
+flask-talisman>=1.1.0
+python-dotenv>=1.0.0
+PyJWT>=2.8.0
+Werkzeug>=3.0.0
+gunicorn>=22.0.0
+psycopg2-binary>=2.9.9
+pywebpush>=1.14.0
+APScheduler>=3.10.0
+Pillow>=10.0.0
+cloudinary>=1.36.0

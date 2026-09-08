@@ -1,0 +1,377 @@
+/* ============================
+   الوضع الداكن - تغطية شاملة
+   يضمن تحول جميع النصوص إلى الأبيض/فاتح
+============================ */
+
+/* ========== تفعيل الخلفية والنص الأساسي ========== */
+body.dark-mode,
+html.dark-mode body {
+    background-color: #121212;
+    color: #ffffff;
+}
+
+/* ========== متغيرات الوضع الداكن ========== */
+html.dark-mode {
+    --bg-dark: #121212;
+    --card-dark: rgba(45, 45, 45, 0.6);
+    --text-dark: #ffffff;
+    --muted-dark: #e0e0e0;
+    --glass-bg-dark: rgba(45, 45, 45, 0.6);
+    --glass-border-dark: rgba(255, 255, 255, 0.15);
+}
+
+/* ========== تغطية شاملة لجميع النصوص ========== */
+body.dark-mode *:not(script):not(style):not(link):not(meta):not(title):not(base):not(noscript) {
+    color: inherit;
+}
+
+body.dark-mode h1,
+body.dark-mode h2,
+body.dark-mode h3,
+body.dark-mode h4,
+body.dark-mode h5,
+body.dark-mode h6,
+body.dark-mode p,
+body.dark-mode span,
+body.dark-mode div,
+body.dark-mode label,
+body.dark-mode li,
+body.dark-mode a,
+body.dark-mode button,
+body.dark-mode td,
+body.dark-mode th,
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select,
+body.dark-mode option,
+body.dark-mode .form-label,
+body.dark-mode .form-text,
+body.dark-mode .form-check-label,
+body.dark-mode .form-select,
+body.dark-mode .form-control,
+body.dark-mode .nav-link,
+body.dark-mode .navbar-brand,
+body.dark-mode .dropdown-item,
+body.dark-mode .list-group-item,
+body.dark-mode .table,
+body.dark-mode .badge,
+body.dark-mode .card,
+body.dark-mode .card-title,
+body.dark-mode .card-text,
+body.dark-mode .alert {
+    color: #ffffff !important;
+}
+
+/* استثناءات: badges محددة */
+body.dark-mode .badge.bg-warning {
+    color: #000 !important;
+}
+body.dark-mode .badge.bg-danger,
+body.dark-mode .badge.bg-success,
+body.dark-mode .badge.bg-info,
+body.dark-mode .badge.bg-primary,
+body.dark-mode .badge.bg-secondary {
+    color: #fff !important;
+}
+
+/* ========== حقول الإدخال: نص أبيض صريح ========== */
+body.dark-mode input,
+body.dark-mode textarea,
+body.dark-mode select {
+    color: #ffffff !important;
+    caret-color: #ffffff !important;
+    background-color: var(--glass-bg-dark) !important;
+    border-color: var(--glass-border-dark) !important;
+}
+
+body.dark-mode input::placeholder,
+body.dark-mode textarea::placeholder,
+body.dark-mode select::placeholder {
+    color: #b0b0b0 !important;
+    opacity: 1;
+}
+
+body.dark-mode .form-control,
+body.dark-mode .form-select,
+body.dark-mode .search-input-modern {
+    color: #ffffff !important;
+    background-color: var(--glass-bg-dark) !important;
+    border-color: var(--glass-border-dark) !important;
+}
+
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+    color: #ffffff !important;
+    background-color: var(--glass-bg-dark) !important;
+}
+
+/* ========== الأزرار ========== */
+body.dark-mode .btn-outline-secondary {
+    color: #e0e0e0 !important;
+    border-color: var(--glass-border-dark) !important;
+}
+body.dark-mode .btn-outline-secondary:hover {
+    background-color: #555 !important;
+    color: #fff !important;
+}
+body.dark-mode .btn-light {
+    background: var(--glass-bg-dark) !important;
+    color: #f5f5f5 !important;
+    border-color: var(--glass-border-dark) !important;
+}
+body.dark-mode .btn-light:hover {
+    background: #4a4a4a !important;
+    color: #fff !important;
+}
+body.dark-mode .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+body.dark-mode .btn-custom {
+    background-color: #c9a227 !important;
+    color: #000 !important;
+}
+body.dark-mode .btn-custom:hover {
+    background-color: #b8941f !important;
+    color: #000 !important;
+}
+
+/* ========== البطاقات الزجاجية ========== */
+body.dark-mode .card,
+body.dark-mode .auth-card,
+body.dark-mode .lock-card,
+body.dark-mode .profile-card,
+body.dark-mode .product-card,
+body.dark-mode .store-card,
+body.dark-mode .offer-card,
+body.dark-mode .store-card-new,
+body.dark-mode .order-card-new,
+body.dark-mode .order-card-modern,
+body.dark-mode .order-accordion-item,
+body.dark-mode .stat-card,
+body.dark-mode .chart-card,
+body.dark-mode .notification-card,
+body.dark-mode .about-card {
+    background: var(--glass-bg-dark) !important;
+    border-color: var(--glass-border-dark) !important;
+    backdrop-filter: blur(var(--glass-blur, 12px));
+    -webkit-backdrop-filter: blur(var(--glass-blur, 12px));
+    color: #ffffff !important;
+}
+
+body.dark-mode .card-header,
+body.dark-mode .card-footer {
+    background-color: rgba(255,255,255,0.05) !important;
+    border-color: var(--glass-border-dark) !important;
+}
+
+body.dark-mode .product-card-name,
+body.dark-mode .store-card-name,
+body.dark-mode .offer-name,
+body.dark-mode .notification-title {
+    color: #ffffff !important;
+}
+
+body.dark-mode .product-card-store,
+body.dark-mode .offer-store,
+body.dark-mode .notification-message,
+body.dark-mode .store-desc,
+body.dark-mode .product-description,
+body.dark-mode .comment-text,
+body.dark-mode .message-text,
+body.dark-mode .about-lead,
+body.dark-mode .about-text,
+body.dark-mode .error-message {
+    color: #e0e0e0 !important;
+}
+
+/* ========== القوائم الجانبية والسفلية ========== */
+body.dark-mode .modern-sidebar,
+body.dark-mode .filter-sidebar {
+    background: var(--glass-bg-dark) !important;
+    border-color: var(--glass-border-dark) !important;
+    color: #ffffff !important;
+}
+
+body.dark-mode .sidebar-menu-item {
+    color: #f5f5f5 !important;
+}
+body.dark-mode .sidebar-menu-item:hover,
+body.dark-mode .sidebar-menu-item:focus {
+    background: rgba(201, 162, 39, 0.2) !important;
+    color: #ffffff !important;
+}
+
+body.dark-mode .offcanvas-header {
+    border-bottom: 1px solid var(--glass-border-dark) !important;
+    background-color: transparent;
+}
+body.dark-mode .offcanvas-title {
+    color: #ffffff !important;
+}
+
+body.dark-mode .bottom-nav {
+    background: var(--glass-bg-dark) !important;
+    border-color: var(--glass-border-dark) !important;
+    color: #ffffff !important;
+}
+body.dark-mode .bottom-nav-item {
+    color: #b0b0b0 !important;
+}
+body.dark-mode .bottom-nav-item.active {
+    color: #ffffff !important;
+}
+body.dark-mode .bottom-nav-item:hover {
+    color: #f5f5f5 !important;
+}
+
+body.dark-mode .navbar-custom {
+    background: linear-gradient(135deg, #1e2a1f, #1a1a1a) !important;
+    border-bottom: 1px solid var(--glass-border-dark) !important;
+}
+body.dark-mode .navbar-brand,
+body.dark-mode .navbar-brand span,
+body.dark-mode .burger-btn {
+    color: #ffffff !important;
+}
+
+/* ========== شريط البحث والتصفية ========== */
+body.dark-mode .search-bar-modern {
+    background: var(--glass-bg-dark) !important;
+    border-color: var(--glass-border-dark) !important;
+    color: #ffffff !important;
+}
+body.dark-mode .search-input-modern {
+    color: #ffffff !important;
+}
+body.dark-mode .search-input-modern::placeholder {
+    color: #888 !important;
+}
+body.dark-mode .search-icon {
+    color: #c9a227 !important;
+}
+body.dark-mode .filter-btn {
+    background: var(--glass-bg-dark) !important;
+    color: #c9a227 !important;
+    border-color: var(--glass-border-dark) !important;
+}
+body.dark-mode .filter-btn:hover {
+    background: rgba(70, 70, 70, 0.9) !important;
+    color: #ffffff !important;
+}
+
+/* ========== الجداول ========== */
+body.dark-mode .table {
+    background: var(--glass-bg-dark) !important;
+    color: #ffffff !important;
+    border-color: var(--glass-border-dark) !important;
+}
+body.dark-mode .table thead {
+    background-color: #444 !important;
+    color: #ffffff !important;
+}
+body.dark-mode .table-striped tbody tr:nth-of-type(odd) {
+    background-color: rgba(255,255,255,0.05) !important;
+}
+body.dark-mode .table-hover tbody tr:hover {
+    background-color: #4a4a4a !important;
+    color: #ffffff !important;
+}
+
+/* ========== القوائم المنسدلة والقوائم ========== */
+body.dark-mode .dropdown-menu {
+    background: var(--glass-bg-dark) !important;
+    border-color: var(--glass-border-dark) !important;
+}
+body.dark-mode .dropdown-item {
+    color: #f5f5f5 !important;
+}
+body.dark-mode .dropdown-item:hover,
+body.dark-mode .dropdown-item:focus {
+    background-color: #444 !important;
+    color: #ffffff !important;
+}
+body.dark-mode .list-group-item {
+    background: var(--glass-bg-dark) !important;
+    color: #ffffff !important;
+    border-color: var(--glass-border-dark) !important;
+}
+
+/* ========== نوافذ ========== */
+body.dark-mode .modal-content {
+    background: var(--glass-bg-dark) !important;
+    color: #ffffff !important;
+    border-color: var(--glass-border-dark) !important;
+}
+body.dark-mode .modal-header,
+body.dark-mode .modal-footer {
+    border-color: var(--glass-border-dark) !important;
+}
+
+/* ========== عناصر عامة ========== */
+body.dark-mode hr {
+    border-color: var(--glass-border-dark) !important;
+}
+body.dark-mode code,
+body.dark-mode pre {
+    background: var(--glass-bg-dark) !important;
+    color: #ffffff !important;
+    border-color: var(--glass-border-dark) !important;
+}
+body.dark-mode .progress {
+    background-color: #444 !important;
+}
+body.dark-mode .progress-bar {
+    background-color: #c9a227 !important;
+    color: #000 !important;
+}
+body.dark-mode .form-check-input {
+    background-color: #3a3a3a !important;
+    border-color: var(--glass-border-dark) !important;
+}
+body.dark-mode .form-check-input:checked {
+    background-color: #c9a227 !important;
+    border-color: #c9a227 !important;
+}
+
+/* ========== ترقيم الصفحات ========== */
+body.dark-mode .pagination .page-link {
+    background: var(--glass-bg-dark) !important;
+    border-color: var(--glass-border-dark) !important;
+    color: #f5f5f5 !important;
+}
+body.dark-mode .pagination .page-item.active .page-link {
+    background-color: #c9a227 !important;
+    border-color: #c9a227 !important;
+    color: #000 !important;
+}
+body.dark-mode .pagination .page-item.disabled .page-link {
+    background-color: #333333 !important;
+    border-color: var(--glass-border-dark) !important;
+    color: #777 !important;
+}
+
+/* ========== شارات وإشعارات ========== */
+body.dark-mode .notification-dot {
+    background-color: #ff4d4d !important;
+}
+body.dark-mode .cart-badge {
+    background-color: #ff4d4d !important;
+    color: #fff !important;
+}
+body.dark-mode .cart-circle {
+    background: linear-gradient(135deg, #c9a227, #a8871d) !important;
+    color: #000 !important;
+}
+
+/* ========== استثناء: روابط المصادقة تبقى زرقاء ========== */
+body.dark-mode .auth-card a:not(.btn),
+body.dark-mode .lock-card a:not(.btn),
+body.dark-mode .profile-card a:not(.btn) {
+    color: #0d6efd !important;
+}
+body.dark-mode .auth-card a:not(.btn):hover,
+body.dark-mode .lock-card a:not(.btn):hover,
+body.dark-mode .profile-card a:not(.btn):hover {
+    color: #0a58ca !important;
+    text-decoration: underline;
+}

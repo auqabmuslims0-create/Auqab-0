@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {% if category %}تعديل التصنيف{% else %}إضافة تصنيف جديد{% endif %} - {{ store.name }}
+{% endblock %}
+
+{% block head %}
+<style>
+    .form-card {
+        border-radius: 20px;
+        border: none;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        background: #fff;
+    }
+    body.dark-mode .form-card {
+        background: #1e1e1e;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        color: #fff;
+    }
+    .custom-input-wrap {
+        position: relative;
+        margin-bottom: 0;
+    }
+    .custom-input-wrap .form-control,
+    .custom-input-wrap .form-select {
+        border-radius: 12px;
+        padding-right: 40px;
+        padding-left: 40px;
+        height: 48px;
+        background-color: #fff;
+        border: 1px solid #ced4da;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .custom-input-wrap .form-control:focus,
+    .custom-input-wrap .form-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 0.2rem rgba(46,93,52,0.15);
+    }
+    .custom-input-icon {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        color: #6c757d;
+        pointer-events: none;
+        z-index: 2;
+    }
+    body.dark-mode .custom-input-wrap .form-control,
+    body.dark-mode .custom-input-wrap .form-select {
+        background-color: #2d2d2d;
+        border-color: #444;
+        color: #fff;
+    }
+    body.dark-mode .custom-input-wrap .form-control:focus,
+    body.dark-mode .custom-input-wrap .form-select:focus {
+        border-color: #c9a227;
+        box-shadow: 0 0 0 0.2rem rgba(201,162,39,0.2);
+    }
+    body.dark-mode .custom-input-icon {
+        color: #adb5bd;
+    }
+    .btn-custom {
+        border-radius: 25px;
+        font-weight: 600;
+        transition: background 0.2s, transform 0.2s;
+    }
+    .btn-custom:hover {
+        transform: translateY(-2px);
+        background: var(--primary-dark);
+    }
+    .btn-outline-secondary {
+        border-radius: 25px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4 text-center">
+        <i class="bi bi-folder"></i>
+        {% if category %}تعديل التصنيف{% else %}إضافة تصنيف جديد{% endif %}
+    </h1>
+
+    <div class="card form-card p-4 shadow-sm mx-auto" style="max-width: 500px;">
+        <form method="post" action="{% if category %}{{ url_for('store.edit_category', store_id=store.id, category_id=category.id) }}{% else %}{{ url_for('store.new_category', store_id=store.id) }}{% endif %}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">اسم التصنيف</label>
+                <div class="custom-input-wrap">
+                    <i class="bi bi-tag custom-input-icon"></i>
+                    <input type="text" name="name" class="form-control" value="{{ category.name if category else '' }}" required placeholder="مثال: قهوة">
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">التصنيف الأب (اختياري)</label>
+                <div class="custom-input-wrap">
+                    <i class="bi bi-diagram-2 custom-input-icon"></i>
+                    <select name="parent_id" class="form-select">
+                        <option value="">بدون أب (تصنيف رئيسي)</option>
+                        {% for parent in parent_categories %}
+                            {% if not category or parent.id != category.id %}
+                                <option value="{{ parent.id }}" {% if category and category.parent_id == parent.id %}selected{% endif %}>
+                                    {{ parent.name }}
+                                </option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-custom flex-fill">
+                    <i class="bi bi-check-circle"></i> حفظ
+                </button>
+                <a href="{{ url_for('store.store_categories', store_id=store.id) }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-right"></i> عودة
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
