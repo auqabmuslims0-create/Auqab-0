@@ -149,7 +149,7 @@
                 <div class="product-reel-video-wrapper">
                     <video class="product-reel-video" loop playsinline preload="auto"
                            src="{{ product.video | get_image_url }}"
-                           poster="{{ product.images.split(',')[0].strip() | get_image_url if product.images else '' }}"
+                           poster="{{ product.main_image.strip() | get_image_url if product.main_image else '' }}"
                            data-product-reel-video></video>
                     <div class="video-loading-spinner" data-video-spinner></div>
                     <button type="button" class="product-reel-play-btn" data-play-btn aria-label="تشغيل الفيديو">

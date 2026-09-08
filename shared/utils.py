@@ -185,9 +185,17 @@ def delete_local_file(url):
     if url.startswith('http'):
         _delete_from_cloudinary(url)
         return
-    if not url.startswith('static/uploads/'):
-        return
-    file_path = os.path.join(current_app.root_path, url.replace('/', os.sep))
+
+    # التعامل مع المسارات المخزنة بصيغة uploads/xxx أو static/uploads/xxx
+    if url.startswith('static/uploads/'):
+        relative_path = url[len('static/'):]  # ينتج uploads/xxx
+    elif url.startswith('uploads/'):
+        relative_path = url
+    else:
+        # قد يكون اسم ملف فقط أو مسار غير معروف، نتعامل معه كأنه داخل uploads/
+        relative_path = os.path.join('uploads', url.lstrip('/'))
+
+    file_path = os.path.join(current_app.static_folder, relative_path.replace('/', os.sep))
     if os.path.exists(file_path):
         try:
             os.remove(file_path)
@@ -294,7 +302,6 @@ def save_image(file, old_url=None):
         compressed_file, output_ext = _compress_image(file)  # BytesIO + الامتداد
 
         if _is_cloudinary_enabled():
-            # لا نفرض format، بل نترك Cloudinary يحدد الصيغة من المحتوى
             new_url = _upload_to_cloudinary(
                 compressed_file,
                 resource_type='image'
@@ -307,14 +314,16 @@ def save_image(file, old_url=None):
             original_name = secure_filename(file.filename)
             base_name = os.path.splitext(original_name)[0]
             unique_name = f"{uuid.uuid4().hex}_{base_name}.{output_ext}"
-            relative_dir = os.path.join('static', 'uploads', 'images')
-            full_dir = os.path.join(current_app.root_path, relative_dir)
+            # نستخدم المسار النسبي من مجلد static بدون "static/"
+            relative_dir = os.path.join('uploads', 'images')
+            full_dir = os.path.join(current_app.static_folder, relative_dir)  # مجلد static الكامل
             os.makedirs(full_dir, exist_ok=True)
             file_path = os.path.join(full_dir, unique_name)
 
             with open(file_path, 'wb') as f:
                 f.write(compressed_file.read())
 
+            # المسار المخزن في قاعدة البيانات سيكون uploads/images/xxx.jpg
             new_url = os.path.join(relative_dir, unique_name).replace('\\', '/')
             if new_url and old_url:
                 delete_local_file(old_url)
@@ -352,8 +361,8 @@ def save_video(file, old_url=None):
                 filename = secure_filename(file.filename)
                 base_name = os.path.splitext(filename)[0]
                 unique_name = f"{uuid.uuid4().hex}_{base_name}.mp4"
-                relative_dir = os.path.join('static', 'uploads', 'videos')
-                full_dir = os.path.join(current_app.root_path, relative_dir)
+                relative_dir = os.path.join('uploads', 'videos')
+                full_dir = os.path.join(current_app.static_folder, relative_dir)
                 os.makedirs(full_dir, exist_ok=True)
                 file_path = os.path.join(full_dir, unique_name)
                 shutil.move(compressed_path, file_path)
@@ -362,8 +371,8 @@ def save_video(file, old_url=None):
                 file.seek(0)
                 filename = secure_filename(file.filename)
                 unique_name = f"{uuid.uuid4().hex}_{filename}"
-                relative_dir = os.path.join('static', 'uploads', 'videos')
-                full_dir = os.path.join(current_app.root_path, relative_dir)
+                relative_dir = os.path.join('uploads', 'videos')
+                full_dir = os.path.join(current_app.static_folder, relative_dir)
                 os.makedirs(full_dir, exist_ok=True)
                 file_path = os.path.join(full_dir, unique_name)
                 file.save(file_path)

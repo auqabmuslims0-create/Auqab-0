@@ -127,7 +127,7 @@
                         <a href="{{ url_for('stores.product_public', product_id=product.id) }}" class="text-decoration-none">
                             <div class="card">
                                 <div class="product-image-wrapper" style="height:120px; overflow:hidden;">
-                                    {{ macros.render_image(product.images.split(',')[0] if product.images else '', product.name, 'w-100 h-100', 'bi-image', 'w-100 h-100') }}
+                                    {{ macros.render_image(product.main_image if product.main_image else '', product.name, 'w-100 h-100', 'bi-image', 'w-100 h-100') }}
                                 </div>
                                 <div class="card-body p-2">
                                     <p class="small mb-1 text-truncate">{{ product.name }}</p>
@@ -185,7 +185,7 @@
                                     <div class="reel-video-wrapper">
                                         <video class="reel-video" loop playsinline preload="auto"
                                                src="{{ product.video | get_image_url }}"
-                                               poster="{{ product.images.split(',')[0].strip() | get_image_url if product.images else '' }}"
+                                               poster="{{ product.main_image.strip() | get_image_url if product.main_image else '' }}"
                                                data-store-reel-video></video>
                                         <div class="video-loading-spinner" data-video-spinner></div>
                                         <div class="reel-play-overlay" data-play-overlay>
@@ -234,7 +234,7 @@
                                                 <a href="{{ url_for('stores.product_public', product_id=product.id) }}" class="text-decoration-none">
                                                     <div class="card h-100 border-0 shadow-sm">
                                                         <div class="product-image-wrapper" style="height:120px; overflow:hidden;">
-                                                            {{ macros.render_image(product.images.split(',')[0] if product.images else '', product.name, 'w-100 h-100', 'bi-image', 'w-100 h-100') }}
+                                                            {{ macros.render_image(product.main_image if product.main_image else '', product.name, 'w-100 h-100', 'bi-image', 'w-100 h-100') }}
                                                         </div>
                                                         <div class="card-body p-2">
                                                             <p class="small mb-1 text-truncate">{{ product.name }}</p>

@@ -374,11 +374,14 @@ def get_image_url(filename):
         return ''
     if filename.startswith('http'):
         return filename
-    # إذا كان Cloudinary مفعلاً وكان الملف بصيغة cloudinary (public_id) أو رابط كامل
-    if app.config.get('CLOUDINARY_ENABLED') and 'cloudinary' in filename:
-        return filename
+    # التعامل مع المسارات التي تبدأ بـ "static/"
+    if filename.startswith('static/'):
+        # إزالة "static/" وإعادة بناء المسار عبر url_for
+        return url_for('static', filename=filename[len('static/'):])
+    # التعامل مع المسارات التي تبدأ بـ "uploads/"
     if filename.startswith('uploads/'):
         return url_for('static', filename=filename)
+    # أي مسار آخر نفترض أنه نسبي داخل مجلد static
     return url_for('static', filename='uploads/' + filename)
 
 @app.route('/sw.js')

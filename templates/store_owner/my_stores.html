@@ -95,7 +95,7 @@
                                             <div class="card h-100 border-0 shadow-sm product-card">
                                                 <div class="product-image-wrapper">
                                                     <a href="{{ url_for('stores.product_public', product_id=product.id) }}">
-                                                        {% if product.images %}{% set first_image = product.images.split(',')[0].strip() %}<img src="{{ first_image | get_image_url }}" alt="{{ product.name }}" class="product-image" loading="lazy">{% else %}<div class="d-flex align-items-center justify-content-center h-100 text-muted"><i class="bi bi-image" style="font-size: 2rem;"></i></div>{% endif %}
+                                                        {% if product.main_image %}{% set first_image = product.main_image.strip() %}<img src="{{ first_image | get_image_url }}" alt="{{ product.name }}" class="product-image" loading="lazy">{% else %}<div class="d-flex align-items-center justify-content-center h-100 text-muted"><i class="bi bi-image" style="font-size: 2rem;"></i></div>{% endif %}
                                                     </a>
                                                 </div>
                                                 <div class="card-body p-2"><h6 class="card-title mb-1 text-truncate">{{ product.name }}</h6><p class="fw-bold text-success mb-0 price">{{ product.price|format_price }} ل.س</p></div>
@@ -114,7 +114,7 @@
                                     {% for product in videos %}
                                         <div class="reel-slide" id="owner-reel-{{ store.id }}-{{ product.id }}">
                                             <div class="reel-video-wrapper">
-                                                <video class="reel-video" loop playsinline preload="auto" src="{{ product.video | get_image_url }}" poster="{{ product.images.split(',')[0].strip() | get_image_url if product.images else '' }}" data-owner-reel-video></video>
+                                                <video class="reel-video" loop playsinline preload="auto" src="{{ product.video | get_image_url }}" poster="{{ product.main_image.strip() | get_image_url if product.main_image else '' }}" data-owner-reel-video></video>
                                                 <div class="video-loading-spinner" data-video-spinner></div>
                                                 <div class="reel-play-overlay" data-play-overlay><button type="button" class="reel-play-btn" data-play-btn aria-label="تشغيل الفيديو"><i class="bi bi-play-fill"></i></button></div>
                                             </div>
@@ -149,7 +149,7 @@
                                             {% for product in category_products[:4] %}
                                                 <div class="col-6 col-md-4 col-lg-3">
                                                     <div class="card h-100 border-0 shadow-sm">
-                                                        <div class="product-image-wrapper"><a href="{{ url_for('stores.product_public', product_id=product.id) }}">{% if product.images %}{% set first_image = product.images.split(',')[0].strip() %}<img src="{{ first_image | get_image_url }}" alt="{{ product.name }}" class="product-image" loading="lazy">{% else %}<div class="d-flex align-items-center justify-content-center h-100 text-muted"><i class="bi bi-image" style="font-size: 2rem;"></i></div>{% endif %}</a></div>
+                                                        <div class="product-image-wrapper"><a href="{{ url_for('stores.product_public', product_id=product.id) }}">{% if product.main_image %}{% set first_image = product.main_image.strip() %}<img src="{{ first_image | get_image_url }}" alt="{{ product.name }}" class="product-image" loading="lazy">{% else %}<div class="d-flex align-items-center justify-content-center h-100 text-muted"><i class="bi bi-image" style="font-size: 2rem;"></i></div>{% endif %}</a></div>
                                                         <div class="card-body p-2"><h6 class="card-title mb-1 text-truncate">{{ product.name }}</h6><p class="fw-bold text-success mb-0 price">{{ product.price|format_price }} ل.س</p></div>
                                                     </div>
                                                 </div>
