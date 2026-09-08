@@ -1,6 +1,11 @@
 import os
 import uuid
 import re
+import io
+import subprocess
+import tempfile
+import shutil
+from PIL import Image
 from werkzeug.utils import secure_filename
 from flask import current_app, request
 from shared.time_utils import current_time
@@ -141,17 +146,18 @@ def _is_cloudinary_enabled():
     """التحقق من تفعيل Cloudinary من إعدادات التطبيق."""
     return current_app.config.get('CLOUDINARY_ENABLED', False)
 
-def _upload_to_cloudinary(file, resource_type='image'):
-    """رفع ملف إلى Cloudinary وإرجاع secure_url."""
+def _upload_to_cloudinary(file, resource_type='image', **kwargs):
+    """رفع ملف إلى Cloudinary مع خيارات إضافية."""
     import cloudinary.uploader
     file.seek(0)
-    upload_result = cloudinary.uploader.upload(
-        file,
-        resource_type=resource_type,
-        folder='husayniyyah_market',
-        use_filename=True,
-        unique_filename=True
-    )
+    options = {
+        'resource_type': resource_type,
+        'folder': 'husayniyyah_market',
+        'use_filename': True,
+        'unique_filename': True,
+    }
+    options.update(kwargs)
+    upload_result = cloudinary.uploader.upload(file, **options)
     return upload_result.get('secure_url')
 
 def _delete_from_cloudinary(url):
@@ -193,25 +199,113 @@ def delete_local_file(url):
         except OSError:
             pass
 
+def _compress_image(file, max_width=1200, max_height=1200, quality=85):
+    """
+    ضغط الصورة وتقليل حجمها. يعيد كائن BytesIO مضغوطًا.
+    إذا فشل الضغط أو كانت الصورة GIF متحركة، يعيد الملف الأصلي.
+    """
+    try:
+        img = Image.open(file)
+        img_format = img.format  # مثل 'JPEG', 'PNG', 'GIF'
+        if img_format == 'GIF':
+            # لا نضغط صور GIF المتحركة (نعيد الملف كما هو)
+            file.seek(0)
+            return file
+
+        # تحويل الصور ذات الوضع الشفاف إلى RGB مع خلفية بيضاء
+        if img.mode in ('RGBA', 'LA', 'P'):
+            if img.mode == 'P':
+                img = img.convert('RGBA')
+            background = Image.new('RGB', img.size, (255, 255, 255))
+            background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+            img = background
+        else:
+            img = img.convert('RGB')
+
+        # إعادة التحجيم مع الحفاظ على نسبة الأبعاد
+        img.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
+
+        output = io.BytesIO()
+        # نستخدم JPEG لجميع الصور المضغوطة (يفقد الشفافية لكن مقبول)
+        img.save(output, format='JPEG', quality=quality, optimize=True)
+        output.seek(0)
+        return output
+    except Exception as e:
+        current_app.logger.warning(f'فشل ضغط الصورة: {str(e)}')
+        file.seek(0)
+        return file  # نرفع الصورة الأصلية إذا فشل الضغط
+
+def _compress_video(file, max_width=1280, crf=28):
+    """
+    ضغط الفيديو باستخدام ffmpeg إذا كان متاحًا.
+    يعيد مسار ملف مؤقت مضغوطًا، أو None إذا لم يتم الضغط.
+    """
+    if not shutil.which('ffmpeg'):
+        return None
+    try:
+        # حفظ الملف المرفوع إلى ملف مؤقت
+        file.seek(0)
+        temp_input = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+        file.save(temp_input.name)
+        temp_input.close()
+
+        temp_output = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+        temp_output.close()
+
+        cmd = [
+            'ffmpeg', '-i', temp_input.name,
+            '-vf', f'scale={max_width}:-2',
+            '-c:v', 'libx264', '-crf', str(crf),
+            '-preset', 'medium', '-c:a', 'aac', '-b:a', '128k',
+            '-movflags', '+faststart',
+            temp_output.name,
+            '-y'
+        ]
+        subprocess.run(cmd, check=True, capture_output=True, timeout=120)
+
+        # التحقق من حجم الملف الناتج؛ إذا كان أكبر أو يساوي الأصلي نستخدم الأصلي
+        if os.path.getsize(temp_output.name) < os.path.getsize(temp_input.name):
+            os.unlink(temp_input.name)
+            return temp_output.name
+        else:
+            os.unlink(temp_output.name)
+            os.unlink(temp_input.name)
+            return None
+    except Exception as e:
+        current_app.logger.warning(f'فشل ضغط الفيديو: {str(e)}')
+        # تنظيف الملفات المؤقتة إن أمكن
+        try:
+            if 'temp_input' in locals() and os.path.exists(temp_input.name):
+                os.unlink(temp_input.name)
+            if 'temp_output' in locals() and os.path.exists(temp_output.name):
+                os.unlink(temp_output.name)
+        except Exception:
+            pass
+        return None
+
 def save_image(file, old_url=None):
+    """حفظ صورة مع ضغطها ثم رفعها إلى Cloudinary أو تخزينها محليًا."""
     ext = _secure_file(file, ALLOWED_IMAGE_EXTENSIONS, MAX_IMAGE_SIZE)
     if not ext:
         raise ValueError('صيغة الملف غير مدعومة أو الحجم كبير جداً')
     try:
+        compressed_file = _compress_image(file)
         if _is_cloudinary_enabled():
-            new_url = _upload_to_cloudinary(file, resource_type='image')
+            new_url = _upload_to_cloudinary(compressed_file, resource_type='image')
             if new_url and old_url:
                 delete_local_file(old_url)
             return new_url
         else:
-            file.seek(0)
-            filename = secure_filename(file.filename)
-            unique_name = f"{uuid.uuid4().hex}_{filename}"
+            compressed_file.seek(0)
+            # تحديد اسم الملف الجديد بصيغة jpg دائمًا بعد الضغط
+            original_name = secure_filename(file.filename)
+            base_name = os.path.splitext(original_name)[0]
+            unique_name = f"{uuid.uuid4().hex}_{base_name}.jpg"
             relative_dir = os.path.join('static', 'uploads', 'images')
             full_dir = os.path.join(current_app.root_path, relative_dir)
             os.makedirs(full_dir, exist_ok=True)
             file_path = os.path.join(full_dir, unique_name)
-            file.save(file_path)
+            compressed_file.save(file_path)
             new_url = os.path.join(relative_dir, unique_name).replace('\\', '/')
             if new_url and old_url:
                 delete_local_file(old_url)
@@ -221,25 +315,53 @@ def save_image(file, old_url=None):
         raise ValueError(f'فشل حفظ الصورة: {str(e)}')
 
 def save_video(file, old_url=None):
+    """حفظ فيديو مع ضغطه إن أمكن ثم رفعه إلى Cloudinary أو تخزينه محليًا."""
     ext = _secure_file(file, ALLOWED_VIDEO_EXTENSIONS, MAX_VIDEO_SIZE)
     if not ext:
         raise ValueError('صيغة الفيديو غير مدعومة أو الحجم كبير جداً')
     try:
+        compressed_path = _compress_video(file)
         if _is_cloudinary_enabled():
-            new_url = _upload_to_cloudinary(file, resource_type='video')
+            if compressed_path:
+                with open(compressed_path, 'rb') as f:
+                    new_url = _upload_to_cloudinary(f, resource_type='video')
+                os.unlink(compressed_path)
+            else:
+                # لا يوجد ffmpeg، نرفع الملف الأصلي مع خيارات ضغط Cloudinary
+                file.seek(0)
+                new_url = _upload_to_cloudinary(
+                    file,
+                    resource_type='video',
+                    quality='auto:good',
+                    width=1280,
+                    crop='limit'
+                )
             if new_url and old_url:
                 delete_local_file(old_url)
             return new_url
         else:
-            file.seek(0)
-            filename = secure_filename(file.filename)
-            unique_name = f"{uuid.uuid4().hex}_{filename}"
-            relative_dir = os.path.join('static', 'uploads', 'videos')
-            full_dir = os.path.join(current_app.root_path, relative_dir)
-            os.makedirs(full_dir, exist_ok=True)
-            file_path = os.path.join(full_dir, unique_name)
-            file.save(file_path)
-            new_url = os.path.join(relative_dir, unique_name).replace('\\', '/')
+            if compressed_path:
+                # نستخدم الملف المضغوط
+                filename = secure_filename(file.filename)
+                base_name = os.path.splitext(filename)[0]
+                unique_name = f"{uuid.uuid4().hex}_{base_name}.mp4"
+                relative_dir = os.path.join('static', 'uploads', 'videos')
+                full_dir = os.path.join(current_app.root_path, relative_dir)
+                os.makedirs(full_dir, exist_ok=True)
+                file_path = os.path.join(full_dir, unique_name)
+                shutil.move(compressed_path, file_path)
+                new_url = os.path.join(relative_dir, unique_name).replace('\\', '/')
+            else:
+                # حفظ الملف الأصلي
+                file.seek(0)
+                filename = secure_filename(file.filename)
+                unique_name = f"{uuid.uuid4().hex}_{filename}"
+                relative_dir = os.path.join('static', 'uploads', 'videos')
+                full_dir = os.path.join(current_app.root_path, relative_dir)
+                os.makedirs(full_dir, exist_ok=True)
+                file_path = os.path.join(full_dir, unique_name)
+                file.save(file_path)
+                new_url = os.path.join(relative_dir, unique_name).replace('\\', '/')
             if new_url and old_url:
                 delete_local_file(old_url)
             return new_url
