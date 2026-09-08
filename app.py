@@ -3,6 +3,7 @@ import os
 import secrets
 import time
 import signal
+from datetime import timedelta
 from urllib.parse import urlparse, urlunparse
 from dotenv import load_dotenv
 
@@ -56,7 +57,7 @@ limiter = Limiter(
 
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_ENV') == 'production'
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_DEBUG', 'False').lower() != 'true'
 app.config['SESSION_COOKIE_DOMAIN'] = None
 app.config['SESSION_COOKIE_PATH'] = '/'
 app.config['PERMANENT_SESSION_LIFETIME'] = 7 * 24 * 60 * 60  # أسبوع
@@ -72,18 +73,19 @@ csp_policy = (
     "media-src 'self' ; "
     "frame-src 'self'"
 )
-Talisman(app, content_security_policy=csp_policy, force_https=os.environ.get('FLASK_ENV') == 'production')
+Talisman(app, content_security_policy=csp_policy, force_https=os.environ.get('FLASK_DEBUG', 'False').lower() != 'true')
 
 # تفعيل CSRF
 csrf = CSRFProtect(app)
-# استثناء الـ API من CSRF (يعتمد على JWT)
-csrf.exempt(api_bp)
+# استثناء جميع الـ Blueprints التي تحتوي API routes
+for bp in [api_bp, social_bp, reels_bp, delivery_bp, notifications_bp]:
+    csrf.exempt(bp)
 
 def get_secret_key():
     key = os.environ.get('SECRET_KEY')
     if key:
         return key
-    if os.environ.get('FLASK_ENV') != 'production':
+    if os.environ.get('FLASK_DEBUG', 'False').lower() == 'true':
         key_file = os.path.join(app.instance_path, '.secret_key')
         if os.path.exists(key_file):
             with open(key_file, 'r') as f:
@@ -102,7 +104,7 @@ def get_jwt_secret_key():
     key = os.environ.get('JWT_SECRET_KEY')
     if key:
         return key
-    if os.environ.get('FLASK_ENV') != 'production':
+    if os.environ.get('FLASK_DEBUG', 'False').lower() == 'true':
         key_file = os.path.join(app.instance_path, '.jwt_secret_key')
         if os.path.exists(key_file):
             with open(key_file, 'r') as f:
@@ -208,8 +210,6 @@ def ensure_admin():
 
 @app.before_request
 def before_request_checks():
-    # ملاحظة: تم حذف توليد _csrf_token يدويًا، وسيتم توليده تلقائيًا عبر Flask-WTF عند استدعاء generate_csrf()
-
     g.user = None
     if 'user_id' in session:
         g.user = db.session.get(models.User, session['user_id'])
@@ -416,14 +416,11 @@ def _handle_sigterm(signum, frame):
     sys.exit(0)
 
 if __name__ == '__main__':
-    # لا نستخدم db.create_all هنا؛ نعتمد على migrations أو scripts/init_db.py
     ensure_admin()
 
-    # بدء المجدول فقط عند التشغيل المباشر (وليس عبر Gunicorn)
     from scheduler import init_scheduler
     init_scheduler(app)
 
-    # معالجة إشارة الإنهاء لإيقاف المجدول
     signal.signal(signal.SIGTERM, _handle_sigterm)
     signal.signal(signal.SIGINT, _handle_sigterm)
 

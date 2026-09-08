@@ -88,23 +88,32 @@ class StoreService:
         if not store:
             return False, 'المتجر غير موجود'
         try:
+            # حذف شعار المتجر
+            if store.logo_url:
+                delete_local_file(store.logo_url)
+
             # حذف الطلبات وعناصرها
             orders = Order.query.filter_by(store_id=store.id).all()
             for order in orders:
                 OrderItem.query.filter_by(order_id=order.id).delete()
                 db.session.delete(order)
 
-            # حذف المنتجات وملفاتها من Cloudinary
+            # حذف المنتجات وملفاتها
             products = Product.query.filter_by(store_id=store.id).all()
             for product in products:
-                # حذف الصور من Cloudinary
-                if product.images:
-                    for img_name in product.images.split(','):
+                # حذف الصور
+                if product.main_image:
+                    delete_local_file(product.main_image)
+                if product.sub_images:
+                    for img_name in product.sub_images.split(','):
                         img_name = img_name.strip()
                         if img_name:
                             delete_local_file(img_name)
                 if product.video:
                     delete_local_file(product.video)
+
+                # حذف الريلز المرتبطة بالمنتج
+                models.Reel.query.filter_by(product_id=product.id).delete()
 
                 # حذف العلاقات المرتبطة بالمنتج
                 models.ProductReaction.query.filter_by(product_id=product.id).delete()
@@ -112,6 +121,9 @@ class StoreService:
                 models.Favorite.query.filter_by(product_id=product.id).delete()
                 models.Review.query.filter_by(product_id=product.id).delete()
                 db.session.delete(product)
+
+            # حذف الريلز المتبقية المرتبطة بالمتجر
+            models.Reel.query.filter_by(store_id=store.id).delete()
 
             # حذف التصنيفات والاشتراكات والمدفوعات والمفضلات
             Category.query.filter_by(store_id=store.id).delete()

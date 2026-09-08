@@ -9,8 +9,7 @@ from shared.services.notification_service import NotificationService
 from shared.repositories.delivery_repository import DeliveryRepository
 from shared.repositories.notification_repository import NotificationRepository
 from shared.decorators import role_required, login_required, api_login_required
-from blueprints.api.helpers import token_required
-from .api.helpers import serialize_order
+from blueprints.api.helpers import token_required, serialize_order
 
 delivery_bp = Blueprint('delivery', __name__)
 
@@ -163,7 +162,7 @@ def delivery_get_orders(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
     status = request.args.get('status')
     orders = DeliveryRepository.get_assigned_orders(current_user.id, status=status)
-    return jsonify({'orders': [serialize_order(o) for o in orders]}), 200
+    return jsonify({'orders': [serialize_order(o) for o in orders.items]}), 200
 
 @delivery_bp.route('/api/delivery/orders/<int:order_id>/start', methods=['POST'])
 @token_required

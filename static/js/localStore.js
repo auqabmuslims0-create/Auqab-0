@@ -37,7 +37,6 @@ const LocalStore = (function() {
     function setTheme(theme) {
         localStorage.setItem(THEME_KEY, theme);
         applyTheme(theme);
-        // مزامنة مع الخادم إذا كان المستخدم مسجلاً
         if (window.csrfToken && window.isAuthenticated !== false) {
             const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
             fetch('/account/theme', {
@@ -301,25 +300,7 @@ const LocalStore = (function() {
     }
 
     function removeFromCart(productId) {
-        updateCart(productId, 0); // تحديث محلي وحذف من localStorage
-
-        // إرسال طلب حذف للخادم لتحديث الجلسة وقاعدة البيانات
-        if (navigator.onLine && typeof csrfToken !== 'undefined' && csrfToken) {
-            fetch(`/cart/update/${productId}`, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-Token': csrfToken,
-                    'Accept': 'application/json'
-                },
-                body: new URLSearchParams({ action: 'remove' })
-            }).then(res => res.json())
-              .then(data => {
-                  if (data.status === 'success') {
-                      updateCartBadges();
-                  }
-              })
-              .catch(err => console.warn('Remove from server failed:', err));
-        }
+        updateCart(productId, 0);
     }
 
     function toggleFavorite(type, id, itemData) {

@@ -6,7 +6,15 @@ from models import LoginAttempt, PasswordResetAttempt
 from shared.time_utils import current_time
 
 def record_login_attempt(ip):
-    """تسجيل محاولة تسجيل دخول فاشلة."""
+    """تسجيل محاولة تسجيل دخول فاشلة مع تنظيف المحاولات القديمة."""
+    # حذف المحاولات الأقدم من 15 دقيقة لنفس الـ IP
+    cutoff = current_time() - timedelta(minutes=15)
+    LoginAttempt.query.filter(
+        LoginAttempt.ip_address == ip,
+        LoginAttempt.attempted_at < cutoff
+    ).delete(synchronize_session=False)
+    db.session.commit()
+
     attempt = LoginAttempt(ip_address=ip)
     db.session.add(attempt)
     db.session.commit()
@@ -25,7 +33,14 @@ def clear_login_attempts(ip):
     db.session.commit()
 
 def record_reset_attempt(email, ip):
-    """تسجيل محاولة استعادة كلمة مرور."""
+    """تسجيل محاولة استعادة كلمة مرور مع تنظيف المحاولات القديمة."""
+    # حذف المحاولات الأقدم من 15 دقيقة لنفس البريد أو الـ IP
+    cutoff = current_time() - timedelta(minutes=15)
+    PasswordResetAttempt.query.filter(
+        PasswordResetAttempt.attempted_at < cutoff
+    ).delete(synchronize_session=False)
+    db.session.commit()
+
     attempt = PasswordResetAttempt(email=email, ip_address=ip)
     db.session.add(attempt)
     db.session.commit()

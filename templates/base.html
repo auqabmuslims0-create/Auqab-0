@@ -239,7 +239,7 @@
 
   <script>
     var csrfToken = "{{ csrf_token }}";
-    window.csrfToken = csrfToken;  // تعريف window.csrfToken
+    window.csrfToken = csrfToken;
     window.isAuthenticated = {{ 'true' if current_user else 'false' }};
 
     function showToast(message, type = 'info', image = null) {
@@ -267,12 +267,10 @@
     }
 
     async function addToCart(productId, quantity = 1, callback = null) {
-        // تحديث التخزين المحلي
         LocalStore.addToCart(productId, quantity);
         LocalStore.updateCartBadges();
         showToast('تمت الإضافة', 'success');
 
-        // إرسال إلى الخادم لتحديث الجلسة
         try {
             const formData = new FormData();
             formData.append('quantity', quantity);
@@ -326,7 +324,6 @@
         }
         showToast('تم تحديث المفضلة', 'success');
 
-        // إرسال إلى الخادم
         try {
             const response = await fetch('/favorite/toggle', {
                 method: 'POST',
@@ -339,7 +336,6 @@
             const data = await response.json();
             if (data.status === 'success') {
                 if (data.is_favorite) {
-                    // تأكد من الأيقونة
                     if (icon) {
                         icon.classList.remove('bi-heart');
                         icon.classList.add('bi-heart-fill');
@@ -352,7 +348,6 @@
                 }
                 showToast(data.message || 'تم تحديث المفضلة', 'success');
             } else {
-                // تراجع عن التغيير المحلي إذا فشل
                 LocalStore.toggleFavorite('product', productId, productData);
                 if (icon) {
                     if (icon.classList.contains('bi-heart-fill')) {
@@ -367,7 +362,6 @@
             }
         } catch (err) {
             console.error('Favorite toggle error:', err);
-            // تراجع
             LocalStore.toggleFavorite('product', productId, productData);
             if (icon) {
                 if (icon.classList.contains('bi-heart-fill')) {
@@ -639,19 +633,46 @@
   </div>
 
   <script>
-    function showConfirmModal(message, formId) {
+    function showConfirmModal(message, formIdOrCallback) {
       const modalEl = document.getElementById('confirmModal');
       if (!modalEl) return;
       document.getElementById('confirmModalMessage').textContent = message;
       const btn = document.getElementById('confirmModalBtn');
       btn.onclick = function() {
-        const form = document.getElementById(formId);
-        if (form) {
-          form.submit();
+        if (typeof formIdOrCallback === 'function') {
+          formIdOrCallback();
+        } else if (formIdOrCallback) {
+          const form = document.getElementById(formIdOrCallback);
+          if (form) {
+            form.submit();
+          }
         }
         bootstrap.Modal.getInstance(modalEl).hide();
       };
       bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    }
+
+    function showConfirm(message) {
+      return new Promise((resolve) => {
+        const modalEl = document.getElementById('confirmModal');
+        if (!modalEl) {
+          resolve(window.confirm(message));
+          return;
+        }
+        document.getElementById('confirmModalMessage').textContent = message;
+        const btn = document.getElementById('confirmModalBtn');
+        btn.onclick = function() {
+          bootstrap.Modal.getInstance(modalEl).hide();
+          resolve(true);
+        };
+        const cancelBtn = modalEl.querySelector('[data-bs-dismiss="modal"]');
+        if (cancelBtn) {
+          cancelBtn.onclick = function() {
+            resolve(false);
+          };
+        }
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+      });
     }
   </script>
 

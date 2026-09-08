@@ -9,15 +9,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const onlineContent = document.getElementById('onlineNotificationsContent');
     const selectAllCheckbox = document.getElementById('selectAllCheckbox');
 
-    // التهيئة من config القادم من القالب
     let currentPage = window.notificationsConfig?.currentPage || 1;
-    const totalPages = window.notificationsConfig?.totalPages || 1;
+    let totalPages = window.notificationsConfig?.totalPages || 1;
     const userId = window.notificationsConfig?.userId;
 
-    // حالة الاتصال
     let isOnline = navigator.onLine;
 
-    // ====== دوال مساعدة ======
     function showToast(message, type = 'info') {
         if (typeof window.showToast === 'function') {
             window.showToast(message, type);
@@ -76,6 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderPagination(page, total) {
+        if (!paginationContainer) return;
         if (total <= 1) {
             paginationContainer.innerHTML = '';
             return;
@@ -89,18 +87,29 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function loadNotifications(page) {
         try {
-            const response = await fetch(`/api/notifications?offset=${(page - 1) * 20}&limit=20`);
+            const offset = (page - 1) * 20;
+            const response = await fetch(`/api/notifications?offset=${offset}&limit=20`);
             const data = await response.json();
             if (data.notifications && data.notifications.length > 0) {
-                listContainer.innerHTML = data.notifications.map(notificationItemHtml).join('');
+                if (listContainer) {
+                    listContainer.innerHTML = data.notifications.map(notificationItemHtml).join('');
+                }
                 currentPage = page;
+                // تحديث totalPages من الاستجابة إن وجدت
+                if (data.total_pages !== undefined) {
+                    totalPages = data.total_pages;
+                } else {
+                    // حساب تقريبي: إذا كان هناك إشعارات أقل من limit فالعدد هو currentPage
+                    totalPages = page;
+                }
                 renderPagination(page, totalPages);
                 attachEventListeners();
-                // إلغاء تحديد الكل إذا كان محدداً
                 if (selectAllCheckbox) selectAllCheckbox.checked = false;
             } else {
-                listContainer.innerHTML = `<div class="text-center text-muted mt-5"><i class="bi bi-bell-slash fs-1"></i><p>لا توجد إشعارات</p></div>`;
-                paginationContainer.innerHTML = '';
+                if (listContainer) {
+                    listContainer.innerHTML = `<div class="text-center text-muted mt-5"><i class="bi bi-bell-slash fs-1"></i><p>لا توجد إشعارات</p></div>`;
+                }
+                if (paginationContainer) paginationContainer.innerHTML = '';
                 if (selectAllCheckbox) selectAllCheckbox.checked = false;
             }
             if (data.total_unread !== undefined && typeof window.updateUnreadBadge === 'function') {
@@ -117,12 +126,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function attachEventListeners() {
-        // زر تحديد الكل
         if (selectAllCheckbox) {
-            selectAllCheckbox.addEventListener('change', function() {
+            selectAllCheckbox.onchange = function() {
                 const checkboxes = document.querySelectorAll('.notif-checkbox');
                 checkboxes.forEach(cb => cb.checked = this.checked);
-            });
+            };
         }
 
         document.querySelectorAll('.mark-read-btn').forEach(btn => {
@@ -151,7 +159,7 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.addEventListener('click', async (e) => {
                 e.preventDefault();
                 const id = btn.dataset.id;
-                const confirmed = await showConfirm('هل تريد حذف هذا الإشعار؟');
+                const confirmed = await window.showConfirm('هل تريد حذف هذا الإشعار؟');
                 if (confirmed) {
                     try {
                         const res = await fetch(`/api/notifications/${id}`, {
@@ -180,71 +188,84 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    document.getElementById('markAllReadBtn')?.addEventListener('click', async () => {
-        try {
-            const res = await fetch('/api/notifications/read-all', {
-                method: 'POST',
-                headers: { 'X-CSRF-Token': window.csrfToken, 'Content-Type': 'application/json' }
-            });
-            if (res.ok) {
-                loadNotifications(currentPage);
-                showToast('تم تحديد الكل كمقروء', 'success');
-            }
-        } catch (err) {
-            console.error(err);
-            showToast('خطأ في الاتصال', 'error');
-        }
-    });
-
-    document.getElementById('deleteReadBtn')?.addEventListener('click', async () => {
-        const confirmed = await showConfirm('هل تريد حذف جميع الإشعارات المقروءة؟');
-        if (confirmed) {
+    // أزرار الإجراءات الجماعية
+    const markAllReadBtn = document.getElementById('markAllReadBtn');
+    if (markAllReadBtn) {
+        markAllReadBtn.addEventListener('click', async () => {
             try {
-                const res = await fetch('/api/notifications/read', {
-                    method: 'DELETE',
+                const res = await fetch('/api/notifications/read-all', {
+                    method: 'POST',
                     headers: { 'X-CSRF-Token': window.csrfToken, 'Content-Type': 'application/json' }
                 });
                 if (res.ok) {
                     loadNotifications(currentPage);
-                    showToast('تم حذف المقروءة', 'success');
+                    showToast('تم تحديد الكل كمقروء', 'success');
                 }
             } catch (err) {
                 console.error(err);
                 showToast('خطأ في الاتصال', 'error');
             }
-        }
-    });
+        });
+    }
 
-    document.getElementById('deleteSelectedBtn')?.addEventListener('click', async () => {
-        const ids = getSelectedIds();
-        if (ids.length === 0) {
-            showToast('الرجاء تحديد إشعارات للحذف', 'warning');
-            return;
-        }
-        const confirmed = await showConfirm(`هل تريد حذف ${ids.length} إشعار محدد؟`);
-        if (confirmed) {
-            try {
-                const res = await fetch('/api/notifications/delete-selected', {
-                    method: 'POST',
-                    headers: { 'X-CSRF-Token': window.csrfToken, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ids: ids })
-                });
-                if (res.ok) {
-                    loadNotifications(currentPage);
-                    showToast('تم حذف المحدد', 'success');
-                } else {
-                    showToast('فشل الحذف', 'error');
+    const deleteReadBtn = document.getElementById('deleteReadBtn');
+    if (deleteReadBtn) {
+        deleteReadBtn.addEventListener('click', async () => {
+            const confirmed = await window.showConfirm('هل تريد حذف جميع الإشعارات المقروءة؟');
+            if (confirmed) {
+                try {
+                    const res = await fetch('/api/notifications/read', {
+                        method: 'DELETE',
+                        headers: { 'X-CSRF-Token': window.csrfToken, 'Content-Type': 'application/json' }
+                    });
+                    if (res.ok) {
+                        loadNotifications(currentPage);
+                        showToast('تم حذف المقروءة', 'success');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast('خطأ في الاتصال', 'error');
                 }
-            } catch (err) {
-                console.error(err);
-                showToast('خطأ في الاتصال', 'error');
             }
-        }
-    });
+        });
+    }
 
-    document.getElementById('enablePushBtn')?.addEventListener('click', async () => {
-        await window.enablePushNotifications();
-    });
+    const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+    if (deleteSelectedBtn) {
+        deleteSelectedBtn.addEventListener('click', async () => {
+            const ids = getSelectedIds();
+            if (ids.length === 0) {
+                showToast('الرجاء تحديد إشعارات للحذف', 'warning');
+                return;
+            }
+            const confirmed = await window.showConfirm(`هل تريد حذف ${ids.length} إشعار محدد؟`);
+            if (confirmed) {
+                try {
+                    const res = await fetch('/api/notifications/delete-selected', {
+                        method: 'POST',
+                        headers: { 'X-CSRF-Token': window.csrfToken, 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ids: ids })
+                    });
+                    if (res.ok) {
+                        loadNotifications(currentPage);
+                        showToast('تم حذف المحدد', 'success');
+                    } else {
+                        showToast('فشل الحذف', 'error');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast('خطأ في الاتصال', 'error');
+                }
+            }
+        });
+    }
+
+    const enablePushBtn = document.getElementById('enablePushBtn');
+    if (enablePushBtn) {
+        enablePushBtn.addEventListener('click', async () => {
+            await window.enablePushNotifications();
+        });
+    }
 
     function showOfflineNotifications() {
         if (onlineContent) onlineContent.style.display = 'none';
@@ -299,14 +320,11 @@ document.addEventListener('DOMContentLoaded', function() {
         showOfflineNotifications();
     });
 
-    function init() {
-        if (isOnline) {
-            showOnlineNotifications();
-            loadNotifications(currentPage);
-        } else {
-            showOfflineNotifications();
-        }
+    // التهيئة
+    if (isOnline) {
+        showOnlineNotifications();
+        loadNotifications(currentPage);
+    } else {
+        showOfflineNotifications();
     }
-
-    init();
 });

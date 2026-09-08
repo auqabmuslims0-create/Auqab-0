@@ -35,14 +35,12 @@ class SubscriptionService:
                     store.subscription_expiry = sub.end_date
                     db.session.add(store)
 
-            # تحديث المدفوعات المرتبطة إلى paid
             payments = PaymentRepository.get_by_subscription(sub.id)
             for p in payments:
                 if p.status == 'pending':
                     p.status = 'paid'
                     db.session.add(p)
 
-            # إرسال إشعار لصاحب المتجر
             if sub.user_id:
                 user = db.session.get(User, sub.user_id)
                 if user:
@@ -50,9 +48,10 @@ class SubscriptionService:
                         user_id=user.id,
                         title='تم تفعيل الاشتراك',
                         message=f'تم تفعيل اشتراك متجرك "{sub.store.name}" بنجاح حتى {sub.end_date.strftime("%Y-%m-%d")}.',
-                        link=url_for('store.store_subscription', store_id=sub.store_id) if sub.store_id else url_for('dashboard'),
+                        link=url_for('store.store_subscription', store_id=sub.store_id) if sub.store_id else url_for('auth.dashboard'),
                         type_=NotificationService.TYPE_SUBSCRIPTION,
-                        priority=NotificationService.PRIORITY_IMPORTANT
+                        priority=NotificationService.PRIORITY_IMPORTANT,
+                        commit=False  # سيتم الالتزام في نهاية الدالة
                     )
 
             db.session.commit()
@@ -94,12 +93,12 @@ class SubscriptionService:
                         user_id=user.id,
                         title='تم رفض الاشتراك',
                         message='تم رفض طلب اشتراك متجرك. يرجى التواصل مع الإدارة لمزيد من التفاصيل.',
-                        link=url_for('store.store_subscription', store_id=sub.store_id) if sub.store_id else url_for('dashboard'),
+                        link=url_for('store.store_subscription', store_id=sub.store_id) if sub.store_id else url_for('auth.dashboard'),
                         type_=NotificationService.TYPE_SUBSCRIPTION,
-                        priority=NotificationService.PRIORITY_URGENT
+                        priority=NotificationService.PRIORITY_URGENT,
+                        commit=False
                     )
 
-            # تحديث المدفوعات المعلقة إلى failed
             payments = PaymentRepository.get_by_subscription(sub.id)
             for p in payments:
                 if p.status == 'pending':
@@ -127,7 +126,8 @@ class SubscriptionService:
                         message=f'سينتهي اشتراك متجرك "{sub.store.name}" بتاريخ {sub.end_date.strftime("%Y-%m-%d")}. يرجى التجديد لتجنب انقطاع الخدمة.',
                         link=url_for('store.store_subscription', store_id=sub.store.id),
                         type_=NotificationService.TYPE_SUBSCRIPTION,
-                        priority=NotificationService.PRIORITY_URGENT
+                        priority=NotificationService.PRIORITY_URGENT,
+                        commit=False
                     )
             sub.expiry_notified = True
             db.session.add(sub)
@@ -160,9 +160,10 @@ class SubscriptionService:
                             user_id=user.id,
                             title='انتهاء الاشتراك',
                             message=f'انتهى اشتراك متجرك "{sub.store.name}". يرجى التجديد لاستئناف الخدمة.',
-                            link=url_for('store.store_subscription', store_id=sub.store_id) if sub.store_id else url_for('dashboard'),
+                            link=url_for('store.store_subscription', store_id=sub.store_id) if sub.store_id else url_for('auth.dashboard'),
                             type_=NotificationService.TYPE_SUBSCRIPTION,
-                            priority=NotificationService.PRIORITY_URGENT
+                            priority=NotificationService.PRIORITY_URGENT,
+                            commit=False
                         )
                 count += 1
             except Exception as e:
@@ -314,7 +315,7 @@ class SubscriptionService:
         sub = SubscriptionRepository.get_by_id(sub_id)
         if not sub:
             return False, 'الاشتراك غير موجود'
-        if sub.user_id != user.id:
+        if sub.user_id is None or sub.user_id != user.id:
             return False, 'غير مسموح'
         if sub.payment_method != 'manual_delivery':
             return False, 'طريقة الدفع غير صحيحة'

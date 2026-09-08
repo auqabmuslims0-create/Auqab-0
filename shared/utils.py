@@ -120,7 +120,7 @@ MAX_IMAGE_SIZE = 10 * 1024 * 1024
 MAX_VIDEO_SIZE = 100 * 1024 * 1024
 
 def _secure_file(file, allowed_extensions, max_size):
-    if not file or file.filename == '':
+    if not file or not file.filename or file.filename == '':
         return None
     original_filename = file.filename
     if '.' in original_filename:
@@ -155,7 +155,6 @@ def _upload_to_cloudinary(file, resource_type='image', **kwargs):
         'use_filename': True,
         'unique_filename': True,
     }
-    # دعم تحديد format (الصيغة) إذا مررت
     if 'format' in kwargs:
         options['format'] = kwargs.pop('format')
     options.update(kwargs)
@@ -166,13 +165,15 @@ def _delete_from_cloudinary(url):
     """حذف ملف من Cloudinary إذا كان الرابط من Cloudinary."""
     if not url or not url.startswith('http'):
         return
-    pattern = r'https?://res\.cloudinary\.com/[^/]+/(image|video|raw)/upload/(?:v\d+/)?(.+)$'
+    # تحسين regex ليشمل جميع صيغ Cloudinary
+    pattern = r'https?://(?:res\.cloudinary\.com|res-[\w-]+\.cloudinary\.com)/([^/]+)/(image|video|raw)/upload/(?:v\d+/)?(.+?)(?:\.[a-zA-Z0-9]+)?$'
     match = re.match(pattern, url)
     if not match:
         return
-    resource_type = match.group(1)
-    public_id_with_ext = match.group(2)
-    public_id = public_id_with_ext.rsplit('.', 1)[0]
+    cloud_name = match.group(1)
+    resource_type = match.group(2)
+    public_id_with_ext = match.group(3)
+    public_id = public_id_with_ext.rsplit('.', 1)[0] if '.' in public_id_with_ext else public_id_with_ext
     if not public_id:
         return
     try:
@@ -189,13 +190,11 @@ def delete_local_file(url):
         _delete_from_cloudinary(url)
         return
 
-    # التعامل مع المسارات المخزنة بصيغة uploads/xxx أو static/uploads/xxx
     if url.startswith('static/uploads/'):
-        relative_path = url[len('static/'):]  # ينتج uploads/xxx
+        relative_path = url[len('static/'):]
     elif url.startswith('uploads/'):
         relative_path = url
     else:
-        # قد يكون اسم ملف فقط أو مسار غير معروف، نتعامل معه كأنه داخل uploads/
         relative_path = os.path.join('uploads', url.lstrip('/'))
 
     file_path = os.path.join(current_app.static_folder, relative_path.replace('/', os.sep))
@@ -216,14 +215,12 @@ def _compress_image(file, max_width=1200, max_height=1200, quality=85):
         img = Image.open(file)
         img_format = img.format
 
-        # صور GIF المتحركة: نعيد نسخة من الملف الأصلي مع الامتداد الأصلي
         if img_format == 'GIF':
             file.seek(0)
             output = io.BytesIO(file.read())
             output.seek(0)
             return output, 'gif'
 
-        # معالجة الشفافية
         if img.mode in ('RGBA', 'LA', 'P'):
             if img.mode == 'P':
                 img = img.convert('RGBA')
@@ -233,7 +230,6 @@ def _compress_image(file, max_width=1200, max_height=1200, quality=85):
         else:
             img = img.convert('RGB')
 
-        # تصغير الأبعاد
         img.thumbnail((max_width, max_height), Image.Resampling.LANCZOS)
 
         output = io.BytesIO()
@@ -243,15 +239,13 @@ def _compress_image(file, max_width=1200, max_height=1200, quality=85):
 
     except Exception as e:
         current_app.logger.warning(f'فشل ضغط الصورة: {str(e)}')
-        # إعادة البيانات الأصلية مع الامتداد الأصلي
         file.seek(0)
         output = io.BytesIO(file.read())
         output.seek(0)
-        # الحصول على الامتداد الأصلي من اسم الملف
         if file.filename and '.' in file.filename:
             orig_ext = file.filename.rsplit('.', 1)[1].lower()
         else:
-            orig_ext = 'jpg'  # افتراضي
+            orig_ext = 'jpg'
         return output, orig_ext
 
 def _compress_video(file, max_width=1280, crf=28):
@@ -271,7 +265,7 @@ def _compress_video(file, max_width=1280, crf=28):
             'ffmpeg', '-i', input_path,
             '-vf', f'scale={max_width}:-2',
             '-c:v', 'libx264', '-crf', str(crf),
-            '-preset', 'ultrafast',   # أسرع ضغط
+            '-preset', 'ultrafast',
             '-c:a', 'aac', '-b:a', '128k',
             '-movflags', '+faststart',
             output_path,
@@ -308,11 +302,13 @@ def _compress_video(file, max_width=1280, crf=28):
 
 def save_image(file, old_url=None):
     """حفظ صورة مع ضغطها ثم رفعها إلى Cloudinary أو تخزينها محليًا."""
+    if not file or not file.filename:
+        raise ValueError('لم يتم اختيار ملف')
     ext = _secure_file(file, ALLOWED_IMAGE_EXTENSIONS, MAX_IMAGE_SIZE)
     if not ext:
         raise ValueError('صيغة الملف غير مدعومة أو الحجم كبير جداً')
     try:
-        compressed_file, output_ext = _compress_image(file)  # BytesIO + الامتداد
+        compressed_file, output_ext = _compress_image(file)
 
         if _is_cloudinary_enabled():
             new_url = _upload_to_cloudinary(
@@ -324,20 +320,17 @@ def save_image(file, old_url=None):
                 delete_local_file(old_url)
             return new_url
         else:
-            # حفظ محلي: كتابة BytesIO إلى ملف بالامتداد الصحيح
             original_name = secure_filename(file.filename)
             base_name = os.path.splitext(original_name)[0]
             unique_name = f"{uuid.uuid4().hex}_{base_name}.{output_ext}"
-            # نستخدم المسار النسبي من مجلد static بدون "static/"
             relative_dir = os.path.join('uploads', 'images')
-            full_dir = os.path.join(current_app.static_folder, relative_dir)  # مجلد static الكامل
+            full_dir = os.path.join(current_app.static_folder, relative_dir)
             os.makedirs(full_dir, exist_ok=True)
             file_path = os.path.join(full_dir, unique_name)
 
             with open(file_path, 'wb') as f:
                 f.write(compressed_file.read())
 
-            # المسار المخزن في قاعدة البيانات سيكون uploads/images/xxx.jpg
             new_url = os.path.join(relative_dir, unique_name).replace('\\', '/')
             if new_url and old_url:
                 delete_local_file(old_url)
@@ -348,6 +341,8 @@ def save_image(file, old_url=None):
 
 def save_video(file, old_url=None):
     """حفظ فيديو مع ضغطه إن أمكن ثم رفعه إلى Cloudinary أو تخزينه محليًا."""
+    if not file or not file.filename:
+        raise ValueError('لم يتم اختيار ملف')
     ext = _secure_file(file, ALLOWED_VIDEO_EXTENSIONS, MAX_VIDEO_SIZE)
     if not ext:
         raise ValueError('صيغة الفيديو غير مدعومة أو الحجم كبير جداً')

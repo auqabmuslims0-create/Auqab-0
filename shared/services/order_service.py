@@ -16,6 +16,17 @@ import logging
 logger = logging.getLogger(__name__)
 
 class OrderService:
+    # مصفوفة الانتقالات المسموحة بين حالات الطلب
+    ALLOWED_TRANSITIONS = {
+        'new': ['confirmed', 'cancelled'],
+        'confirmed': ['preparing', 'cancelled'],
+        'preparing': ['ready', 'cancelled'],
+        'ready': ['delivering', 'cancelled'],
+        'delivering': ['delivered', 'cancelled'],
+        'delivered': [],
+        'cancelled': []
+    }
+
     @staticmethod
     def generate_delivery_code():
         return ''.join(random.choices('0123456789', k=6))
@@ -50,13 +61,16 @@ class OrderService:
                     raise ValueError('بيانات السلة غير صحيحة')
                 product = item['product']
                 qty = item['quantity']
+                # دعم options_selected
+                options_selected = item.get('options_selected')
                 if not product or product.store_id != store.id:
                     raise ValueError(f"المنتج {product.name if product else 'غير معروف'} لا يخص هذا المتجر")
-                order_items.append((product, qty))
+                order_items.append((product, qty, options_selected))
         elif items_data is not None:
             for item in items_data:
                 product_id = item.get('product_id')
                 qty = item.get('quantity', 1)
+                options_selected = item.get('options_selected')
                 if not product_id or qty <= 0:
                     raise ValueError('بيانات المنتج غير صحيحة')
                 product = ProductRepository.get_by_id(product_id)
@@ -64,23 +78,26 @@ class OrderService:
                     raise ValueError(f'المنتج رقم {product_id} غير موجود')
                 if product.store_id != store.id:
                     raise ValueError('يجب أن تكون جميع المنتجات من نفس المتجر')
-                order_items.append((product, qty))
+                order_items.append((product, qty, options_selected))
         else:
             raise ValueError("يجب توفير cart_items أو items_data")
 
         if not order_items:
             raise ValueError('لا توجد منتجات صالحة في الطلب')
 
-        for product, qty in order_items:
+        for product, qty, _ in order_items:
             if product.stock_quantity < qty:
                 raise ValueError(f"المخزون غير كافٍ للمنتج {product.name}")
 
-        product_total = sum(OrderService.get_effective_price(product) * qty for product, qty in order_items)
+        product_total = sum(OrderService.get_effective_price(product) * qty for product, qty, _ in order_items)
         delivery_fee = float(get_setting('delivery_fee', 100)) if store.has_delivery else 0.0
         grand_total = product_total + delivery_fee
 
-        if store.has_delivery and not delivery_address:
-            raise ValueError("العنوان مطلوب لخدمة التوصيل")
+        if store.has_delivery:
+            if not delivery_address:
+                raise ValueError("العنوان مطلوب لخدمة التوصيل")
+            if latitude is None or longitude is None:
+                raise ValueError("يجب تحديد موقع التوصيل على الخريطة")
 
         order = OrderRepository.create_order({
             'customer_id': user.id,
@@ -108,7 +125,7 @@ class OrderService:
             notes='طلب جديد'
         )
 
-        for product, qty in order_items:
+        for product, qty, options_selected in order_items:
             product.stock_quantity -= qty
             db.session.add(product)
             OrderRepository.add_item(
@@ -116,7 +133,7 @@ class OrderService:
                 product_id=product.id,
                 quantity=qty,
                 price=OrderService.get_effective_price(product),
-                options_selected=None
+                options_selected=options_selected
             )
 
         OrderRepository.add_status_history(
@@ -133,7 +150,6 @@ class OrderService:
             db.session.rollback()
             raise ValueError('حدث خطأ أثناء إنشاء الطلب، حاول مرة أخرى')
 
-        # إرسال الإشعار بعد نجاح الالتزام
         try:
             NotificationService.send_to_store_owner(
                 store,
@@ -232,6 +248,10 @@ class OrderService:
             raise PermissionError("هذا الطلب غير مخصص لك")
         if order.status != 'delivering':
             raise ValueError("لا يمكن التسليم الآن")
+        if not order.delivery_code:
+            raise ValueError("رمز التسليم غير موجود لهذا الطلب")
+        if not delivery_code:
+            raise ValueError("رمز التسليم مطلوب")
         if delivery_code != order.delivery_code:
             raise ValueError("رمز التسليم غير صحيح")
 
@@ -288,12 +308,13 @@ class OrderService:
         if order.status == 'cancelled':
             raise ValueError('هذا الطلب ملغي ولا يمكن تغيير حالته')
 
-        allowed_statuses = ['confirmed', 'preparing', 'ready', 'delivering', 'delivered', 'cancelled']
-        if new_status not in allowed_statuses:
+        if new_status not in ['confirmed', 'preparing', 'ready', 'delivering', 'delivered', 'cancelled']:
             raise ValueError('حالة غير صالحة')
 
-        if new_status == 'delivered' and order.status != 'delivering':
-            raise ValueError('لا يمكن تعيين الحالة إلى تم التسليم مباشرة')
+        current_status = order.status
+        allowed_next = OrderService.ALLOWED_TRANSITIONS.get(current_status, [])
+        if new_status not in allowed_next:
+            raise ValueError(f'لا يمكن تغيير الحالة من "{current_status}" إلى "{new_status}"')
 
         if new_status == 'delivering' and not delivery_person_id:
             raise ValueError('يجب تعيين مندوب قبل بدء التسليم')
@@ -312,10 +333,6 @@ class OrderService:
             if order.delivery_person_id is None:
                 order.delivery_fee = float(get_setting('delivery_fee', 100))
             order.delivery_person_id = person.id
-
-            if notify_delivery:
-                # يتم الإرسال بعد الالتزام
-                pass
         else:
             if not order.delivery_address:
                 order.delivery_fee = 0.0
@@ -356,7 +373,6 @@ class OrderService:
             db.session.rollback()
             raise ValueError('حدث خطأ أثناء تحديث الطلب')
 
-        # إرسال الإشعارات بعد الالتزام
         if delivery_person_id and notify_delivery:
             try:
                 NotificationService.send_to_user(

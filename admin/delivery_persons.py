@@ -13,38 +13,51 @@ from . import admin_bp
 def admin_delivery_persons():
     persons = User.query.filter_by(role='delivery').order_by(User.username).all()
 
+    # حساب حالة التوفر لكل مندوب في قاموس منفصل
+    availability_map = {}
+    from shared.time_utils import current_time
+    now_time = current_time().time()
+
     for person in persons:
         if not person.is_active:
-            person.availability_label = 'محظور'
-            person.availability_color = 'danger'
+            availability_map[person.id] = {
+                'label': 'محظور',
+                'color': 'danger'
+            }
+            continue
+
+        in_shift = True
+        if person.shift_start_time and person.shift_end_time:
+            if person.shift_start_time < person.shift_end_time:
+                in_shift = person.shift_start_time <= now_time < person.shift_end_time
+            else:
+                in_shift = now_time >= person.shift_start_time or now_time < person.shift_end_time
+
+        if not in_shift:
+            availability_map[person.id] = {
+                'label': 'خارج الوردية',
+                'color': 'secondary'
+            }
+            continue
+
+        active_count = Order.query.filter(
+            Order.delivery_person_id == person.id,
+            Order.status.in_(['ready', 'delivering'])
+        ).count()
+        max_orders = person.max_active_orders if person.max_active_orders and person.max_active_orders > 0 else 0
+
+        if max_orders == 0 or active_count >= max_orders:
+            availability_map[person.id] = {
+                'label': 'مشغول',
+                'color': 'warning text-dark'
+            }
         else:
-            from shared.time_utils import current_time
-            now_time = current_time().time()
-            if person.shift_start_time and person.shift_end_time:
-                if person.shift_start_time < person.shift_end_time:
-                    in_shift = person.shift_start_time <= now_time < person.shift_end_time
-                else:
-                    in_shift = now_time >= person.shift_start_time or now_time < person.shift_end_time
-            else:
-                in_shift = True
+            availability_map[person.id] = {
+                'label': 'متاح الآن',
+                'color': 'success'
+            }
 
-            if not in_shift:
-                person.availability_label = 'خارج الوردية'
-                person.availability_color = 'secondary'
-            else:
-                active_count = Order.query.filter(
-                    Order.delivery_person_id == person.id,
-                    Order.status.in_(['ready', 'delivering'])
-                ).count()
-                max_orders = person.max_active_orders if person.max_active_orders and person.max_active_orders > 0 else 0
-                if max_orders == 0 or active_count >= max_orders:
-                    person.availability_label = 'مشغول'
-                    person.availability_color = 'warning text-dark'
-                else:
-                    person.availability_label = 'متاح الآن'
-                    person.availability_color = 'success'
-
-    return render_template('admin/admin_delivery_persons.html', persons=persons)
+    return render_template('admin/admin_delivery_persons.html', persons=persons, availability_map=availability_map)
 
 @admin_bp.route('/admin/delivery_persons/<int:user_id>/shift', methods=['GET', 'POST'])
 @role_required('admin')

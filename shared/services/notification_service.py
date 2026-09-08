@@ -24,6 +24,9 @@ class NotificationService:
     PRIORITY_IMPORTANT = 'important'
     PRIORITY_URGENT = 'urgent'
 
+    # حجم الدفعة الأقصى للإرسال الجماعي
+    BATCH_SIZE = 100
+
     @staticmethod
     def _send_push_async(app, user_id, notif):
         with app.app_context():
@@ -89,29 +92,39 @@ class NotificationService:
     def _send_to_many(user_ids, message, title=None, link=None, type_=None, priority=None,
                       icon=None, extra_data=None, send_push=True, expires_at=None,
                       entity_type=None, entity_id=None):
-        """إرسال إشعار لمجموعة مستخدمين مع تجميع commit."""
+        """إرسال إشعار لمجموعة مستخدمين مع تجميع commit على دفعات."""
         notifs = []
-        for uid in set(user_ids):
-            notif = NotificationService._create_notification(
-                uid, message, title=title, link=link, type_=type_, priority=priority,
-                icon=icon, extra_data=extra_data, expires_at=expires_at,
-                entity_type=entity_type, entity_id=entity_id
-            )
-            if notif:
-                notifs.append(notif)
-        if notifs:
-            try:
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-                raise
-            if send_push:
-                app = current_app._get_current_object()
-                for notif in notifs:
-                    thread = threading.Thread(target=NotificationService._send_push_async,
-                                              args=(app, notif.user_id, notif))
-                    thread.daemon = True
-                    thread.start()
+        unique_ids = list(set(user_ids))
+
+        # تقسيم الإرسال إلى دفعات لتجنب المعاملات الكبيرة
+        for i in range(0, len(unique_ids), NotificationService.BATCH_SIZE):
+            batch_ids = unique_ids[i:i + NotificationService.BATCH_SIZE]
+            batch_notifs = []
+            for uid in batch_ids:
+                notif = NotificationService._create_notification(
+                    uid, message, title=title, link=link, type_=type_, priority=priority,
+                    icon=icon, extra_data=extra_data, expires_at=expires_at,
+                    entity_type=entity_type, entity_id=entity_id
+                )
+                if notif:
+                    batch_notifs.append(notif)
+                    notifs.append(notif)
+
+            if batch_notifs:
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+                    raise
+
+                if send_push:
+                    app = current_app._get_current_object()
+                    for notif in batch_notifs:
+                        thread = threading.Thread(target=NotificationService._send_push_async,
+                                                  args=(app, notif.user_id, notif))
+                        thread.daemon = True
+                        thread.start()
+
         return notifs
 
     @staticmethod
@@ -200,8 +213,6 @@ class NotificationService:
                           extra_data=None, send_push=True, expires_at=None,
                           entity_type=None, entity_id=None):
         """إرسال إشعار لمتابعي متجر معين. يفترض وجود علاقة Follow لاحقاً."""
-        # ملاحظة: لم يتم تنفيذ نموذج Follow بعد، سنضع استعلامًا افتراضيًا فارغًا
-        # TODO: عند إضافة نموذج Follow، قم بجلب user_ids من المتابعين
         follower_ids = []  # تعديل لاحق بعد نظام المتابعة
         return NotificationService._send_to_many(
             follower_ids, message, title=title, link=link,
@@ -215,7 +226,6 @@ class NotificationService:
     @staticmethod
     def notify_order_status_changed(order, new_status):
         """إرسال إشعار للعميل وصاحب المتجر عند تغيير حالة الطلب."""
-        # للعميل
         message_customer = f"تم تحديث حالة طلبك إلى: {new_status}"
         NotificationService.send_to_customer(
             order, message_customer,
@@ -224,7 +234,6 @@ class NotificationService:
             link=f"/customer/orders/{order.id}",
             entity_type='order', entity_id=order.id
         )
-        # لصاحب المتجر
         store = order.store
         if store:
             message_owner = f"تغيرت حالة الطلب {order.id} إلى {new_status}"

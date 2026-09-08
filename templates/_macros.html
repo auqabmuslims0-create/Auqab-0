@@ -8,9 +8,9 @@
 {%- if filename -%}
     {%- set normalized = filename | string | trim -%}
     {%- if normalized.startswith('static/uploads/') -%}
-        {%- set src = url_for('static', filename=normalized[15:]) -%}
+        {%- set src = url_for('static', filename=normalized[7:]) -%}
     {%- elif normalized.startswith('uploads/') -%}
-        {%- set src = url_for('static', filename=normalized[8:]) -%}
+        {%- set src = url_for('static', filename=normalized) -%}
     {%- elif normalized.startswith('http') -%}
         {%- set src = normalized -%}
     {%- else -%}
@@ -183,30 +183,6 @@
         {% endif %}
     {% endfor %}
 </ul>
-{%- endmacro %}
-
-{% macro render_pagination(pagination, endpoint, params=None) -%}
-{% if pagination and pagination.pages > 1 %}
-<nav aria-label="Page navigation" class="mt-4">
-    <ul class="pagination justify-content-center flex-wrap gap-1">
-        <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for(endpoint, page=pagination.prev_num, **(params or {})) if pagination.has_prev else '#' }}">السابق</a>
-        </li>
-        {% for page_num in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
-            {% if page_num %}
-                <li class="page-item {% if page_num == pagination.page %}active{% endif %}">
-                    <a class="page-link" href="{{ url_for(endpoint, page=page_num, **(params or {})) }}">{{ page_num }}</a>
-                </li>
-            {% else %}
-                <li class="page-item disabled"><span class="page-link">…</span></li>
-            {% endif %}
-        {% endfor %}
-        <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
-            <a class="page-link" href="{{ url_for(endpoint, page=pagination.next_num, **(params or {})) if pagination.has_next else '#' }}">التالي</a>
-        </li>
-    </ul>
-</nav>
-{% endif %}
 {%- endmacro %}
 
 {% macro render_pagination(pagination, endpoint, params=None) -%}

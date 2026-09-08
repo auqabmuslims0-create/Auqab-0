@@ -14,12 +14,14 @@ def is_valid_phone_syrian(phone):
     if not phone:
         return False
     phone = phone.strip()
+    # إزالة البادئات الشائعة
     if phone.startswith('+963'):
         phone = phone[4:]
     elif phone.startswith('963'):
         phone = phone[3:]
     elif phone.startswith('0'):
         phone = phone[1:]
+    # الآن يجب أن يكون 9 أرقام ويبدأ بـ 9
     return len(phone) == 9 and phone.startswith('9') and phone.isdigit()
 
 def is_valid_phone_general(phone):

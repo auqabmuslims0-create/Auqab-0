@@ -62,7 +62,10 @@ def confirm_identity():
             flash('بيانات الهوية غير صحيحة', 'error')
             return redirect(url_for('auth.confirm_identity'))
 
+        # حذف أي رموز سابقة لنفس المستخدم
         PasswordReset.query.filter_by(user_id=user.id).delete()
+        db.session.commit()  # <-- الإصلاح: إضافة commit
+
         token = secrets.token_hex(20)
         hashed_token = hashlib.sha256(token.encode()).hexdigest()
         reset = PasswordReset(

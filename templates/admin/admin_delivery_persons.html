@@ -132,72 +132,70 @@
     {% if persons %}
     <div class="delivery-grid">
         {% for person in persons %}
-        <div class="delivery-card">
-            <!-- رأس البطاقة -->
-            <div class="delivery-card-header">
-                <span class="name">{{ person.username }}</span>
-                <span class="availability-badge
-                    {% if person.availability_color == 'success' %}bg-success text-white
-                    {% elif person.availability_color == 'warning text-dark' %}bg-warning text-dark
-                    {% elif person.availability_color == 'danger' %}bg-danger text-white
-                    {% else %}bg-secondary text-white{% endif %}">
-                    {{ person.availability_label }}
-                </span>
-            </div>
-
-            <div class="delivery-card-body">
-                <div class="d-flex align-items-center gap-3 mb-3">
-                    {{ macros.render_image(person.avatar, person.username, 'delivery-avatar', fallback_icon='bi-person', fallback_class='delivery-avatar-placeholder') }}
-                    <div>
-                        <p class="mb-0 fw-bold">{{ person.username }}</p>
-                        <p class="mb-0 text-muted small">{{ person.email }}</p>
-                        <p class="mb-0 text-muted small">{{ person.phone or 'لا يوجد هاتف' }}</p>
-                    </div>
+            {% set avail = availability_map.get(person.id, {'label': 'غير معروف', 'color': 'secondary'}) %}
+            <div class="delivery-card">
+                <div class="delivery-card-header">
+                    <span class="name">{{ person.username }}</span>
+                    <span class="availability-badge
+                        {% if avail.color == 'success' %}bg-success text-white
+                        {% elif avail.color == 'warning text-dark' %}bg-warning text-dark
+                        {% elif avail.color == 'danger' %}bg-danger text-white
+                        {% else %}bg-secondary text-white{% endif %}">
+                        {{ avail.label }}
+                    </span>
                 </div>
 
-                <!-- نموذج الوردية -->
-                <form method="post" action="{{ url_for('admin.admin_delivery_shift_edit', user_id=person.id) }}" class="shift-form">
-                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                    <div class="row g-2">
-                        <div class="col-6">
-                            <label>بداية الوردية</label>
-                            <input type="time" name="shift_start_time" class="form-control form-control-sm"
-                                   value="{{ person.shift_start_time.strftime('%H:%M') if person.shift_start_time else '' }}">
-                        </div>
-                        <div class="col-6">
-                            <label>نهاية الوردية</label>
-                            <input type="time" name="shift_end_time" class="form-control form-control-sm"
-                                   value="{{ person.shift_end_time.strftime('%H:%M') if person.shift_end_time else '' }}">
-                        </div>
-                        <div class="col-12">
-                            <label>أقصى طلبات نشطة</label>
-                            <input type="number" name="max_active_orders" class="form-control form-control-sm"
-                                   value="{{ person.max_active_orders }}" min="1" max="20">
+                <div class="delivery-card-body">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        {{ macros.render_image(person.avatar, person.username, 'delivery-avatar', fallback_icon='bi-person', fallback_class='delivery-avatar-placeholder') }}
+                        <div>
+                            <p class="mb-0 fw-bold">{{ person.username }}</p>
+                            <p class="mb-0 text-muted small">{{ person.email }}</p>
+                            <p class="mb-0 text-muted small">{{ person.phone or 'لا يوجد هاتف' }}</p>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-sm btn-outline-primary mt-2 w-100">
-                        <i class="bi bi-save"></i> حفظ الوردية
-                    </button>
-                </form>
 
-                <!-- أزرار الإجراءات -->
-                <div class="delivery-actions">
-                    <a href="{{ url_for('admin.admin_delivery_person_edit', user_id=person.id) }}"
-                       class="btn btn-sm btn-outline-secondary btn-action flex-grow-1">تعديل</a>
-                    <form action="{{ url_for('admin.admin_delivery_person_toggle', user_id=person.id) }}" method="post">
+                    <form method="post" action="{{ url_for('admin.admin_delivery_shift_edit', user_id=person.id) }}" class="shift-form">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                        <button type="submit" class="btn btn-sm btn-outline-warning btn-action">
-                            {{ 'حظر' if person.is_active else 'تفعيل' }}
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <label>بداية الوردية</label>
+                                <input type="time" name="shift_start_time" class="form-control form-control-sm"
+                                       value="{{ person.shift_start_time.strftime('%H:%M') if person.shift_start_time else '' }}">
+                            </div>
+                            <div class="col-6">
+                                <label>نهاية الوردية</label>
+                                <input type="time" name="shift_end_time" class="form-control form-control-sm"
+                                       value="{{ person.shift_end_time.strftime('%H:%M') if person.shift_end_time else '' }}">
+                            </div>
+                            <div class="col-12">
+                                <label>أقصى طلبات نشطة</label>
+                                <input type="number" name="max_active_orders" class="form-control form-control-sm"
+                                       value="{{ person.max_active_orders }}" min="1" max="20">
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-outline-primary mt-2 w-100">
+                            <i class="bi bi-save"></i> حفظ الوردية
                         </button>
                     </form>
-                    <form action="{{ url_for('admin.admin_delivery_person_delete', user_id=person.id) }}" method="post"
-                          onsubmit="return confirm('سيتم حذف المندوب نهائيًا. هل أنت متأكد؟')">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                        <button type="submit" class="btn btn-sm btn-outline-danger btn-action">حذف</button>
-                    </form>
+
+                    <div class="delivery-actions">
+                        <a href="{{ url_for('admin.admin_delivery_person_edit', user_id=person.id) }}"
+                           class="btn btn-sm btn-outline-secondary btn-action flex-grow-1">تعديل</a>
+                        <form action="{{ url_for('admin.admin_delivery_person_toggle', user_id=person.id) }}" method="post">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-sm btn-outline-warning btn-action">
+                                {{ 'حظر' if person.is_active else 'تفعيل' }}
+                            </button>
+                        </form>
+                        <form action="{{ url_for('admin.admin_delivery_person_delete', user_id=person.id) }}" method="post"
+                              onsubmit="return confirm('سيتم حذف المندوب نهائيًا. هل أنت متأكد؟')">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger btn-action">حذف</button>
+                        </form>
+                    </div>
                 </div>
             </div>
-        </div>
         {% endfor %}
     </div>
     {% else %}

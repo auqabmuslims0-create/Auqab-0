@@ -52,7 +52,10 @@ const API_CACHE_PATTERNS = [
   /^\/api\/stores/,
   /^\/api\/offers/,
   /^\/api\/categories/,
-  /^\/api\/search/
+  /^\/api\/search/,
+  /^\/api\/reels/,
+  /^\/api\/notifications/,
+  /^\/api\/updates/
 ];
 
 const PAGES_TO_CACHE = [

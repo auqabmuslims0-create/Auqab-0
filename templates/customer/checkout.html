@@ -180,6 +180,10 @@
                             <input type="hidden" name="latitude" id="latInput">
                             <input type="hidden" name="longitude" id="lngInput">
                         </div>
+                        {% else %}
+                        <div class="alert alert-info mt-4">
+                            <i class="bi bi-shop"></i> هذا المتجر لا يوفر خدمة توصيل - الاستلام من المتجر فقط.
+                        </div>
                         {% endif %}
                     </div>
                 </div>
@@ -213,6 +217,7 @@
     </form>
 </div>
 
+{% if store.has_delivery %}
 <div class="modal fade" id="deliveryFeeModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -231,6 +236,7 @@
         </div>
     </div>
 </div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
@@ -242,6 +248,7 @@
 document.addEventListener('DOMContentLoaded', function() {
     const csrfToken = "{{ csrf_token }}";
     const deliveryFee = parseFloat("{{ delivery_fee }}");
+    const hasDelivery = {{ 'true' if store.has_delivery else 'false' }};
 
     async function updateQuantity(productId, newQty) {
         if (newQty < 1) return;
@@ -286,7 +293,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!isNaN(value)) newTotal += value;
         });
         document.getElementById('totalPrice').textContent = `${newTotal.toLocaleString('en-US')} ل.س`;
-        const grand = newTotal + deliveryFee;
+        const grand = hasDelivery ? newTotal + deliveryFee : newTotal;
         document.getElementById('grandTotal').textContent = `${grand.toLocaleString('en-US')} ل.س`;
     }
 
@@ -362,25 +369,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const confirmBtn = document.getElementById('confirmOrderBtn');
     const agreeBtn = document.getElementById('agreeBtn');
-    const modal = new bootstrap.Modal(document.getElementById('deliveryFeeModal'));
+    const modal = document.getElementById('deliveryFeeModal') ? new bootstrap.Modal(document.getElementById('deliveryFeeModal')) : null;
 
     confirmBtn.addEventListener('click', function() {
         const form = document.getElementById('checkoutForm');
         if (form.checkValidity()) {
-            modal.show();
+            if (hasDelivery && modal) {
+                modal.show();
+            } else {
+                // بدون توصيل - إرسال مباشر
+                if (navigator.onLine) {
+                    form.submit();
+                } else {
+                    saveOrderOffline();
+                }
+            }
         } else {
             form.reportValidity();
         }
     });
 
-    agreeBtn.addEventListener('click', function() {
-        modal.hide();
-        if (navigator.onLine) {
-            document.getElementById('checkoutForm').submit();
-        } else {
-            saveOrderOffline();
-        }
-    });
+    if (agreeBtn && modal) {
+        agreeBtn.addEventListener('click', function() {
+            modal.hide();
+            if (navigator.onLine) {
+                document.getElementById('checkoutForm').submit();
+            } else {
+                saveOrderOffline();
+            }
+        });
+    }
 
     function saveOrderOffline() {
         const storeId = {{ store.id }};

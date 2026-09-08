@@ -118,46 +118,26 @@
         }
     }
 
-    const originalFetchUpdates = window.fetchUpdates;
-    if (typeof originalFetchUpdates === 'function') {
-        window.fetchUpdates = function() {
-            originalFetchUpdates.apply(this, arguments);
-            const badge = document.querySelector('.badge.bg-warning');
-            if (badge) {
-                updateNotificationDot(parseInt(badge.textContent) || 0);
-            }
-        };
-    } else {
-        document.addEventListener('DOMContentLoaded', function() {
-            const badge = document.querySelector('.badge.bg-warning');
-            if (badge) {
-                updateNotificationDot(parseInt(badge.textContent) || 0);
-            }
-        });
-    }
-
-    setInterval(() => {
+    // تحديث النقطة عند تغيير العداد
+    const observer = new MutationObserver(() => {
         const badge = document.querySelector('.badge.bg-warning');
         if (badge) {
             updateNotificationDot(parseInt(badge.textContent) || 0);
         }
-    }, 30000);
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
 
     document.addEventListener('DOMContentLoaded', function() {
         setActiveNavItems();
 
-        const topThemeBtn = document.getElementById('topbarThemeToggle');
-        if (topThemeBtn && typeof LocalStore !== 'undefined') {
-            topThemeBtn.addEventListener('click', function() {
-                LocalStore.toggleTheme();
-                LocalStore.updateThemeButton();
-            });
-        }
-
+        // لا نضيف مستمع لـ topbarThemeToggle هنا لأن base.html يتكفل به
+        // فقط نتأكد من تحديث الأيقونة عند تغيير الثيم من مكان آخر
         if (typeof LocalStore !== 'undefined') {
             const updateTopThemeBtn = function() {
+                const topThemeBtn = document.getElementById('topbarThemeToggle');
+                if (!topThemeBtn) return;
                 const theme = LocalStore.getTheme();
-                const icon = topThemeBtn?.querySelector('i');
+                const icon = topThemeBtn.querySelector('i');
                 if (icon) {
                     if (theme === 'dark') {
                         icon.className = 'bi bi-sun';
@@ -168,14 +148,10 @@
                     }
                 }
             };
-            const originalToggleTheme = LocalStore.toggleTheme;
-            if (originalToggleTheme) {
-                LocalStore.toggleTheme = function() {
-                    originalToggleTheme.apply(this, arguments);
-                    updateTopThemeBtn();
-                };
-            }
+            // تحديث عند التحميل
             updateTopThemeBtn();
+            // الاستماع لتغيير الثيم (يمكن استبدال هذا إذا كانت LocalStore تطبق آلية أفضل)
+            window.addEventListener('themeChanged', updateTopThemeBtn);
         }
     });
 

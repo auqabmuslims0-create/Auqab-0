@@ -49,7 +49,6 @@ def _merge_cart_with_db(user_id, session_cart):
                 quantity=min(qty, product.stock_quantity)
             ))
 
-    # لا نقوم بـ commit هنا؛ المتصل يقرر
     updated_cart = {str(item.product_id): item.quantity for item in CartItem.query.filter_by(user_id=user_id).all()}
     session['cart'] = updated_cart
     return updated_cart
@@ -63,7 +62,6 @@ def cart():
         user_id = session['user_id']
         session_cart = _get_session_cart()
         _merge_cart_with_db(user_id, session_cart)
-        # الالتزام إذا كانت هناك تغييرات على قاعدة البيانات
         if db.session.dirty or db.session.new:
             db.session.commit()
 
@@ -403,9 +401,10 @@ def place_order(store_id):
         for item in items_data:
             product_id = item.get('product_id')
             quantity = item.get('quantity', 1)
+            options_selected = item.get('options_selected')  # إضافة دعم الخيارات
             product = db.session.get(Product, product_id)
             if product and product.store_id == store.id:
-                cart_items.append({'product': product, 'quantity': quantity})
+                cart_items.append({'product': product, 'quantity': quantity, 'options_selected': options_selected})
         if not cart_items:
             return jsonify({'message': 'لا توجد منتجات صالحة'}), 400
     else:
@@ -424,7 +423,7 @@ def place_order(store_id):
         for pid_str, qty in cart.items():
             product = product_map.get(int(pid_str))
             if product:
-                cart_items.append({'product': product, 'quantity': qty})
+                cart_items.append({'product': product, 'quantity': qty, 'options_selected': None})
 
         if not cart_items:
             if request.is_json:
@@ -505,7 +504,7 @@ def buy_product(product_id):
     if quantity > product.stock_quantity:
         quantity = product.stock_quantity
 
-    items = [{'product': product, 'quantity': quantity}]
+    items = [{'product': product, 'quantity': quantity, 'options_selected': None}]
     product_total = OrderService.get_effective_price(product) * quantity
     delivery_fee = float(get_setting('delivery_fee', 100)) if store.has_delivery else 0.0
     grand_total = product_total + delivery_fee
@@ -547,7 +546,6 @@ def delete_order(order_id):
         return redirect(url_for('cart.cart'))
 
     try:
-        # حذف جميع العلاقات المرتبطة
         OrderItem.query.filter_by(order_id=order.id).delete()
         OrderStatusHistory.query.filter_by(order_id=order.id).delete()
         Payment.query.filter_by(order_id=order.id).delete()
