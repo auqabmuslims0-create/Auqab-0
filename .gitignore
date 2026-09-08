@@ -1,38 +1,20 @@
-# Python
-__pycache__/
-*.py[cod]
-*.egg-info/
-*.egg
-.eggs/
-
 # البيئة الافتراضية
 venv/
-env/
-.env
 
-# قاعدة البيانات المحلية
+# ملفات بايثون المترجمة
+__pycache__/
+*.pyc
+
+# قاعدة البيانات المحلية وسجلات
+instance/
 *.db
-*.sqlite3
-
-# السجلات
 *.log
-gunicorn.log
 
-# النسخ الاحتياطي
+# نسخ احتياطية قديمة
 templates_backup_*/
 
-# ملفات الرفع المحلية (ستُرفع على Cloudinary)
-static/uploads/*
-!static/uploads/.gitkeep
+# ملفات الرفع المحلية
+static/uploads/
 
-# ملفات النظام
-.DS_Store
-Thumbs.db
-
-# المتغيرات البيئية
+# ملفات البيئة
 .env
-.env.*
-!.env.example
-
-# المجلدات المؤقتة
-instance/
