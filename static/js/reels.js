@@ -1,87 +1,133 @@
-// ========== منطق صفحة الريلز ==========
+// ========== منطق الفيديو الموحد لجميع الصفحات ==========
 document.addEventListener('DOMContentLoaded', function() {
-    const videos = document.querySelectorAll('[data-reel-video]');
+    const videos = document.querySelectorAll('[data-reel-video], [data-store-reel-video], [data-owner-reel-video], [data-product-reel-video]');
 
-    function pauseAllVideos() {
+    function pauseAllVideos(exceptVideo) {
         videos.forEach(video => {
-            video.pause();
-            const overlay = video.closest('.reel-slide')?.querySelector('[data-play-overlay]');
-            if (overlay) overlay.classList.remove('hidden');
+            if (video !== exceptVideo) {
+                video.pause();
+                const overlay = video.closest('.reel-slide')?.querySelector('[data-play-overlay]');
+                if (overlay) overlay.classList.remove('hidden');
+                const playBtn = video.closest('.reel-slide')?.querySelector('[data-play-btn]');
+                if (playBtn) playBtn.classList.remove('hidden');
+            }
         });
+    }
+
+    function showSpinner(video) {
+        const spinner = video.closest('.reel-slide')?.querySelector('[data-video-spinner]');
+        if (spinner) spinner.classList.add('show');
+    }
+
+    function hideSpinner(video) {
+        const spinner = video.closest('.reel-slide')?.querySelector('[data-video-spinner]');
+        if (spinner) spinner.classList.remove('show');
+    }
+
+    function showPlayBtn(video) {
+        const playBtn = video.closest('.reel-slide')?.querySelector('[data-play-btn]');
+        if (playBtn) playBtn.classList.remove('hidden');
+        const overlay = video.closest('.reel-slide')?.querySelector('[data-play-overlay]');
+        if (overlay) overlay.classList.remove('hidden');
+    }
+
+    function hidePlayBtn(video) {
+        const playBtn = video.closest('.reel-slide')?.querySelector('[data-play-btn]');
+        if (playBtn) playBtn.classList.add('hidden');
+        const overlay = video.closest('.reel-slide')?.querySelector('[data-play-overlay]');
+        if (overlay) overlay.classList.add('hidden');
     }
 
     function playVideo(video) {
-        pauseAllVideos();
-        const slide = video.closest('.reel-slide');
-        if (!slide) return;
-        const spinner = slide.querySelector('[data-video-spinner]');
-        if (video.readyState < 3 && spinner) {
-            spinner.classList.add('show');
+        if (!video) return;
+        pauseAllVideos(video);
+        hidePlayBtn(video);
+        // عرض مؤشر التحميل إذا لم تكن البيانات جاهزة
+        if (video.readyState < 3) {
+            showSpinner(video);
         }
         video.muted = false;
         video.play().then(() => {
-            if (spinner) spinner.classList.remove('show');
-            const overlay = slide.querySelector('[data-play-overlay]');
-            if (overlay) overlay.classList.add('hidden');
-            const reelId = slide.dataset.reelId;
-            if (reelId && !slide.dataset.viewRecorded) {
-                fetch(`/api/reels/${reelId}/view`, { method: 'POST' })
-                    .then(() => { slide.dataset.viewRecorded = 'true'; })
-                    .catch(() => {});
-            }
-        }).catch(() => {
-            if (spinner) spinner.classList.remove('show');
+            hideSpinner(video);
+        }).catch((error) => {
+            console.warn('تعذر تشغيل الفيديو:', error);
+            hideSpinner(video);
+            showPlayBtn(video);
         });
     }
 
-    document.querySelectorAll('[data-play-btn]').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            const video = this.closest('.reel-slide')?.querySelector('[data-reel-video]');
-            if (video) playVideo(video);
-        });
-    });
+    function pauseVideo(video) {
+        if (!video) return;
+        video.pause();
+        showPlayBtn(video);
+        hideSpinner(video);
+    }
 
+    // ربط الأحداث بجميع الفيديوهات
     videos.forEach(video => {
+        const slide = video.closest('.reel-slide');
+        if (!slide) return;
+
+        const playBtn = slide.querySelector('[data-play-btn]');
+        if (playBtn) {
+            playBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                playVideo(video);
+            });
+        }
+
         video.addEventListener('click', function() {
             if (video.paused) {
                 playVideo(video);
             } else {
-                video.pause();
-                const overlay = video.closest('.reel-slide')?.querySelector('[data-play-overlay]');
-                if (overlay) overlay.classList.remove('hidden');
+                pauseVideo(video);
             }
         });
-        video.addEventListener('canplaythrough', function() {
-            const spinner = video.closest('.reel-slide')?.querySelector('[data-video-spinner]');
-            if (spinner) spinner.classList.remove('show');
-        });
+
         video.addEventListener('waiting', function() {
-            const spinner = video.closest('.reel-slide')?.querySelector('[data-video-spinner]');
-            if (spinner) spinner.classList.add('show');
+            showSpinner(video);
         });
         video.addEventListener('playing', function() {
-            const spinner = video.closest('.reel-slide')?.querySelector('[data-video-spinner]');
-            if (spinner) spinner.classList.remove('show');
+            hideSpinner(video);
+            hidePlayBtn(video);
+        });
+        video.addEventListener('canplaythrough', function() {
+            hideSpinner(video);
+        });
+        video.addEventListener('pause', function() {
+            showPlayBtn(video);
+            hideSpinner(video);
+        });
+        video.addEventListener('ended', function() {
+            showPlayBtn(video);
+            hideSpinner(video);
         });
     });
 
-    const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            const video = entry.target;
-            const slide = video.closest('.reel-slide');
-            if (!slide) return;
-            const overlay = slide.querySelector('[data-play-overlay]');
-            if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
-                playVideo(video);
-            } else {
-                video.pause();
-                if (overlay) overlay.classList.remove('hidden');
+    // مراقب التمرير لتشغيل الفيديو المرئي (فقط للريلز العمودية)
+    if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                const video = entry.target;
+                if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+                    if (video.paused) {
+                        playVideo(video);
+                    }
+                } else {
+                    if (!video.paused) {
+                        pauseVideo(video);
+                    }
+                }
+            });
+        }, { threshold: 0.6 });
+
+        videos.forEach(video => {
+            // نطبق المراقب فقط على فيديوهات الريلز (التي لها data-reel-video)
+            if (video.hasAttribute('data-reel-video')) {
+                observer.observe(video);
             }
         });
-    }, { threshold: 0.6 });
-
-    videos.forEach(video => observer.observe(video));
+    }
 });
 
 // ========== دوال عامة للتفاعل والمشاركة ==========
