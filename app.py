@@ -7,7 +7,6 @@ from datetime import timedelta
 from urllib.parse import urlparse, urlunparse
 from dotenv import load_dotenv
 
-# إضافة مسار المشروع إلى sys.path لضمان العثور على الوحدات
 sys.path.insert(0, os.path.dirname(__file__))
 
 from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, g
@@ -43,7 +42,6 @@ from notifications import notifications_bp
 app = Flask(__name__)
 app.config['WTF_CSRF_SSL_STRICT'] = False
 
-# تفعيل ProxyFix إذا كنا خلف بروكسي (مثل nginx) وتم تفعيل المتغير
 if os.environ.get('TRUST_PROXY_HEADERS', '0') == '1':
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
@@ -61,7 +59,6 @@ app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_DEBUG', 'False').low
 app.config['SESSION_COOKIE_DOMAIN'] = None
 app.config['SESSION_COOKIE_PATH'] = '/'
 
-# زيادة مدة الجلسة إلى 30 يومًا لضمان بقاء المستخدم مسجلاً حتى بعد إغلاق المتصفح
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 
@@ -72,14 +69,12 @@ csp_policy = (
     "script-src 'self' 'unsafe-inline' https://unpkg.com; "
     "font-src 'self'; "
     "connect-src 'self' https://*.tile.openstreetmap.org https://router.project-osrm.org https://server.arcgisonline.com ; "
-    "media-src 'self' https:; "   # السماح بتحميل الفيديو من أي مصدر https (مثل Cloudinary)
+    "media-src 'self' https:; "
     "frame-src 'self'"
 )
 Talisman(app, content_security_policy=csp_policy, force_https=os.environ.get('FLASK_DEBUG', 'False').lower() != 'true')
 
-# تفعيل CSRF
 csrf = CSRFProtect(app)
-# استثناء جميع الـ Blueprints التي تحتوي API routes
 for bp in [api_bp, social_bp, reels_bp, delivery_bp, notifications_bp]:
     csrf.exempt(bp)
 
@@ -121,12 +116,10 @@ def get_jwt_secret_key():
 
 app.config['JWT_SECRET_KEY'] = get_jwt_secret_key()
 
-# ====== معالجة DATABASE_URL بشكل آمن ======
 database_url = os.environ.get('DATABASE_URL')
 
 if database_url:
     database_url = database_url.strip()
-    # تحويل postgres:// إلى postgresql:// (لتوافق SQLAlchemy)
     if database_url.startswith('postgres://'):
         database_url = database_url.replace('postgres://', 'postgresql://', 1)
 else:
@@ -135,11 +128,10 @@ else:
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB (لرفع الفيديو)
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# ====== إعداد Cloudinary (اختياري) ======
 cloudinary_enabled = os.environ.get('CLOUDINARY_CLOUD_NAME') and os.environ.get('CLOUDINARY_API_KEY') and os.environ.get('CLOUDINARY_API_SECRET')
 if cloudinary_enabled:
     import cloudinary
@@ -161,14 +153,12 @@ migrate = Migrate(app, db)
 with app.app_context():
     db.create_all()
 
-# تسجيل Blueprints
 app.register_blueprint(auth_bp)
 app.register_blueprint(store_bp)
 app.register_blueprint(delivery_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(api_bp, url_prefix='/api')
 app.register_blueprint(social_bp)
-
 app.register_blueprint(market_bp)
 app.register_blueprint(reels_bp)
 app.register_blueprint(stores_bp)
@@ -180,7 +170,6 @@ app.register_blueprint(notifications_bp)
 
 @app.cli.command("create-admin")
 def create_admin_command():
-    """إنشاء المدير الافتراضي إذا لم يكن موجوداً."""
     ensure_admin()
 
 def ensure_admin():
@@ -214,16 +203,19 @@ def ensure_admin():
 def before_request_checks():
     g.user = None
     if 'user_id' in session:
-        # جعل الجلسة دائمة تلقائيًا لجميع المستخدمين المسجلين
         session.permanent = True
-        g.user = db.session.get(models.User, session['user_id'])
-
+        user = db.session.get(models.User, session['user_id'])
+        if user:
+            g.user = user
+            # تحديث last_seen عند كل طلب نشط
+            now = models.current_time() if hasattr(models, 'current_time') else __import__('shared.time_utils', fromlist=['current_time']).current_time()
+            user.last_seen = now
+            db.session.add(user)
+            db.session.commit()
     if request.path.startswith('/api/') or request.endpoint is None:
         return
-
     if request.path == '/.well-known/assetlinks.json':
         return
-
     public_endpoints = [
         'auth.login', 'auth.register', 'auth.forgot_password', 'auth.confirm_identity',
         'auth.reset_password', 'auth.show_public_id', 'static',
@@ -247,13 +239,11 @@ def inject_notifications_count():
         return dict(unread_notifications=0)
     if g.user is None:
         return dict(unread_notifications=0)
-
     user_id = g.user.id
     current_time = time.time()
     cached = _notifications_cache.get(user_id)
     if cached and (current_time - cached['timestamp'] < CACHE_TIMEOUT):
         return dict(unread_notifications=cached['count'])
-
     from shared.services.notification_service import NotificationService
     unread_count = NotificationService.get_unread_count(user_id)
     _notifications_cache[user_id] = {'count': unread_count, 'timestamp': current_time}
@@ -263,12 +253,10 @@ def inject_notifications_count():
 def inject_offers_count():
     if request.endpoint not in ['market.market', 'offers.offers_page', 'stores.stores_page']:
         return dict(offers_count=0)
-
     current_time = time.time()
     cached = _offers_cache.get('global')
     if cached and (current_time - cached['timestamp'] < CACHE_TIMEOUT):
         return dict(offers_count=cached['count'])
-
     offer_count = models.Product.query.filter_by(is_offer=True).count()
     _offers_cache['global'] = {'count': offer_count, 'timestamp': current_time}
     return dict(offers_count=offer_count)
@@ -284,20 +272,15 @@ def inject_csrf_token():
 
 @app.context_processor
 def inject_nav_items():
-    """توليد عناصر القائمة الجانبية بناءً على دور المستخدم والصفحة الحالية."""
     user = g.user
     endpoint = request.endpoint
-
     if request.path.startswith('/api/') or request.path.startswith('/static/') or endpoint is None:
         return dict(nav_items=[])
-
     nav_items = []
-
     if user is None:
         nav_items.append({'type': 'link', 'url': url_for('auth.login'), 'label': 'تسجيل الدخول', 'icon': 'bi-box-arrow-in-right', 'active': endpoint == 'auth.login'})
         nav_items.append({'type': 'link', 'url': url_for('services.services_page'), 'label': 'حول / خدمات', 'icon': 'bi-info-circle', 'active': endpoint == 'services.services_page'})
         return dict(nav_items=nav_items)
-
     if user.role == 'admin':
         nav_items.append({'type': 'link', 'url': url_for('admin.admin_dashboard'), 'label': 'لوحة المدير', 'icon': 'bi-speedometer2', 'active': endpoint == 'admin.admin_dashboard'})
         nav_items.append({'type': 'divider'})
@@ -323,39 +306,26 @@ def inject_nav_items():
         nav_items.append({'type': 'link', 'url': url_for('services.services_page'), 'label': 'حول / خدمات', 'icon': 'bi-info-circle', 'active': endpoint == 'services.services_page'})
     else:
         nav_items.append({'type': 'link', 'url': url_for('auth.account'), 'label': 'الإعدادات', 'icon': 'bi-gear', 'active': endpoint == 'auth.account'})
-
     nav_items.append({'type': 'divider'})
     nav_items.append({'type': 'button', 'id': 'sidebarThemeToggle', 'label': 'الوضع الداكن', 'icon': 'bi-moon-stars'})
     nav_items.append({'type': 'link', 'url': url_for('auth.logout'), 'label': 'تسجيل الخروج', 'icon': 'bi-box-arrow-left', 'active': False})
-
     return dict(nav_items=nav_items)
 
 @app.context_processor
 def inject_show_bottom_nav():
-    """تحديد إظهار الشريط السفلي حسب الدور والصفحة."""
     user = g.user
     endpoint = request.endpoint
-
     if request.path.startswith('/api/') or request.path.startswith('/static/') or endpoint is None:
         return dict(show_bottom_nav=False)
-
     allowed_customer_endpoints = [
-        'market.market',
-        'reels.reels_page',
-        'cart.cart',
-        'offers.offers_page',
-        'stores.stores_page',
-        'stores.store_public',
-        'stores.product_public',
-        'notifications.notifications',
-        'account.favorites'
+        'market.market', 'reels.reels_page', 'cart.cart', 'offers.offers_page',
+        'stores.stores_page', 'stores.store_public', 'stores.product_public',
+        'notifications.notifications', 'account.favorites'
     ]
-
     public_endpoints = [
         'market.market', 'reels.reels_page', 'offers.offers_page', 'stores.stores_page',
         'stores.store_public', 'stores.product_public', 'services.services_page'
     ]
-
     show = False
     if user:
         if user.role == 'customer' and endpoint in allowed_customer_endpoints:
@@ -365,7 +335,6 @@ def inject_show_bottom_nav():
     else:
         if endpoint in public_endpoints:
             show = True
-
     return dict(show_bottom_nav=show)
 
 @app.template_filter('format_price')
@@ -421,13 +390,10 @@ def _handle_sigterm(signum, frame):
 
 if __name__ == '__main__':
     ensure_admin()
-
     from scheduler import init_scheduler
     init_scheduler(app)
-
     signal.signal(signal.SIGTERM, _handle_sigterm)
     signal.signal(signal.SIGINT, _handle_sigterm)
-
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     port = int(os.environ.get('PORT', 8000))
     app.run(host='0.0.0.0', port=port, debug=debug_mode)
