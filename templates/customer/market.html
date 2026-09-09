@@ -80,8 +80,8 @@
                 <p class="text-muted">لا توجد متاجر مفتوحة حالياً</p>
                 {% endfor %}
             </div>
-            <div class="active-shoppers-badge">
-                <i class="bi bi-people-fill"></i> {{ active_shoppers_count }} يتسوقون الآن
+            <div class="active-shoppers-badge" id="activeShoppersBadge">
+                <i class="bi bi-people-fill"></i> <span>{{ active_shoppers_count }}</span> يتسوقون الآن
             </div>
         </div>
 
@@ -220,6 +220,31 @@ document.addEventListener('DOMContentLoaded', function() {
             suggestions.classList.add('d-none');
         }
     });
+
+    // ====== تحديث عداد المتسوقين النشطين ======
+    async function updateActiveShoppers() {
+        try {
+            const res = await fetch('/api/active-shoppers');
+            const data = await res.json();
+            if (typeof data.active_shoppers_count !== 'undefined') {
+                const badge = document.getElementById('activeShoppersBadge');
+                if (badge) {
+                    const countSpan = badge.querySelector('span');
+                    if (countSpan) {
+                        countSpan.textContent = data.active_shoppers_count;
+                    } else {
+                        badge.innerHTML = `<i class="bi bi-people-fill"></i> <span>${data.active_shoppers_count}</span> يتسوقون الآن`;
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Failed to update active shoppers:', err);
+        }
+    }
+    // استدعاء فوري ثم كل 15 ثانية
+    updateActiveShoppers();
+    setInterval(updateActiveShoppers, 15000);
+    // ====== نهاية التحديث الدوري ======
 
     if (navigator.onLine && typeof OfflineDB !== 'undefined') {
         const productsData = [
