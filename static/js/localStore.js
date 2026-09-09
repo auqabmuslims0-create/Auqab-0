@@ -13,6 +13,7 @@ const LocalStore = (function() {
 
     let debounceTimer = null;
     let isSyncing = false;
+    let lastProfileHash = null; // لتتبع تغييرات الملف الشخصي
     const DEBOUNCE_DELAY = 500;
 
     // ==================== الوضع الداكن ====================
@@ -222,6 +223,17 @@ const LocalStore = (function() {
         }
     }
 
+    function hashString(str) {
+        let hash = 0;
+        if (str.length === 0) return hash;
+        for (let i = 0; i < str.length; i++) {
+            const char = str.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash |= 0; // Convert to 32bit integer
+        }
+        return hash;
+    }
+
     async function performSync() {
         if (!navigator.onLine || isSyncing) return;
         isSyncing = true;
@@ -230,21 +242,29 @@ const LocalStore = (function() {
             const favs = getFavorites();
             const csrfToken = window.csrfToken || '';
 
+            // مزامنة السلة
             await fetch('/api/cart/sync', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken},
                 body: JSON.stringify({ cart })
             }).catch(err => console.warn('Cart sync failed:', err));
 
+            // مزامنة المفضلة
             await fetch('/api/favorites/sync', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken},
                 body: JSON.stringify({ favorites: favs })
             }).catch(err => console.warn('Favorites sync failed:', err));
 
+            // مزامنة الملف الشخصي فقط إذا تغير
             const profile = getProfile();
             if (profile) {
-                await syncProfile(profile);
+                const profileStr = JSON.stringify(profile);
+                const currentHash = hashString(profileStr);
+                if (currentHash !== lastProfileHash) {
+                    await syncProfile(profile);
+                    lastProfileHash = currentHash;
+                }
             }
         } catch (err) {
             console.log('Local sync failed:', err);

@@ -116,8 +116,8 @@ def safe_referrer():
 
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'mov', 'avi'}
-MAX_IMAGE_SIZE = 10 * 1024 * 1024
-MAX_VIDEO_SIZE = 100 * 1024 * 1024
+MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
+MAX_VIDEO_SIZE = 50 * 1024 * 1024  # 50MB (تم تقليل الحد الأقصى للفيديو)
 
 def _secure_file(file, allowed_extensions, max_size):
     if not file or not file.filename or file.filename == '':
@@ -204,7 +204,7 @@ def delete_local_file(url):
         except OSError:
             pass
 
-def _compress_image(file, max_width=1200, max_height=1200, quality=85):
+def _compress_image(file, max_width=1200, max_height=1200, quality=80):
     """
     ضغط الصورة وتقليل حجمها.
     تعيد (bytes_io, output_ext) حيث:
@@ -248,7 +248,7 @@ def _compress_image(file, max_width=1200, max_height=1200, quality=85):
             orig_ext = 'jpg'
         return output, orig_ext
 
-def _compress_video(file, max_width=1280, crf=28):
+def _compress_video(file, max_width=720, crf=32):
     """ضغط الفيديو باستخدام ffmpeg إذا كان متاحًا وبسرعة معقولة."""
     if not shutil.which('ffmpeg'):
         return None
@@ -261,20 +261,21 @@ def _compress_video(file, max_width=1280, crf=28):
         with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_output:
             output_path = temp_output.name
 
+        # تحسين الإعدادات لتقليل الحجم أكثر مع الحفاظ على جودة مقبولة
         cmd = [
             'ffmpeg', '-i', input_path,
             '-vf', f'scale={max_width}:-2',
             '-c:v', 'libx264', '-crf', str(crf),
-            '-preset', 'ultrafast',
-            '-c:a', 'aac', '-b:a', '128k',
+            '-preset', 'veryfast',
+            '-c:a', 'aac', '-b:a', '96k',
             '-movflags', '+faststart',
             output_path,
             '-y'
         ]
         try:
-            subprocess.run(cmd, check=True, capture_output=True, timeout=30)
+            subprocess.run(cmd, check=True, capture_output=True, timeout=60)  # زيادة المهلة إلى 60 ثانية
         except subprocess.TimeoutExpired:
-            current_app.logger.warning('ffmpeg استغرق أكثر من 30 ثانية، سيتم رفع الفيديو الأصلي')
+            current_app.logger.warning('ffmpeg استغرق أكثر من 60 ثانية، سيتم رفع الفيديو الأصلي')
             os.unlink(input_path)
             os.unlink(output_path)
             return None
@@ -359,7 +360,7 @@ def save_video(file, old_url=None):
                     file,
                     resource_type='video',
                     quality='auto:good',
-                    width=1280,
+                    width=720,
                     crop='limit'
                 )
             if new_url and old_url:

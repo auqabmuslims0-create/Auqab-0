@@ -447,6 +447,27 @@
       });
     };
 
+    // دالة موحدة لطلب الأذونات (الإشعارات والموقع اختياري)
+    window.requestPermissions = async function() {
+      try {
+        // طلب إذن الإشعارات إذا كان غير محدد
+        if ('Notification' in window && Notification.permission === 'default') {
+          await Notification.requestPermission();
+          if (Notification.permission === 'granted') {
+            showToast('تم تفعيل الإشعارات', 'success');
+          }
+        }
+        // ملاحظة: لا نطلب إذن الموقع تلقائيًا؛ يُطلب عند الحاجة (مثلاً في صفحة إتمام الطلب)
+      } catch (err) {
+        console.error('Permission request failed:', err);
+      }
+    };
+
+    // طلب إذن الإشعارات تلقائيًا عند تسجيل الدخول
+    if (window.isAuthenticated && 'Notification' in window && Notification.permission === 'default') {
+      window.requestPermissions();
+    }
+
     (function() {
       const splash = document.getElementById('appSplash');
       if (!splash) return;
@@ -558,7 +579,6 @@
     window.addEventListener('offline', stopUpdateInterval);
 
     startUpdateInterval();
-
 
     function urlBase64ToUint8Array(base64String) {
       const padding = '='.repeat((4 - base64String.length % 4) % 4);

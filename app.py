@@ -60,7 +60,9 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_DEBUG', 'False').lower() != 'true'
 app.config['SESSION_COOKIE_DOMAIN'] = None
 app.config['SESSION_COOKIE_PATH'] = '/'
-app.config['PERMANENT_SESSION_LIFETIME'] = 7 * 24 * 60 * 60  # أسبوع
+
+# زيادة مدة الجلسة إلى 30 يومًا لضمان بقاء المستخدم مسجلاً حتى بعد إغلاق المتصفح
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True
 
 csp_policy = (
@@ -212,6 +214,8 @@ def ensure_admin():
 def before_request_checks():
     g.user = None
     if 'user_id' in session:
+        # جعل الجلسة دائمة تلقائيًا لجميع المستخدمين المسجلين
+        session.permanent = True
         g.user = db.session.get(models.User, session['user_id'])
 
     if request.path.startswith('/api/') or request.endpoint is None:

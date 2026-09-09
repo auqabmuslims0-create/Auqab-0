@@ -95,17 +95,9 @@ def register():
 
             avatar_url = None
             if avatar_file and avatar_file.filename != '':
-                avatar_file.seek(0, os.SEEK_END)
-                file_size = avatar_file.tell()
-                avatar_file.seek(0)
-
-                if file_size > 10 * 1024 * 1024:
-                    flash('حجم الصورة كبير جداً (الحد الأقصى 10MB)', 'error')
-                    return redirect(url_for('auth.register', step=3))
-
                 try:
                     avatar_url = save_image(avatar_file)
-                except Exception as e:
+                except ValueError as e:
                     flash(str(e), 'error')
                     return redirect(url_for('auth.register', step=3))
 
@@ -127,7 +119,7 @@ def register():
             session['user_id'] = user.id
             session['role'] = user.role
             session['new_public_id'] = user.public_id
-            # تم حذف تعيين _csrf_token يدويًا (يتم توليده تلقائيًا عبر Flask-WTF)
+            session.permanent = True  # جعل الجلسة دائمة
             return redirect(url_for('auth.show_public_id'))
 
     if step == 2 and 'reg_data' not in session:
@@ -178,11 +170,8 @@ def login():
             session.clear()
             session['user_id'] = user.id
             session['role'] = user.role
-            # تم حذف تعيين _csrf_token يدويًا (يتم توليده تلقائيًا عبر Flask-WTF)
+            session.permanent = True  # جعل الجلسة دائمة دائمًا (تجاهل remember_me)
             clear_login_attempts(ip)
-
-            if remember_me:
-                session.permanent = True
 
             flash('تم تسجيل الدخول', 'success')
             return redirect(url_for('auth.dashboard'))
