@@ -81,9 +81,10 @@ def new_product(store_id):
         main_image = None
         main_file = request.files.get('main_image')
         if main_file and main_file.filename != '':
-            main_image = save_image(main_file)
-            if not main_image:
-                flash('صيغة الصورة الأساسية غير مدعومة أو الحجم كبير', 'error')
+            try:
+                main_image = save_image(main_file)
+            except ValueError as e:
+                flash(str(e), 'error')
                 return redirect(url_for('store.new_product', store_id=store.id))
 
         sub_images = []
@@ -92,16 +93,21 @@ def new_product(store_id):
             if len(sub_images) >= 4:
                 break
             if file and file.filename != '':
-                saved_name = save_image(file)
-                if saved_name:
-                    sub_images.append(saved_name)
+                try:
+                    saved_name = save_image(file)
+                    if saved_name:
+                        sub_images.append(saved_name)
+                except ValueError as e:
+                    flash(str(e), 'error')
+                    return redirect(url_for('store.new_product', store_id=store.id))
 
         video_file = request.files.get('video')
         video_filename = None
         if video_file and video_file.filename != '':
-            video_filename = save_video(video_file)
-            if not video_filename:
-                flash('صيغة الفيديو غير مدعومة (MP4, MOV, AVI فقط)', 'error')
+            try:
+                video_filename = save_video(video_file)
+            except ValueError as e:
+                flash(str(e), 'error')
                 return redirect(url_for('store.new_product', store_id=store.id))
 
         final_price = price
@@ -199,11 +205,11 @@ def edit_product(store_id, product_id):
         main_file = request.files.get('main_image')
         if main_file and main_file.filename != '':
             old_url = product.main_image
-            new_main = save_image(main_file, old_url=old_url)
-            if new_main:
+            try:
+                new_main = save_image(main_file, old_url=old_url)
                 product.main_image = new_main
-            else:
-                flash('فشل رفع الصورة الأساسية', 'error')
+            except ValueError as e:
+                flash(str(e), 'error')
                 return redirect(url_for('store.edit_product', store_id=store.id, product_id=product.id))
 
         if request.form.get('remove_main_image') == 'yes':
@@ -226,9 +232,13 @@ def edit_product(store_id, product_id):
             if len(existing_sub) >= 4:
                 break
             if file and file.filename != '':
-                saved_name = save_image(file)
-                if saved_name:
-                    existing_sub.append(saved_name)
+                try:
+                    saved_name = save_image(file)
+                    if saved_name:
+                        existing_sub.append(saved_name)
+                except ValueError as e:
+                    flash(str(e), 'error')
+                    return redirect(url_for('store.edit_product', store_id=store.id, product_id=product.id))
 
         product.sub_images = ','.join(existing_sub) if existing_sub else None
 
@@ -244,12 +254,12 @@ def edit_product(store_id, product_id):
             video_file = request.files.get('video')
             if video_file and video_file.filename != '':
                 old_url = product.video
-                new_video = save_video(video_file, old_url=old_url)
-                if new_video:
+                try:
+                    new_video = save_video(video_file, old_url=old_url)
                     product.video = new_video
                     new_video_saved = True
-                else:
-                    flash('فشل رفع الفيديو', 'error')
+                except ValueError as e:
+                    flash(str(e), 'error')
                     return redirect(url_for('store.edit_product', store_id=store.id, product_id=product.id))
 
         product.name = name
