@@ -67,9 +67,9 @@ csp_policy = (
     "default-src 'self'; "
     "img-src 'self' data: https:; "
     "style-src 'self' 'unsafe-inline' https://unpkg.com; "
-    "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://unpkg.com; "  # إضافة wasm-unsafe-eval لدعم WebAssembly
+    "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://unpkg.com blob:; "  # إضافة wasm-unsafe-eval لدعم WebAssembly
     "font-src 'self'; "
-    "connect-src 'self' https://*.tile.openstreetmap.org https://router.project-osrm.org https://server.arcgisonline.com https://unpkg.com; "
+    "connect-src 'self' https://*.tile.openstreetmap.org https://router.project-osrm.org https://server.arcgisonline.com https://unpkg.com blob:; "
     "media-src 'self' https: blob:; "  # السماح بتحميل الفيديو من https و blob
     "worker-src 'self' https://unpkg.com blob:; "  # السماح بإنشاء Web Workers من unpkg و blob
     "child-src 'self' https://unpkg.com blob:; "  # للمتصفحات القديمة

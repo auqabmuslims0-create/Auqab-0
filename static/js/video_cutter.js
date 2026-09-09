@@ -20,9 +20,11 @@ async function loadFFmpeg() {
     }
 
     ffmpegInstance = createFFmpeg({
-        log: true
-        // لم نحدد corePath ليعتمد على الافتراضي (يُحمّل من unpkg تلقائيًا)
+        log: true,
+        corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js'  // مسار النواة الصحيح
     });
+
+    console.log('جارٍ تحميل نواة ffmpeg...');
     await ffmpegInstance.load();
     console.log('تم تحميل FFmpeg بنجاح');
     return ffmpegInstance;
