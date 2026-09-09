@@ -12,3 +12,4 @@ from .payment import Payment
 from .security import LoginAttempt, PasswordReset, PasswordResetAttempt
 from .chat import ChatMessage
 from .settings import Setting
+from .user_activity import UserActivity

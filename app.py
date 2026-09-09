@@ -208,17 +208,17 @@ def before_request_checks():
         user = db.session.get(models.User, session['user_id'])
         if user:
             g.user = user
-            # تحديث last_seen بشكل آمن
-            if hasattr(user, 'last_seen'):
-                try:
-                    user.last_seen = current_time()
-                    db.session.add(user)
-                    db.session.commit()
-                except Exception:
-                    db.session.rollback()
-            else:
-                # لو العمود غير موجود، نتجاهل
-                pass
+            # تحديث جدول النشاط
+            try:
+                activity = db.session.get(models.UserActivity, user.id)
+                if activity:
+                    activity.last_seen = current_time()
+                else:
+                    activity = models.UserActivity(user_id=user.id, last_seen=current_time())
+                    db.session.add(activity)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
     if request.path.startswith('/api/') or request.endpoint is None:
         return

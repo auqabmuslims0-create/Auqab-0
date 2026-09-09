@@ -20,7 +20,6 @@ class User(db.Model):
     is_available = db.Column(db.Boolean, default=True)
     public_id = db.Column(db.String(20), unique=True, nullable=True)
     created_at = db.Column(db.DateTime, default=current_time)
-    last_seen = db.Column(db.DateTime, default=current_time, index=True)  # جديد
 
     stores = db.relationship('Store', back_populates='owner', cascade="all, delete-orphan")
     orders = db.relationship('Order', back_populates='customer', foreign_keys='Order.customer_id')

@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from sqlalchemy.orm import joinedload, selectinload
 from datetime import timedelta
 from database import db
-from models import User, Product, Store, Category, ProductReaction
+from models import User, Product, Store, Category, ProductReaction, UserActivity
 from shared.utils import is_store_open
 from shared.time_utils import current_time
 
@@ -73,20 +73,21 @@ def market():
         for r in user_reactions:
             user_reaction_map[r.product_id] = r.reaction_type
 
-    # حساب عدد المتسوقين الآن (خلال آخر 5 دقائق)
-    # نتحقق من وجود العمود last_seen قبل الاستعلام لتجنب الخطأ
+    # حساب عدد المتسوقين الآن (خلال آخر 5 دقائق) من جدول النشاط
     active_shoppers_count = 0
-    if hasattr(User, 'last_seen'):
-        try:
-            now = current_time()
-            active_interval = timedelta(minutes=5)
-            active_shoppers_count = User.query.filter(
-                User.last_seen >= now - active_interval,
+    try:
+        now = current_time()
+        active_interval = timedelta(minutes=5)
+        active_shoppers_count = db.session.query(UserActivity.user_id) \
+            .join(User, User.id == UserActivity.user_id) \
+            .filter(
+                UserActivity.last_seen >= now - active_interval,
                 User.role == 'customer',
                 User.is_active == True
-            ).count()
-        except Exception:
-            active_shoppers_count = 0
+            ) \
+            .distinct().count()
+    except Exception:
+        active_shoppers_count = 0
 
     return render_template('customer/market.html',
                            open_stores=open_stores,
