@@ -20,6 +20,7 @@ import models
 from werkzeug.security import generate_password_hash
 from flask_wtf.csrf import CSRFProtect
 from shared.time_utils import current_time
+from sqlalchemy import inspect
 
 load_dotenv()
 
@@ -153,6 +154,10 @@ migrate = Migrate(app, db)
 
 with app.app_context():
     db.create_all()
+    # التأكد من وجود جدول user_activity
+    inspector = inspect(db.engine)
+    if not inspector.has_table('user_activity'):
+        db.create_all()
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(store_bp)
@@ -208,17 +213,21 @@ def before_request_checks():
         user = db.session.get(models.User, session['user_id'])
         if user:
             g.user = user
-            # تحديث جدول النشاط
+            # تحديث جدول النشاط مع طباعة الخطأ للتشخيص
             try:
+                now = current_time()
                 activity = db.session.get(models.UserActivity, user.id)
                 if activity:
-                    activity.last_seen = current_time()
+                    activity.last_seen = now
                 else:
-                    activity = models.UserActivity(user_id=user.id, last_seen=current_time())
+                    activity = models.UserActivity(user_id=user.id, last_seen=now)
                     db.session.add(activity)
                 db.session.commit()
-            except Exception:
+                if os.environ.get('FLASK_DEBUG', 'False').lower() == 'true':
+                    app.logger.info(f"Updated activity for user {user.id} at {now}")
+            except Exception as e:
                 db.session.rollback()
+                app.logger.error(f"Failed to update user activity for {user.id}: {str(e)}")
 
     if request.path.startswith('/api/') or request.endpoint is None:
         return
