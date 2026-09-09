@@ -12,7 +12,7 @@ async function loadFFmpeg() {
     const { createFFmpeg, fetchFile } = FFmpeg;
     ffmpegInstance = createFFmpeg({
         log: true,
-        corePath: 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/ffmpeg-core.js',
+        corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
     });
     await ffmpegInstance.load();
     return ffmpegInstance;

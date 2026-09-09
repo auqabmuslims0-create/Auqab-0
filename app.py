@@ -67,12 +67,12 @@ csp_policy = (
     "default-src 'self'; "
     "img-src 'self' data: https:; "
     "style-src 'self' 'unsafe-inline' https://unpkg.com; "
-    "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://unpkg.com; "  # تمت إضافة wasm-unsafe-eval لدعم WebAssembly
+    "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://unpkg.com; "  # إضافة wasm-unsafe-eval لدعم WebAssembly
     "font-src 'self'; "
-    "connect-src 'self' https://*.tile.openstreetmap.org https://router.project-osrm.org https://server.arcgisonline.com https://unpkg.com; "  # تمت إضافة unpkg.com
+    "connect-src 'self' https://*.tile.openstreetmap.org https://router.project-osrm.org https://server.arcgisonline.com https://unpkg.com; "
     "media-src 'self' https: blob:; "  # السماح بتحميل الفيديو من https و blob
     "worker-src 'self' https://unpkg.com blob:; "  # السماح بإنشاء Web Workers من unpkg و blob
-    "child-src 'self' https://unpkg.com blob:; "  # للمتصفحات التي لا تدعم worker-src
+    "child-src 'self' https://unpkg.com blob:; "  # للمتصفحات القديمة
     "frame-src 'self'"
 )
 Talisman(app, content_security_policy=csp_policy, force_https=os.environ.get('FLASK_DEBUG', 'False').lower() != 'true')
@@ -135,7 +135,7 @@ else:
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
-app.config['MAX_CONTENT_LENGTH'] = 15 * 1024 * 1024  # 15MB
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # زيادة الحد إلى 100MB
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
