@@ -63,6 +63,8 @@
         margin-top: 5px;
     }
 </style>
+<!-- مكتبة ffmpeg.wasm -->
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/ffmpeg.min.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -236,9 +238,41 @@
         </form>
     </div>
 </div>
+
+<!-- نافذة قص الفيديو -->
+<div class="modal fade" id="videoCutterModal" tabindex="-1" aria-labelledby="videoCutterModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="videoCutterModalLabel">قص الفيديو (الحد الأقصى 60 ثانية)</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+      </div>
+      <div class="modal-body">
+        <video id="cutterVideo" controls style="width:100%; max-height:300px;"></video>
+        <div class="mt-3">
+          <label>نقطة البداية: <span id="startLabel">0:00</span></label>
+          <input type="range" class="form-range" id="startSlider" min="0" max="100" step="0.1" value="0">
+        </div>
+        <div class="mt-2">
+          <label>نقطة النهاية: <span id="endLabel">0:00</span></label>
+          <input type="range" class="form-range" id="endSlider" min="0" max="100" step="0.1" value="60">
+        </div>
+        <div class="mt-2">
+          <small>المدة المحددة: <span id="selectedDuration">0:00</span> / <span id="durationLabel"></span></small>
+          <div id="durationWarning" class="text-danger d-none"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+        <button type="button" class="btn btn-primary" id="confirmCutBtn">قص وتأكيد</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/video_cutter.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // إظهار/إخفاء حقول العرض
@@ -307,7 +341,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // الفيديو + التحقق من المدة
+    // الفيديو + التحقق من المدة + أداة القص
     const videoInput = document.getElementById('videoInput');
     const addVideoBtn = document.getElementById('addVideoBtn');
     const videoContainer = document.getElementById('videoContainer');
@@ -366,6 +400,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    function showSelectedVideo(file) {
+        const existing = videoContainer.querySelector('.video-card');
+        if (existing) existing.remove();
+        const addBtn = videoContainer.querySelector('.add-video-card');
+        if (addBtn) addBtn.remove();
+        const div = document.createElement('div');
+        div.className = 'video-card';
+        const videoUrl = URL.createObjectURL(file);
+        div.innerHTML = `<video controls><source src="${videoUrl}" type="${file.type}"></video><button type="button" class="remove-video">×</button>`;
+        videoContainer.appendChild(div);
+    }
+
     if (videoInput && addVideoBtn && videoContainer) {
         addVideoBtn.addEventListener('click', () => videoInput.click());
 
@@ -383,18 +429,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            const showSelectedVideo = () => {
-                const existing = videoContainer.querySelector('.video-card');
-                if (existing) existing.remove();
-                const addBtn = videoContainer.querySelector('.add-video-card');
-                if (addBtn) addBtn.remove();
-                const div = document.createElement('div');
-                div.className = 'video-card';
-                const videoUrl = URL.createObjectURL(file);
-                div.innerHTML = `<video controls><source src="${videoUrl}" type="${file.type}"></video><button type="button" class="remove-video">×</button>`;
-                videoContainer.appendChild(div);
-            };
-
             try {
                 const duration = await checkVideoDuration(file);
                 const minutes = Math.floor(duration / 60);
@@ -402,27 +436,163 @@ document.addEventListener('DOMContentLoaded', function() {
                 const durationText = `${minutes > 0 ? minutes + ' دقيقة و' : ''}${seconds} ثانية`;
 
                 if (duration > 60) {
+                    // فتح نافذة القص تلقائيًا
                     videoTooLong = true;
                     videoDurationWarning.style.display = 'block';
-                    videoHint.textContent = 'الفيديو أطول من 60 ثانية. يرجى قصه أولاً.';
-                    videoInput.value = '';
-                    showToast('مدة الفيديو تتجاوز 60 ثانية', 'error');
+                    videoHint.textContent = 'الفيديو أطول من 60 ثانية. يرجى قصه باستخدام الأداة.';
+                    // استدعاء دالة القص مع تمرير الملف
+                    if (typeof initVideoCutter === 'function') {
+                        // نمرر الملف إلى النافذة مباشرة
+                        const modal = new bootstrap.Modal(document.getElementById('videoCutterModal'));
+                        modal.show();
+                        // نمرر الملف إلى دالة القص
+                        // نستدعي initVideoCutter على input فارغ ثم نحدث الحدث
+                        // لكن سنقوم بتهيئة مخصصة
+                        // سنستدعي دالة خاصة لفتح النافذة مع الملف
+                        openCutterWithFile(file);
+                    } else {
+                        showToast('أداة القص غير متوفرة', 'error');
+                    }
+                    // لا نعرض معاينة بعد
                 } else {
                     videoTooLong = false;
                     videoDurationInfo.textContent = `مدة الفيديو: ${durationText} (مقبول)`;
                     videoDurationInfo.style.display = 'block';
                     videoHint.textContent = 'اضغط × لإزالة الفيديو الحالي.';
-                    showSelectedVideo();
+                    showSelectedVideo(file);
                 }
             } catch (err) {
                 videoTooLong = false;
                 videoDurationInfo.textContent = 'تعذر التحقق من مدة الفيديو تلقائيًا، سيتم رفع الفيديو دون التحقق.';
                 videoDurationInfo.style.display = 'block';
                 videoHint.textContent = 'اضغط × لإزالة الفيديو الحالي.';
-                showSelectedVideo();
+                showSelectedVideo(file);
                 showToast('تعذر قراءة مدة الفيديو، سيتم الرفع بدون تحقق', 'warning');
             }
         });
+    }
+
+    // دالة فتح أداة القص مع ملف معين
+    function openCutterWithFile(file) {
+        // نتحقق من وجود العناصر
+        const cutterVideo = document.getElementById('cutterVideo');
+        const startSlider = document.getElementById('startSlider');
+        const endSlider = document.getElementById('endSlider');
+        const startLabel = document.getElementById('startLabel');
+        const endLabel = document.getElementById('endLabel');
+        const durationLabel = document.getElementById('durationLabel');
+        const selectedDuration = document.getElementById('selectedDuration');
+        const confirmCutBtn = document.getElementById('confirmCutBtn');
+        const durationWarning = document.getElementById('durationWarning');
+
+        if (!cutterVideo || !startSlider || !endSlider) return;
+
+        const videoURL = URL.createObjectURL(file);
+        cutterVideo.src = videoURL;
+
+        cutterVideo.onloadedmetadata = function() {
+            const fullDuration = cutterVideo.duration;
+            maxDuration = 60; // ثابت
+            durationLabel.textContent = `مدة الفيديو الكلية: ${formatTime(fullDuration)}`;
+
+            startSlider.min = 0;
+            startSlider.max = fullDuration;
+            startSlider.value = 0;
+            endSlider.min = 0;
+            endSlider.max = fullDuration;
+            endSlider.value = Math.min(maxDuration, fullDuration);
+
+            updateTimeDisplay();
+            validateDuration();
+        };
+
+        function updateTimeDisplay() {
+            const start = parseFloat(startSlider.value);
+            const end = parseFloat(endSlider.value);
+            startLabel.textContent = formatTime(start);
+            endLabel.textContent = formatTime(end);
+            selectedDuration.textContent = formatTime(end - start);
+            validateDuration();
+        }
+
+        startSlider.oninput = function() {
+            if (parseFloat(startSlider.value) >= parseFloat(endSlider.value)) {
+                startSlider.value = Math.max(0, parseFloat(endSlider.value) - 0.1);
+            }
+            if (parseFloat(endSlider.value) - parseFloat(startSlider.value) > maxDuration) {
+                endSlider.value = Math.min(parseFloat(startSlider.value) + maxDuration, parseFloat(endSlider.max));
+            }
+            updateTimeDisplay();
+        };
+
+        endSlider.oninput = function() {
+            if (parseFloat(endSlider.value) <= parseFloat(startSlider.value)) {
+                endSlider.value = Math.min(parseFloat(startSlider.value) + 0.1, parseFloat(endSlider.max));
+            }
+            if (parseFloat(endSlider.value) - parseFloat(startSlider.value) > maxDuration) {
+                startSlider.value = Math.max(0, parseFloat(endSlider.value) - maxDuration);
+            }
+            updateTimeDisplay();
+        };
+
+        function validateDuration() {
+            const start = parseFloat(startSlider.value);
+            const end = parseFloat(endSlider.value);
+            const selected = end - start;
+            if (selected > maxDuration + 0.01) {
+                confirmCutBtn.disabled = true;
+                durationWarning.textContent = `المدة المحددة (${formatTime(selected)}) تتجاوز الحد الأقصى ${maxDuration} ثانية`;
+                durationWarning.classList.remove('d-none');
+            } else {
+                confirmCutBtn.disabled = false;
+                durationWarning.classList.add('d-none');
+            }
+        }
+
+        confirmCutBtn.onclick = async function() {
+            const start = parseFloat(startSlider.value);
+            const end = parseFloat(endSlider.value);
+            if (end - start > maxDuration + 0.01) {
+                alert(`المدة المحددة تتجاوز ${maxDuration} ثانية`);
+                return;
+            }
+            if (end - start <= 0) {
+                alert('يرجى تحديد مدة صالحة');
+                return;
+            }
+
+            try {
+                // استدعاء دالة القص من video_cutter.js
+                const cutBlob = await cutVideo(file, start, end);
+                // إنشاء ملف جديد واستبداله في حقل الإدخال
+                const newFile = new File([cutBlob], `cut_${file.name}`, { type: 'video/mp4' });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(newFile);
+                videoInput.files = dataTransfer.files;
+
+                // إغلاق النافذة
+                bootstrap.Modal.getInstance(document.getElementById('videoCutterModal')).hide();
+
+                // إعادة فحص المدة والعرض
+                const newDuration = await checkVideoDuration(newFile);
+                if (newDuration > 60) {
+                    videoTooLong = true;
+                    videoDurationWarning.style.display = 'block';
+                    videoHint.textContent = 'المقطع لا يزال أطول من 60 ثانية.';
+                } else {
+                    videoTooLong = false;
+                    videoDurationWarning.style.display = 'none';
+                    videoDurationInfo.textContent = `مدة الفيديو: ${Math.round(newDuration)} ثانية (بعد القص)`;
+                    videoDurationInfo.style.display = 'block';
+                    videoHint.textContent = 'اضغط × لإزالة الفيديو الحالي.';
+                    showSelectedVideo(newFile);
+                    showToast('تم قص الفيديو بنجاح', 'success');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('فشل قص الفيديو: ' + error.message);
+            }
+        };
     }
 
     // منع إرسال النموذج فقط إذا كانت المدة معروفة وأكثر من 60 ثانية

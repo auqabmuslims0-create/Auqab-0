@@ -67,10 +67,12 @@ csp_policy = (
     "default-src 'self'; "
     "img-src 'self' data: https:; "
     "style-src 'self' 'unsafe-inline' https://unpkg.com; "
-    "script-src 'self' 'unsafe-inline' https://unpkg.com; "
+    "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://unpkg.com; "  # تمت إضافة wasm-unsafe-eval لدعم WebAssembly
     "font-src 'self'; "
-    "connect-src 'self' https://*.tile.openstreetmap.org https://router.project-osrm.org https://server.arcgisonline.com ; "
-    "media-src 'self' https:; "   # ← تم التعديل: السماح بتحميل الفيديو من أي مصدر https
+    "connect-src 'self' https://*.tile.openstreetmap.org https://router.project-osrm.org https://server.arcgisonline.com https://unpkg.com; "  # تمت إضافة unpkg.com
+    "media-src 'self' https: blob:; "  # السماح بتحميل الفيديو من https و blob
+    "worker-src 'self' https://unpkg.com blob:; "  # السماح بإنشاء Web Workers من unpkg و blob
+    "child-src 'self' https://unpkg.com blob:; "  # للمتصفحات التي لا تدعم worker-src
     "frame-src 'self'"
 )
 Talisman(app, content_security_policy=csp_policy, force_https=os.environ.get('FLASK_DEBUG', 'False').lower() != 'true')
