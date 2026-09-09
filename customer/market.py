@@ -1,8 +1,10 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, session
 from sqlalchemy.orm import joinedload, selectinload
+from datetime import timedelta
 from database import db
 from models import User, Product, Store, Category, ProductReaction
 from shared.utils import is_store_open
+from shared.time_utils import current_time
 
 market_bp = Blueprint('market', __name__)
 
@@ -71,6 +73,21 @@ def market():
         for r in user_reactions:
             user_reaction_map[r.product_id] = r.reaction_type
 
+    # حساب عدد المتسوقين الآن (خلال آخر 5 دقائق)
+    # نتحقق من وجود العمود last_seen قبل الاستعلام لتجنب الخطأ
+    active_shoppers_count = 0
+    if hasattr(User, 'last_seen'):
+        try:
+            now = current_time()
+            active_interval = timedelta(minutes=5)
+            active_shoppers_count = User.query.filter(
+                User.last_seen >= now - active_interval,
+                User.role == 'customer',
+                User.is_active == True
+            ).count()
+        except Exception:
+            active_shoppers_count = 0
+
     return render_template('customer/market.html',
                            open_stores=open_stores,
                            products=products_pagination.items,
@@ -82,105 +99,5 @@ def market():
                            selected_store=store_id,
                            min_price=min_price,
                            max_price=max_price,
-                           q=q)
-
-@market_bp.route('/search')
-def search():
-    query = request.args.get('q', '').strip()
-    min_price = request.args.get('min_price', type=float)
-    max_price = request.args.get('max_price', type=float)
-    category_id = request.args.get('category_id', type=int)
-    store_id = request.args.get('store_id', type=int)
-    page = request.args.get('page', 1, type=int)
-    per_page = 12
-
-    results_query = Product.query.join(Store).filter(
-        Store.subscription_status == 'active'
-    ).options(
-        selectinload(Product.store),
-        selectinload(Product.category)
-    )
-
-    if query:
-        results_query = results_query.filter(
-            (Product.name.ilike(f'%{query}%')) |
-            (Product.description.ilike(f'%{query}%'))
-        )
-    if min_price is not None:
-        results_query = results_query.filter(Product.price >= min_price)
-    if max_price is not None:
-        results_query = results_query.filter(Product.price <= max_price)
-    if category_id:
-        results_query = results_query.filter(Product.category_id == category_id)
-    if store_id:
-        results_query = results_query.filter(Product.store_id == store_id)
-
-    pagination = results_query.order_by(Product.created_at.desc()).paginate(
-        page=page, per_page=per_page, error_out=False
-    )
-
-    categories = Category.query.join(Product).join(Store).filter(
-        Store.subscription_status == 'active'
-    ).distinct().all()
-
-    stores = Store.query.filter(Store.subscription_status == 'active').limit(20).all()
-
-    return render_template('customer/search.html',
-                           query=query,
-                           results=pagination.items,
-                           pagination=pagination,
-                           min_price=min_price,
-                           max_price=max_price,
-                           selected_category=category_id,
-                           selected_store=store_id,
-                           categories=categories,
-                           stores=stores)
-
-@market_bp.route('/search_suggestions')
-def search_suggestions():
-    q = request.args.get('q', '').strip()
-    limit = 5
-
-    if q:
-        stores = Store.query.filter(
-            Store.subscription_status == 'active',
-            Store.name.ilike(f'%{q}%')
-        ).limit(limit).all()
-
-        products = Product.query.join(Store).filter(
-            Store.subscription_status == 'active',
-            Product.name.ilike(f'%{q}%')
-        ).options(selectinload(Product.store)).order_by(Product.created_at.desc()).limit(limit).all()
-    else:
-        stores = Store.query.filter(Store.subscription_status == 'active').limit(limit).all()
-        products = Product.query.join(Store).filter(
-            Store.subscription_status == 'active'
-        ).options(selectinload(Product.store)).order_by(Product.created_at.desc()).limit(limit).all()
-
-    services = [
-        {'name': 'توصيل سريع', 'icon': 'bi-truck'},
-        {'name': 'دفع عند الاستلام', 'icon': 'bi-cash-coin'},
-        {'name': 'دعم فني', 'icon': 'bi-headset'}
-    ]
-
-    def get_image_url(filename):
-        if not filename:
-            return ''
-        if filename.startswith('http'):
-            return filename
-        if filename.startswith('uploads/'):
-            return url_for('static', filename=filename)
-        return url_for('static', filename='uploads/' + filename)
-
-    stores_data = []
-    for s in stores:
-        stores_data.append({'id': s.id, 'name': s.name, 'logo_url': get_image_url(s.logo_url)})
-
-    products_data = []
-    for p in products:
-        first_image = ''
-        if p.images:
-            first_image = p.images.split(',')[0].strip()
-        products_data.append({'id': p.id, 'name': p.name, 'price': p.price, 'image_url': get_image_url(first_image)})
-
-    return jsonify({'stores': stores_data, 'products': products_data, 'services': services})
+                           q=q,
+                           active_shoppers_count=active_shoppers_count)
