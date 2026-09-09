@@ -9,7 +9,7 @@ let maxDuration = 60; // ثانية
 async function loadFFmpeg() {
     if (ffmpegInstance) return ffmpegInstance;
 
-    console.log('بدء تحميل FFmpeg...');
+    console.log('بدء تحميل FFmpeg (نسخة خفيفة core-st)...');
     if (typeof FFmpeg === 'undefined') {
         throw new Error('FFmpeg غير معرّف. تأكد من تحميل مكتبة ffmpeg.min.js');
     }
@@ -19,12 +19,13 @@ async function loadFFmpeg() {
         throw new Error('createFFmpeg أو fetchFile غير موجودين. تحقق من إصدار المكتبة');
     }
 
+    // نستخدم الإصدار الخفيف @ffmpeg/core-st لتقليل استهلاك الذاكرة
     ffmpegInstance = createFFmpeg({
         log: true,
-        corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js'  // مسار النواة الصحيح
+        corePath: 'https://unpkg.com/@ffmpeg/core-st@0.11.1/dist/ffmpeg-core.js'
     });
 
-    console.log('جارٍ تحميل نواة ffmpeg...');
+    console.log('جارٍ تحميل نواة ffmpeg الخفيفة...');
     await ffmpegInstance.load();
     console.log('تم تحميل FFmpeg بنجاح');
     return ffmpegInstance;
@@ -103,6 +104,12 @@ function initVideoCutter(inputElement) {
                 alert('يرجى تحديد مدة صالحة');
                 return;
             }
+
+            // تحقق من حجم الفيديو الأصلي
+            if (videoFile.size > 200 * 1024 * 1024) { // أكبر من 200MB
+                alert('حجم الفيديو كبير جداً للقص في المتصفح. يرجى اختيار فيديو أصغر أو قصه مسبقاً.');
+                return;
+            }
             
             try {
                 const cutBlob = await cutVideo(videoFile, start, end);
@@ -132,15 +139,18 @@ async function cutVideo(file, start, end) {
     console.log('كتابة ملف الإدخال...');
     ffmpeg.FS('writeFile', inputName, await fetchFile(file));
 
-    console.log('تنفيذ أوامر ffmpeg...');
+    console.log('تنفيذ أوامر ffmpeg (ضغط خفيف لتقليل الذاكرة)...');
+    // نستخدم أوامر تقلل استهلاك الذاكرة: تقليل الدقة إلى 480p، ترميز سريع جدًا، وجودة منخفضة نسبيًا
     await ffmpeg.run(
         '-i', inputName,
         '-ss', start.toString(),
         '-to', end.toString(),
+        '-vf', 'scale=480:-2',           // تقليل الدقة إلى 480p
         '-c:v', 'libx264',
-        '-preset', 'veryfast',
-        '-crf', '23',
+        '-preset', 'ultrafast',          // أسرع ترميز
+        '-crf', '30',                    // جودة منخفضة (حجم أصغر وذاكرة أقل)
         '-c:a', 'aac',
+        '-b:a', '96k',                   // معدل بت منخفض للصوت
         '-movflags', '+faststart',
         outputName
     );
