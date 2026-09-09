@@ -8,13 +8,23 @@ let maxDuration = 60; // ثانية
 
 async function loadFFmpeg() {
     if (ffmpegInstance) return ffmpegInstance;
-    
+
+    console.log('بدء تحميل FFmpeg...');
+    if (typeof FFmpeg === 'undefined') {
+        throw new Error('FFmpeg غير معرّف. تأكد من تحميل مكتبة ffmpeg.min.js');
+    }
+
     const { createFFmpeg, fetchFile } = FFmpeg;
+    if (!createFFmpeg || !fetchFile) {
+        throw new Error('createFFmpeg أو fetchFile غير موجودين. تحقق من إصدار المكتبة');
+    }
+
     ffmpegInstance = createFFmpeg({
-        log: true,
-        corePath: 'https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js',
+        log: true
+        // لم نحدد corePath ليعتمد على الافتراضي (يُحمّل من unpkg تلقائيًا)
     });
     await ffmpegInstance.load();
+    console.log('تم تحميل FFmpeg بنجاح');
     return ffmpegInstance;
 }
 
@@ -102,7 +112,7 @@ function initVideoCutter(inputElement) {
                 modalInstance.hide();
                 showToast('تم قص الفيديو بنجاح', 'success');
             } catch (error) {
-                console.error(error);
+                console.error('فشل القص:', error);
                 alert('فشل قص الفيديو: ' + error.message);
             }
         };
@@ -111,11 +121,16 @@ function initVideoCutter(inputElement) {
 
 async function cutVideo(file, start, end) {
     const ffmpeg = await loadFFmpeg();
+    const { fetchFile } = FFmpeg;
+    if (!fetchFile) throw new Error('fetchFile غير موجود');
+
     const inputName = 'input.' + file.name.split('.').pop();
     const outputName = 'output.mp4';
-    
+
+    console.log('كتابة ملف الإدخال...');
     ffmpeg.FS('writeFile', inputName, await fetchFile(file));
-    
+
+    console.log('تنفيذ أوامر ffmpeg...');
     await ffmpeg.run(
         '-i', inputName,
         '-ss', start.toString(),
@@ -127,13 +142,15 @@ async function cutVideo(file, start, end) {
         '-movflags', '+faststart',
         outputName
     );
-    
+
+    console.log('قراءة الملف الناتج...');
     const data = ffmpeg.FS('readFile', outputName);
     const blob = new Blob([data.buffer], { type: 'video/mp4' });
-    
+
+    // تنظيف
     ffmpeg.FS('unlink', inputName);
     ffmpeg.FS('unlink', outputName);
-    
+
     return blob;
 }
 
