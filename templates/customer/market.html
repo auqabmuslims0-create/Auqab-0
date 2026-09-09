@@ -224,26 +224,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // ====== تحديث عداد المتسوقين النشطين ======
     async function updateActiveShoppers() {
         try {
-            const res = await fetch('/api/active-shoppers');
+            const res = await fetch('/api/active-shoppers?t=' + Date.now(), {
+                cache: 'no-store'
+            });
             const data = await res.json();
             if (typeof data.active_shoppers_count !== 'undefined') {
                 const badge = document.getElementById('activeShoppersBadge');
                 if (badge) {
-                    const countSpan = badge.querySelector('span');
-                    if (countSpan) {
-                        countSpan.textContent = data.active_shoppers_count;
-                    } else {
-                        badge.innerHTML = `<i class="bi bi-people-fill"></i> <span>${data.active_shoppers_count}</span> يتسوقون الآن`;
-                    }
+                    badge.innerHTML = `<i class="bi bi-people-fill"></i> <span>${data.active_shoppers_count}</span> يتسوقون الآن`;
                 }
             }
         } catch (err) {
             console.error('Failed to update active shoppers:', err);
         }
     }
-    // استدعاء فوري ثم كل 15 ثانية
     updateActiveShoppers();
-    setInterval(updateActiveShoppers, 15000);
+    setInterval(updateActiveShoppers, 10000); // كل 10 ثوانٍ
     // ====== نهاية التحديث الدوري ======
 
     if (navigator.onLine && typeof OfflineDB !== 'undefined') {
