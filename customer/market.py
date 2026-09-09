@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session
+from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, make_response
 from sqlalchemy.orm import joinedload, selectinload
 from datetime import timedelta
 from database import db
@@ -24,6 +24,36 @@ def home():
         return redirect(url_for('delivery.delivery_dashboard'))
     else:
         return redirect(url_for('market.market'))
+
+def _get_active_shoppers_count():
+    """حساب عدد المستخدمين النشطين خلال آخر 5 دقائق."""
+    try:
+        now = current_time()
+        active_interval = timedelta(minutes=5)
+        count = db.session.query(UserActivity.user_id) \
+            .join(User, User.id == UserActivity.user_id) \
+            .filter(
+                UserActivity.last_seen >= now - active_interval,
+                User.role == 'customer',
+                User.is_active == True
+            ) \
+            .distinct().count()
+        return count
+    except Exception:
+        return 0
+
+@market_bp.route('/api/active-shoppers')
+def active_shoppers():
+    """API لإرجاع عدد المتسوقين النشطين بدون حماية تسجيل دخول."""
+    count = _get_active_shoppers_count()
+    response = make_response(jsonify({
+        'active_shoppers_count': count,
+        'timestamp': current_time().strftime('%Y-%m-%d %H:%M:%S')
+    }))
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 @market_bp.route('/market')
 def market():
@@ -73,21 +103,7 @@ def market():
         for r in user_reactions:
             user_reaction_map[r.product_id] = r.reaction_type
 
-    # حساب عدد المتسوقين الآن (خلال آخر 5 دقائق) من جدول النشاط
-    active_shoppers_count = 0
-    try:
-        now = current_time()
-        active_interval = timedelta(minutes=5)
-        active_shoppers_count = db.session.query(UserActivity.user_id) \
-            .join(User, User.id == UserActivity.user_id) \
-            .filter(
-                UserActivity.last_seen >= now - active_interval,
-                User.role == 'customer',
-                User.is_active == True
-            ) \
-            .distinct().count()
-    except Exception:
-        active_shoppers_count = 0
+    active_shoppers_count = _get_active_shoppers_count()
 
     return render_template('customer/market.html',
                            open_stores=open_stores,

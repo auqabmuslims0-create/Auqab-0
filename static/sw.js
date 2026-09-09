@@ -1,4 +1,4 @@
-const CACHE_NAME = 'husayniyyah-cache-v12';
+const CACHE_NAME = 'husayniyyah-cache-v13';
 const STATIC_ASSETS = [
   '/static/css/variables.css',
   '/static/css/base.css',
@@ -46,7 +46,7 @@ self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // أ) Cloudinary دائمًا من الشبكة
+  // Cloudinary دائمًا من الشبكة
   if (url.hostname.includes('cloudinary.com')) {
     event.respondWith(fetch(request));
     return;
@@ -54,19 +54,19 @@ self.addEventListener('fetch', event => {
 
   if (request.method !== 'GET') return;
 
-  // ب) صفحات التنقل (HTML) لا تُخزن أبدًا، دائمًا من الشبكة
+  // صفحات التنقل (HTML) لا تُخزن أبدًا
   if (request.mode === 'navigate') {
     event.respondWith(fetch(request).catch(() => caches.match('/static/offline.html')));
     return;
   }
 
-  // ج) طلبات API لا تُخزن
+  // طلبات API لا تُخزن أبدًا
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(fetch(request));
     return;
   }
 
-  // د) الصور المحلية فقط تُخزن مؤقتًا
+  // الصور المحلية فقط تُخزن مؤقتًا
   if (request.destination === 'image' && url.pathname.startsWith('/static/uploads/')) {
     event.respondWith(
       caches.match(request).then(cached => {
@@ -83,7 +83,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // هـ) الأصول الثابتة الأخرى (CSS/JS/Fonts)
+  // الأصول الثابتة الأخرى
   if (
     request.destination === 'style' ||
     request.destination === 'script' ||
@@ -92,7 +92,6 @@ self.addEventListener('fetch', event => {
     event.respondWith(
       caches.match(request).then(cached => {
         if (cached) {
-          // تحديث في الخلفية
           fetch(request).then(response => {
             if (response.ok) {
               caches.open(CACHE_NAME).then(cache => cache.put(request, response));
@@ -112,7 +111,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // و) أي شيء آخر من الشبكة مباشرة
+  // أي شيء آخر من الشبكة مباشرة
   event.respondWith(fetch(request));
 });
 

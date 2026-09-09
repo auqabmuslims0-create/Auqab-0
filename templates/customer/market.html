@@ -228,6 +228,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 cache: 'no-store'
             });
             const data = await res.json();
+            console.log('Active shoppers update:', data); // للتشخيص
             if (typeof data.active_shoppers_count !== 'undefined') {
                 const badge = document.getElementById('activeShoppersBadge');
                 if (badge) {
