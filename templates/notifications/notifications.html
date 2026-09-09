@@ -80,7 +80,6 @@
     .pagination { display: flex; justify-content: center; gap: 5px; margin-top: 20px; }
     .pagination .page-link { border-radius: 8px; }
 
-    /* تحسينات إضافية */
     .select-all-checkbox { width: 18px; height: 18px; cursor: pointer; }
     .notification-actions .btn { font-size: 0.85rem; }
 </style>
@@ -116,9 +115,65 @@
             </div>
         </div>
         <div id="notificationsList" class="notification-list">
-            <!-- يتم تحميل الإشعارات ديناميكياً عبر JavaScript -->
+            {% for notif in notifs %}
+                <div class="notification-item {% if not notif.is_read %}unread{% else %}read{% endif %}" data-id="{{ notif.id }}" data-read="{{ notif.is_read }}">
+                    <div class="notification-check">
+                        <input type="checkbox" class="form-check-input notif-checkbox" value="{{ notif.id }}">
+                    </div>
+                    <div class="notification-icon
+                        {%- if notif.type == 'order' %} icon-order
+                        {%- elif notif.type == 'subscription' %} icon-subscription
+                        {%- elif notif.type == 'delivery' %} icon-delivery
+                        {%- elif notif.type == 'message' %} icon-message
+                        {%- elif notif.type == 'alert' %} icon-alert
+                        {%- elif notif.type == 'store_follow' %} icon-store_follow
+                        {%- elif notif.type == 'new_product' %} icon-new_product
+                        {%- elif notif.type == 'new_offer' %} icon-new_offer
+                        {%- elif notif.type == 'reel' %} icon-reel
+                        {%- else %} icon-default{% endif %}">
+                        {% if notif.type == 'order' %}<i class="bi bi-bag-check"></i>
+                        {% elif notif.type == 'subscription' %}<i class="bi bi-arrow-repeat"></i>
+                        {% elif notif.type == 'delivery' %}<i class="bi bi-truck"></i>
+                        {% elif notif.type == 'message' %}<i class="bi bi-chat-dots"></i>
+                        {% elif notif.type == 'alert' %}<i class="bi bi-exclamation-triangle"></i>
+                        {% elif notif.type == 'store_follow' %}<i class="bi bi-person-plus"></i>
+                        {% elif notif.type == 'new_product' %}<i class="bi bi-box-seam"></i>
+                        {% elif notif.type == 'new_offer' %}<i class="bi bi-tags"></i>
+                        {% elif notif.type == 'reel' %}<i class="bi bi-film"></i>
+                        {% else %}<i class="bi bi-bell"></i>{% endif %}
+                    </div>
+                    <div class="notification-content">
+                        {% if notif.title %}<div class="notification-title">{{ notif.title }}</div>{% endif %}
+                        <div class="notification-message">{{ notif.message }}</div>
+                        <div class="notification-meta">
+                            <span class="notification-time"><i class="bi bi-clock"></i> {{ notif.created_at.strftime('%Y-%m-%d %H:%M') if notif.created_at else '' }}</span>
+                            {% if notif.link %}
+                                <a href="{{ notif.link }}" class="btn-link-view"><i class="bi bi-box-arrow-up-left"></i> عرض</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="notification-actions">
+                        {% if not notif.is_read %}
+                        <button class="btn btn-action btn-mark-read mark-read-btn" data-id="{{ notif.id }}" title="تعليم كمقروء">
+                            <i class="bi bi-check"></i>
+                        </button>
+                        {% endif %}
+                        <button class="btn btn-action btn-delete delete-notif-btn" data-id="{{ notif.id }}" title="حذف">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            {% else %}
+                {{ macros.render_empty_state('bi-bell-slash', 'لا توجد إشعارات', url_for('market.market'), 'العودة للسوق') }}
+            {% endfor %}
         </div>
-        <div id="paginationContainer" class="pagination"></div>
+        <div id="paginationContainer" class="pagination">
+            {% if total_pages > 1 %}
+                {% for p in range(1, total_pages+1) %}
+                    <button class="btn btn-sm {% if p == page %}btn-primary{% else %}btn-outline-primary{% endif %} page-link-btn" data-page="{{ p }}">{{ p }}</button>
+                {% endfor %}
+            {% endif %}
+        </div>
     </div>
 
     <div id="offlineNotificationsContainer">
@@ -133,7 +188,6 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
 <script>
-    // تمرير بيانات الصفحة الحالية إلى JS
     window.notificationsConfig = {
         currentPage: {{ page }},
         totalPages: {{ total_pages }},

@@ -88,18 +88,22 @@ document.addEventListener('DOMContentLoaded', function() {
     async function loadNotifications(page) {
         try {
             const offset = (page - 1) * 20;
-            const response = await fetch(`/api/notifications?offset=${offset}&limit=20`);
+            const response = await fetch(`/api/notifications?offset=${offset}&limit=20`, {
+                headers: { 'Accept': 'application/json' },
+                credentials: 'same-origin'
+            });
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
             const data = await response.json();
             if (data.notifications && data.notifications.length > 0) {
                 if (listContainer) {
                     listContainer.innerHTML = data.notifications.map(notificationItemHtml).join('');
                 }
                 currentPage = page;
-                // تحديث totalPages من الاستجابة إن وجدت
                 if (data.total_pages !== undefined) {
                     totalPages = data.total_pages;
                 } else {
-                    // حساب تقريبي: إذا كان هناك إشعارات أقل من limit فالعدد هو currentPage
                     totalPages = page;
                 }
                 renderPagination(page, totalPages);
@@ -117,7 +121,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         } catch (err) {
             console.error('Error loading notifications:', err);
-            showToast('تعذر تحميل الإشعارات', 'error');
+            // في حال الفشل، نحافظ على المحتوى الأصلي ولا نعرض رسالة خطأ
         }
     }
 
@@ -320,10 +324,14 @@ document.addEventListener('DOMContentLoaded', function() {
         showOfflineNotifications();
     });
 
-    // التهيئة
+    // التهيئة: عرض البيانات الموجودة في الصفحة (من الخادم) بدلاً من الجلب الفوري
     if (isOnline) {
         showOnlineNotifications();
-        loadNotifications(currentPage);
+        // استدعاء الجلب لتحديث البيانات عند التحميل فقط إذا كانت الصفحة الأولى
+        if (currentPage === 1) {
+            // لا نقوم بالجلب الفوري لتفادي استبدال المحتوى إذا فشل، لكن يمكننا استدعاؤه
+            loadNotifications(currentPage);
+        }
     } else {
         showOfflineNotifications();
     }
