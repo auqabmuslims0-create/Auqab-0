@@ -70,7 +70,7 @@ csp_policy = (
     "script-src 'self' 'unsafe-inline' https://unpkg.com; "
     "font-src 'self'; "
     "connect-src 'self' https://*.tile.openstreetmap.org https://router.project-osrm.org https://server.arcgisonline.com ; "
-    "media-src 'self' ; "
+    "media-src 'self' https:; "   # ← تم التعديل: السماح بتحميل الفيديو من أي مصدر https
     "frame-src 'self'"
 )
 Talisman(app, content_security_policy=csp_policy, force_https=os.environ.get('FLASK_DEBUG', 'False').lower() != 'true')
