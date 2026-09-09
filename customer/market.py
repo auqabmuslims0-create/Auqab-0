@@ -26,10 +26,10 @@ def home():
         return redirect(url_for('market.market'))
 
 def _get_active_shoppers_count():
-    """حساب عدد المستخدمين النشطين خلال آخر 5 دقائق."""
+    """حساب عدد المستخدمين النشطين خلال آخر 30 ثانية."""
     try:
         now = current_time()
-        active_interval = timedelta(minutes=5)
+        active_interval = timedelta(seconds=30)
         count = db.session.query(UserActivity.user_id) \
             .join(User, User.id == UserActivity.user_id) \
             .filter(
@@ -44,7 +44,7 @@ def _get_active_shoppers_count():
 
 @market_bp.route('/api/active-shoppers')
 def active_shoppers():
-    """API لإرجاع عدد المتسوقين النشطين بدون حماية تسجيل دخول."""
+    """API لإرجاع عدد المتسوقين النشطين."""
     count = _get_active_shoppers_count()
     response = make_response(jsonify({
         'active_shoppers_count': count,
