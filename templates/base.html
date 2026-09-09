@@ -376,6 +376,43 @@
         }
     }
 
+    // دالة إضافة/إزالة متجر من المفضلة بدون إعادة تحميل
+    async function toggleFavoriteStore(storeId, btnElement) {
+        try {
+            const response = await fetch(`/favorite/toggle/store/${storeId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': window.csrfToken
+                },
+                body: JSON.stringify({})
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+                const isFav = data.is_favorite;
+                const icon = btnElement.querySelector('i');
+                const label = btnElement.querySelector('span');
+                if (isFav) {
+                    btnElement.classList.remove('btn-light');
+                    btnElement.classList.add('btn-danger');
+                    if (icon) icon.className = 'bi bi-heart-fill';
+                    if (label) label.textContent = 'إزالة من المفضلة';
+                } else {
+                    btnElement.classList.remove('btn-danger');
+                    btnElement.classList.add('btn-light');
+                    if (icon) icon.className = 'bi bi-heart';
+                    if (label) label.textContent = 'إضافة إلى المفضلة';
+                }
+                showToast(data.message || 'تم تحديث المفضلة', 'success');
+            } else {
+                showToast(data.message || 'حدث خطأ', 'error');
+            }
+        } catch (err) {
+            console.error('Favorite toggle error:', err);
+            showToast('تعذر الاتصال بالخادم', 'error');
+        }
+    }
+
     async function reactProduct(productId, reactionType, btnElement) {
         try {
             const response = await fetch(`/api/products/${productId}/reaction`, {

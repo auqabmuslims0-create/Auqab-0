@@ -5,6 +5,10 @@
 
 {% block head %}
 <style>
+    /* إخفاء قسم عدم الاتصال افتراضيًا */
+    #offlineContent {
+        display: none;
+    }
     .store-profile-card { border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow-sm); }
     body.dark-mode .store-profile-card { background: #1e1e1e; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
     .store-cover { position: relative; height: 180px; overflow: hidden; background: #f0f0f0; }
@@ -61,12 +65,13 @@
                 {% else %}
                     <div class="store-cover-placeholder"><i class="bi bi-shop display-1"></i></div>
                 {% endif %}
-                <form action="{{ url_for('account.toggle_favorite_store', store_id=store.id) }}" method="post" class="position-absolute top-0 start-0 m-2">
-                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="btn btn-sm {% if is_favorite %}btn-danger{% else %}btn-light{% endif %} shadow-sm">
-                        <i class="bi {{ 'bi-heart-fill' if is_favorite else 'bi-heart' }}"></i> {{ 'إزالة من المفضلة' if is_favorite else 'إضافة إلى المفضلة' }}
-                    </button>
-                </form>
+
+                <button type="button" class="btn btn-sm {% if is_favorite %}btn-danger{% else %}btn-light{% endif %} shadow-sm position-absolute top-0 start-0 m-2"
+                        onclick="toggleFavoriteStore({{ store.id }}, this)">
+                    <i class="bi {{ 'bi-heart-fill' if is_favorite else 'bi-heart' }}"></i>
+                    <span>{{ 'إزالة من المفضلة' if is_favorite else 'إضافة إلى المفضلة' }}</span>
+                </button>
+
                 <div class="position-absolute bottom-0 end-0 m-2">
                     {% if open_status %}
                         <span class="badge bg-success fs-6 shadow-sm"><i class="bi bi-unlock"></i> مفتوح الآن</span>
@@ -255,7 +260,7 @@
         </div>
     </div>
 
-    <div id="offlineContent">
+    <div id="offlineContent" style="display: none;">
         <div class="alert alert-warning text-center">
             <i class="bi bi-wifi-off"></i> أنت غير متصل بالإنترنت - يتم عرض نسخة محفوظة من المتجر
         </div>
