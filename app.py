@@ -19,6 +19,7 @@ from flask_migrate import Migrate
 import models
 from werkzeug.security import generate_password_hash
 from flask_wtf.csrf import CSRFProtect
+from shared.time_utils import current_time
 
 load_dotenv()
 
@@ -207,11 +208,15 @@ def before_request_checks():
         user = db.session.get(models.User, session['user_id'])
         if user:
             g.user = user
-            # تحديث last_seen عند كل طلب نشط
-            now = models.current_time() if hasattr(models, 'current_time') else __import__('shared.time_utils', fromlist=['current_time']).current_time()
-            user.last_seen = now
-            db.session.add(user)
-            db.session.commit()
+            # تحديث last_seen مع معالجة الأخطاء
+            try:
+                user.last_seen = current_time()
+                db.session.add(user)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                # نتجاهل الخطأ حتى لا يتأثر الطلب
+
     if request.path.startswith('/api/') or request.endpoint is None:
         return
     if request.path == '/.well-known/assetlinks.json':
@@ -240,25 +245,25 @@ def inject_notifications_count():
     if g.user is None:
         return dict(unread_notifications=0)
     user_id = g.user.id
-    current_time = time.time()
+    current_ts = time.time()
     cached = _notifications_cache.get(user_id)
-    if cached and (current_time - cached['timestamp'] < CACHE_TIMEOUT):
+    if cached and (current_ts - cached['timestamp'] < CACHE_TIMEOUT):
         return dict(unread_notifications=cached['count'])
     from shared.services.notification_service import NotificationService
     unread_count = NotificationService.get_unread_count(user_id)
-    _notifications_cache[user_id] = {'count': unread_count, 'timestamp': current_time}
+    _notifications_cache[user_id] = {'count': unread_count, 'timestamp': current_ts}
     return dict(unread_notifications=unread_count)
 
 @app.context_processor
 def inject_offers_count():
     if request.endpoint not in ['market.market', 'offers.offers_page', 'stores.stores_page']:
         return dict(offers_count=0)
-    current_time = time.time()
+    current_ts = time.time()
     cached = _offers_cache.get('global')
-    if cached and (current_time - cached['timestamp'] < CACHE_TIMEOUT):
+    if cached and (current_ts - cached['timestamp'] < CACHE_TIMEOUT):
         return dict(offers_count=cached['count'])
     offer_count = models.Product.query.filter_by(is_offer=True).count()
-    _offers_cache['global'] = {'count': offer_count, 'timestamp': current_time}
+    _offers_cache['global'] = {'count': offer_count, 'timestamp': current_ts}
     return dict(offers_count=offer_count)
 
 @app.context_processor
