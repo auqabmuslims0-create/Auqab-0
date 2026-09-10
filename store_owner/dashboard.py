@@ -156,7 +156,11 @@ def store_manage(store_id):
     products_ids = [p.id for p in store.products]
     if products_ids:
         reviews_count = Review.query.filter(Review.product_id.in_(products_ids)).count()
-        comments_count = ProductComment.query.filter(ProductComment.product_id.in_(products_ids)).count()
+        comments_count = Review.query.filter(
+            Review.product_id.in_(products_ids),
+            Review.comment.isnot(None),
+            Review.comment != ''
+        ).count()
         reactions_count = ProductReaction.query.filter(ProductReaction.product_id.in_(products_ids)).count()
     else:
         reviews_count = comments_count = reactions_count = 0

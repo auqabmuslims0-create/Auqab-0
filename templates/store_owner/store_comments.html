@@ -100,12 +100,19 @@
         font-size: 0.9rem;
         line-height: 1.5;
     }
+    .review-rating {
+        font-size: 0.85rem;
+        line-height: 1;
+    }
+    .review-rating i {
+        margin-left: 1px;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <h1 class="mb-4 text-center"><i class="bi bi-chat-dots"></i> تعليقات الزبائن على منتجات {{ store.name }}</h1>
+    <h1 class="mb-4 text-center"><i class="bi bi-chat-dots"></i> تقييمات وتعليقات الزبائن على منتجات {{ store.name }}</h1>
 
     {% if grouped %}
         <div class="accordion comments-accordion" id="storeCommentsAccordion">
@@ -118,7 +125,7 @@
                             aria-expanded="false"
                             aria-controls="commentCollapse{{ product_id }}">
                         <span class="fw-bold me-2">{{ group.product.name }}</span>
-                        <span class="badge bg-primary rounded-pill">{{ group.comments|length }}</span>
+                        <span class="badge bg-primary rounded-pill">{{ group.reviews|length }}</span>
                     </button>
                 </h2>
                 <div id="commentCollapse{{ product_id }}"
@@ -126,18 +133,25 @@
                      aria-labelledby="commentHeading{{ product_id }}"
                      data-bs-parent="#storeCommentsAccordion">
                     <div class="accordion-body">
-                        {% for comment in group.comments %}
+                        {% for review in group.reviews %}
                         <div class="comment-card">
                             <div class="comment-header">
                                 <div class="comment-avatar">
-                                    {{ comment.user.username[:1] if comment.user else 'م' }}
+                                    {{ review.user.username[:1] if review.user else 'م' }}
                                 </div>
-                                <div>
-                                    <div class="comment-user">{{ comment.user.username if comment.user else 'مستخدم' }}</div>
-                                    <span class="comment-date">{{ comment.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                                <div class="flex-grow-1">
+                                    <div class="d-flex flex-wrap align-items-center gap-2">
+                                        <span class="comment-user">{{ review.user.username if review.user else 'مستخدم' }}</span>
+                                        <span class="review-rating text-warning">
+                                            {% for i in range(1, 6) %}
+                                                <i class="bi {% if i <= review.rating %}bi-star-fill{% else %}bi-star{% endif %}"></i>
+                                            {% endfor %}
+                                        </span>
+                                    </div>
+                                    <span class="comment-date">{{ review.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
                                 </div>
                             </div>
-                            <p class="comment-text">{{ comment.text }}</p>
+                            <p class="comment-text">{{ review.comment }}</p>
                         </div>
                         {% endfor %}
                     </div>
@@ -146,7 +160,7 @@
             {% endfor %}
         </div>
     {% else %}
-        {{ macros.render_empty_state('bi-chat-square-text', 'لا توجد تعليقات على منتجاتك بعد.') }}
+        {{ macros.render_empty_state('bi-chat-square-text', 'لا توجد تقييمات مكتوبة على منتجاتك بعد.') }}
     {% endif %}
 
     <div class="text-center mt-4">

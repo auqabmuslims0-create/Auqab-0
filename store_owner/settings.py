@@ -2,7 +2,7 @@ from shared.validators import is_valid_phone_syrian
 from flask import render_template, request, redirect, url_for, flash, abort
 from sqlalchemy.orm import joinedload
 from database import db
-from models import Product, ProductComment
+from models import Product, Review
 import os
 from datetime import timedelta
 from shared.time_utils import current_time
@@ -92,23 +92,25 @@ def store_comments(store_id):
         return result[1]
     user, store = result
 
-    comments = ProductComment.query.join(
-        Product, ProductComment.product_id == Product.id
+    reviews = Review.query.join(
+        Product, Review.product_id == Product.id
     ).filter(
-        Product.store_id == store.id
+        Product.store_id == store.id,
+        Review.comment.isnot(None),
+        Review.comment != ''
     ).options(
-        joinedload(ProductComment.user),
-        joinedload(ProductComment.product)
-    ).order_by(ProductComment.created_at.desc()).all()
+        joinedload(Review.user),
+        joinedload(Review.product)
+    ).order_by(Review.created_at.desc()).all()
 
     grouped = {}
-    for comment in comments:
-        pid = comment.product_id
+    for review in reviews:
+        pid = review.product_id
         if pid not in grouped:
             grouped[pid] = {
-                'product': comment.product,
-                'comments': []
+                'product': review.product,
+                'reviews': []
             }
-        grouped[pid]['comments'].append(comment)
+        grouped[pid]['reviews'].append(review)
 
     return render_template('store_owner/store_comments.html', store=store, grouped=grouped)
