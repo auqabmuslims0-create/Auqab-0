@@ -9,6 +9,26 @@ from shared.decorators import role_required
 from . import store_bp
 from .common import check_store_access
 
+
+def _compute_days_remaining(store, now=None):
+    """يرجع عدد الأيام المتبقية أو None."""
+    if now is None:
+        now = current_time()
+    if store.subscription_expiry and store.subscription_status in ('active', 'pending'):
+        try:
+            delta_seconds = (store.subscription_expiry - now).total_seconds()
+            return max(0, int(delta_seconds // 86400))
+        except Exception:
+            return None
+    return None
+
+
+def _attach_days_remaining(stores):
+    now = current_time()
+    for s in stores:
+        s.days_remaining = _compute_days_remaining(s, now=now)
+
+
 @store_bp.route('/my_stores')
 @role_required('owner')
 def my_stores():
@@ -17,7 +37,9 @@ def my_stores():
     SubscriptionService.check_expiring_subscriptions()
 
     stores = Store.query.filter_by(owner_id=user.id).all()
+    _attach_days_remaining(stores)
     return render_template('store_owner/my_stores.html', stores=stores)
+
 
 @store_bp.route('/store/new', methods=['GET', 'POST'])
 @role_required('owner')
@@ -104,6 +126,7 @@ def new_store():
 
     return render_template('store_owner/new_store.html', step=step)
 
+
 @store_bp.route('/store/<int:store_id>')
 @role_required('owner')
 def store_manage(store_id):
@@ -145,9 +168,12 @@ def store_manage(store_id):
     paid_sub = Subscription.query.filter_by(store_id=store.id, status='paid') \
         .order_by(Subscription.end_date.desc()).first()
 
+    days_remaining = _compute_days_remaining(store)
+
     return render_template('store_owner/store_manage.html',
                            store=store,
                            subscription=paid_sub,
+                           days_remaining=days_remaining,
                            products_count=products_count,
                            orders_count=orders_count,
                            categories_count=categories_count,

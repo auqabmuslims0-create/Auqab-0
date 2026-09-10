@@ -53,6 +53,21 @@
         border-radius: 15px;
         border: none;
     }
+    /* شارة الأيام المتبقية */
+    .days-badge {
+        display: inline-block;
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        border: none;
+    }
+    .days-badge.urgent { background: #f8d7da; color: #842029; }
+    .days-badge.warn   { background: #fff3cd; color: #664d03; }
+    .days-badge.safe   { background: #d1e7dd; color: #0f5132; }
+    body.dark-mode .days-badge.urgent { background: #3e1a1d; color: #ff8a95; }
+    body.dark-mode .days-badge.warn   { background: #3a2f1a; color: #ffd666; }
+    body.dark-mode .days-badge.safe   { background: #102e1a; color: #6edfa0; }
 </style>
 {% endblock %}
 
@@ -61,7 +76,7 @@
     <!-- رأس الصفحة مع حالة الاشتراك -->
     <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
         <h1 class="h3 mb-0"><i class="bi bi-shop"></i> {{ store.name }}</h1>
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
             <span class="badge fs-6
                 {% if store.subscription_status == 'active' %}bg-success
                 {% elif store.subscription_status == 'pending' %}bg-warning text-dark
@@ -70,6 +85,15 @@
                 {% elif store.subscription_status == 'pending' %}قيد الانتظار
                 {% else %}غير نشط{% endif %}
             </span>
+            {% if days_remaining is not none %}
+                {% if days_remaining <= 7 %}
+                    <span class="days-badge urgent"><i class="bi bi-hourglass-split"></i> {{ days_remaining }} يوم متبقٍ</span>
+                {% elif days_remaining <= 14 %}
+                    <span class="days-badge warn"><i class="bi bi-hourglass"></i> {{ days_remaining }} يوم متبقٍ</span>
+                {% else %}
+                    <span class="days-badge safe"><i class="bi bi-clock-history"></i> {{ days_remaining }} يوم متبقٍ</span>
+                {% endif %}
+            {% endif %}
             {% if subscription and subscription.end_date %}
                 <span class="badge bg-light text-dark border">
                     <i class="bi bi-calendar-check"></i> حتى {{ subscription.end_date.strftime('%Y-%m-%d') }}
