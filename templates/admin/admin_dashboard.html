@@ -57,6 +57,16 @@
         line-height: 1.2;
         margin-bottom: 4px;
     }
+    .stat-subtext {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #6c757d;
+        margin-bottom: 4px;
+        line-height: 1.2;
+    }
+    body.dark-mode .stat-subtext {
+        color: #adb5bd;
+    }
     .stat-label {
         font-size: 0.85rem;
         color: #6c757d;
@@ -119,6 +129,7 @@
 
         <a href="{{ url_for('admin.admin_finance') }}" class="stat-card">
             <i class="bi bi-graph-up stat-icon text-secondary"></i>
+            <div class="stat-subtext">الميزانية</div>
             <p class="stat-label">إحصاءات عامة</p>
         </a>
 
