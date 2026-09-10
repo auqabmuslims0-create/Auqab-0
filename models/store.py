@@ -18,6 +18,11 @@ class Store(db.Model):
     subscription_status = db.Column(db.String(20), default='pending', index=True)
     subscription_expiry = db.Column(db.DateTime, nullable=True)
     pending_deletion_at = db.Column(db.DateTime, nullable=True)
+    # حقول تخصيص الاشتراك لكل متجر على حدة (يحددها المدير)
+    custom_subscription_price = db.Column(db.Float, nullable=True)
+    custom_subscription_duration_days = db.Column(db.Integer, nullable=True)
+    subscription_grace_days = db.Column(db.Integer, nullable=True)
+    subscription_notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=current_time)
 
     __table_args__ = (
@@ -38,6 +43,7 @@ class Store(db.Model):
 
     def __repr__(self):
         return f'<Store {self.name}>'
+
 
 class Category(db.Model):
     __tablename__ = 'categories'

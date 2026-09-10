@@ -1,4 +1,4 @@
-from shared.time_utils import current_time
+from datetime import datetime
 from flask import request, jsonify, url_for
 from sqlalchemy import func, or_
 from database import db
@@ -10,8 +10,10 @@ from shared.services.delivery_service import DeliveryService
 from . import api_bp
 from .helpers import token_required, serialize_user, serialize_store, serialize_order
 
+
 def is_admin(user):
     return user.role == 'admin'
+
 
 @api_bp.route('/admin/stats', methods=['GET'])
 @token_required
@@ -33,6 +35,7 @@ def admin_stats(current_user):
         'delivery_fee_total': delivery_fee_total
     }), 200
 
+
 @api_bp.route('/admin/users', methods=['GET'])
 @token_required
 def admin_get_users(current_user):
@@ -52,6 +55,7 @@ def admin_get_users(current_user):
     users = query.all()
     return jsonify({'users': [serialize_user(u) for u in users]}), 200
 
+
 @api_bp.route('/admin/users/<int:user_id>/toggle', methods=['POST'])
 @token_required
 def admin_toggle_user(current_user, user_id):
@@ -61,6 +65,7 @@ def admin_toggle_user(current_user, user_id):
     if not success:
         return jsonify({'message': msg}), 400
     return jsonify({'message': msg, 'is_active': user.is_active}), 200
+
 
 @api_bp.route('/admin/users/<int:user_id>/delete', methods=['POST'])
 @token_required
@@ -72,6 +77,7 @@ def admin_delete_user(current_user, user_id):
         return jsonify({'message': msg}), 400
     return jsonify({'message': msg}), 200
 
+
 @api_bp.route('/admin/users/<int:user_id>/reset_password', methods=['POST'])
 @token_required
 def admin_reset_password(current_user, user_id):
@@ -81,6 +87,7 @@ def admin_reset_password(current_user, user_id):
     if not success:
         return jsonify({'message': msg}), 400
     return jsonify({'message': msg, 'temp_password': temp_password}), 200
+
 
 @api_bp.route('/admin/stores', methods=['GET'])
 @token_required
@@ -100,15 +107,67 @@ def admin_get_stores(current_user):
     stores = query.all()
     return jsonify({'stores': [serialize_store(s) for s in stores]}), 200
 
+
 @api_bp.route('/admin/stores/<int:store_id>/toggle', methods=['POST'])
 @token_required
 def admin_toggle_store(current_user, store_id):
     if not is_admin(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
-    success, msg, store = StoreService.toggle_store_status(store_id)
+    data = request.get_json(silent=True) or {}
+    force = bool(data.get('force', False))
+    success, msg, store = StoreService.toggle_store_status(store_id, force_activate=force)
     if not success:
         return jsonify({'message': msg}), 400
     return jsonify({'message': msg, 'subscription_status': store.subscription_status}), 200
+
+
+@api_bp.route('/admin/stores/<int:store_id>/subscription/settings', methods=['POST'])
+@token_required
+def admin_store_subscription_settings(current_user, store_id):
+    if not is_admin(current_user):
+        return jsonify({'message': 'غير مسموح'}), 403
+    data = request.get_json(silent=True) or {}
+    success, msg = SubscriptionService.update_store_subscription_settings(
+        store_id,
+        custom_price=data.get('custom_subscription_price'),
+        custom_duration_days=data.get('custom_subscription_duration_days'),
+        grace_days=data.get('subscription_grace_days'),
+        notes=data.get('subscription_notes')
+    )
+    if not success:
+        return jsonify({'message': msg}), 400
+    return jsonify({'message': msg}), 200
+
+
+@api_bp.route('/admin/stores/<int:store_id>/subscription/extend', methods=['POST'])
+@token_required
+def admin_extend_store_subscription(current_user, store_id):
+    if not is_admin(current_user):
+        return jsonify({'message': 'غير مسموح'}), 403
+    data = request.get_json(silent=True) or {}
+    success, msg = SubscriptionService.extend_store_subscription(
+        store_id,
+        days=data.get('days'),
+        admin_note=data.get('admin_note')
+    )
+    if not success:
+        return jsonify({'message': msg}), 400
+    return jsonify({'message': msg}), 200
+
+
+@api_bp.route('/admin/stores/<int:store_id>/subscription/suspend', methods=['POST'])
+@token_required
+def admin_suspend_store_subscription(current_user, store_id):
+    if not is_admin(current_user):
+        return jsonify({'message': 'غير مسموح'}), 403
+    data = request.get_json(silent=True) or {}
+    success, msg = SubscriptionService.suspend_store_subscription(
+        store_id, reason=data.get('reason')
+    )
+    if not success:
+        return jsonify({'message': msg}), 400
+    return jsonify({'message': msg}), 200
+
 
 @api_bp.route('/admin/orders', methods=['GET'])
 @token_required
@@ -130,6 +189,7 @@ def admin_get_orders(current_user):
             ))
     orders = query.order_by(Order.created_at.desc()).all()
     return jsonify({'orders': [serialize_order(o) for o in orders]}), 200
+
 
 @api_bp.route('/admin/orders/<int:order_id>/status', methods=['POST'])
 @token_required
@@ -157,6 +217,7 @@ def admin_update_order_status(current_user, order_id):
     db.session.commit()
     return jsonify({'message': 'تم تحديث حالة الطلب'}), 200
 
+
 @api_bp.route('/admin/subscriptions', methods=['GET'])
 @token_required
 def admin_get_subscriptions(current_user):
@@ -178,29 +239,90 @@ def admin_get_subscriptions(current_user):
             'payment_ref': sub.payment_ref,
             'proof_image': url_for('static', filename='uploads/' + sub.proof_image, _external=True) if sub.proof_image else None,
             'start_date': sub.start_date.strftime('%Y-%m-%d') if sub.start_date else None,
-            'end_date': sub.end_date.strftime('%Y-%m-%d') if sub.end_date else None
+            'end_date': sub.end_date.strftime('%Y-%m-%d') if sub.end_date else None,
+            'duration_days': sub.duration_days,
+            'renewal_count': sub.renewal_count,
+            'admin_note': sub.admin_note
         })
     return jsonify({'subscriptions': subs_data}), 200
+
 
 @api_bp.route('/admin/subscriptions/<int:sub_id>/approve', methods=['POST'])
 @token_required
 def admin_approve_subscription(current_user, sub_id):
     if not is_admin(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
-    success, msg = SubscriptionService.approve_subscription(sub_id)
+    data = request.get_json(silent=True) or {}
+    override_days = data.get('override_days')
+    override_amount = data.get('override_amount')
+    override_end_date_str = data.get('override_end_date')
+    admin_note = data.get('admin_note')
+
+    override_end_date = None
+    if override_end_date_str:
+        try:
+            override_end_date = datetime.strptime(override_end_date_str, '%Y-%m-%d')
+        except ValueError:
+            return jsonify({'message': 'تاريخ الانتهاء غير صالح'}), 400
+
+    success, msg = SubscriptionService.approve_subscription(
+        sub_id,
+        override_days=override_days,
+        override_end_date=override_end_date,
+        override_amount=override_amount,
+        admin_note=admin_note
+    )
     if not success:
         return jsonify({'message': msg}), 400
     return jsonify({'message': msg}), 200
+
 
 @api_bp.route('/admin/subscriptions/<int:sub_id>/reject', methods=['POST'])
 @token_required
 def admin_reject_subscription(current_user, sub_id):
     if not is_admin(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
-    success, msg = SubscriptionService.reject_subscription(sub_id)
+    data = request.get_json(silent=True) or {}
+    success, msg = SubscriptionService.reject_subscription(sub_id, admin_note=data.get('admin_note'))
     if not success:
         return jsonify({'message': msg}), 400
     return jsonify({'message': msg}), 200
+
+
+@api_bp.route('/admin/subscriptions/<int:sub_id>/extend', methods=['POST'])
+@token_required
+def admin_extend_subscription(current_user, sub_id):
+    if not is_admin(current_user):
+        return jsonify({'message': 'غير مسموح'}), 403
+    data = request.get_json(silent=True) or {}
+    success, msg = SubscriptionService.extend_subscription(
+        sub_id, days=data.get('days'), admin_note=data.get('admin_note')
+    )
+    if not success:
+        return jsonify({'message': msg}), 400
+    return jsonify({'message': msg}), 200
+
+
+@api_bp.route('/admin/subscriptions/<int:sub_id>/set-end', methods=['POST'])
+@token_required
+def admin_set_subscription_end(current_user, sub_id):
+    if not is_admin(current_user):
+        return jsonify({'message': 'غير مسموح'}), 403
+    data = request.get_json(silent=True) or {}
+    end_date_str = data.get('end_date')
+    if not end_date_str:
+        return jsonify({'message': 'تاريخ الانتهاء مطلوب'}), 400
+    try:
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+    except ValueError:
+        return jsonify({'message': 'تاريخ غير صالح'}), 400
+    success, msg = SubscriptionService.set_subscription_end_date(
+        sub_id, end_date, admin_note=data.get('admin_note')
+    )
+    if not success:
+        return jsonify({'message': msg}), 400
+    return jsonify({'message': msg}), 200
+
 
 @api_bp.route('/admin/delivery_persons', methods=['GET'])
 @token_required
@@ -209,6 +331,7 @@ def admin_get_delivery_persons(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
     persons = User.query.filter_by(role='delivery').all()
     return jsonify({'persons': [serialize_user(u) for u in persons]}), 200
+
 
 @api_bp.route('/admin/delivery_persons', methods=['POST'])
 @token_required
@@ -257,6 +380,7 @@ def admin_create_delivery_person(current_user):
     db.session.commit()
     return jsonify({'message': 'تم إنشاء المندوب بنجاح', 'user': serialize_user(user)}), 201
 
+
 @api_bp.route('/admin/delivery_persons/<int:user_id>/toggle', methods=['POST'])
 @token_required
 def admin_toggle_delivery_person(current_user, user_id):
@@ -267,6 +391,7 @@ def admin_toggle_delivery_person(current_user, user_id):
         return jsonify({'message': msg}), 400
     return jsonify({'message': msg, 'is_active': user.is_active}), 200
 
+
 @api_bp.route('/admin/delivery_persons/<int:user_id>/delete', methods=['POST'])
 @token_required
 def admin_delete_delivery_person(current_user, user_id):
@@ -276,6 +401,7 @@ def admin_delete_delivery_person(current_user, user_id):
     if not success:
         return jsonify({'message': msg}), 400
     return jsonify({'message': msg}), 200
+
 
 @api_bp.route('/admin/delivery_persons/<int:user_id>/shift/update', methods=['POST'])
 @token_required
@@ -290,6 +416,7 @@ def admin_update_delivery_shift(current_user, user_id):
     if not success:
         return jsonify({'message': msg}), 400
     return jsonify({'message': msg}), 200
+
 
 @api_bp.route('/admin/finance', methods=['GET'])
 @token_required
@@ -315,6 +442,7 @@ def admin_finance(current_user):
         'user_role_counts': user_role_counts
     }), 200
 
+
 @api_bp.route('/admin/chats', methods=['GET'])
 @token_required
 def admin_chat_users(current_user):
@@ -322,6 +450,7 @@ def admin_chat_users(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
     users = User.query.filter(User.id != current_user.id).all()
     return jsonify({'users': [serialize_user(u) for u in users]}), 200
+
 
 @api_bp.route('/admin/chats/<int:user_id>', methods=['GET'])
 @token_required
@@ -343,6 +472,7 @@ def admin_chat_messages(current_user, user_id):
             'created_at': msg.created_at.strftime('%Y-%m-%d %H:%M') if msg.created_at else None
         })
     return jsonify({'messages': messages_data}), 200
+
 
 @api_bp.route('/admin/chats/send', methods=['POST'])
 @token_required

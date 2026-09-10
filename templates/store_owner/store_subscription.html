@@ -101,6 +101,20 @@
     body.dark-mode .subscription-history {
         background: #2d2d2d;
     }
+    .special-offer-badge {
+        display: inline-block;
+        background: #cff4fc;
+        color: #055160;
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+    body.dark-mode .special-offer-badge {
+        background: #0c2a33;
+        color: #6edff6;
+    }
 </style>
 {% endblock %}
 
@@ -130,7 +144,10 @@
 
         <!-- معلومات الاشتراك -->
         <div class="card subscription-card p-4 mb-4 text-center">
-            <h5 class="fw-bold">رسوم الاشتراك الشهري</h5>
+            {% if is_custom %}
+                <div class="special-offer-badge"><i class="bi bi-star-fill"></i> عرض مخصص لمتجرك</div>
+            {% endif %}
+            <h5 class="fw-bold">رسوم الاشتراك</h5>
             <div class="price-highlight">{{ subscription_price|format_price }} ل.س</div>
             <p class="mb-2">مدة الاشتراك: {{ duration_days }} يوم</p>
             {% if wallet_number %}
@@ -182,7 +199,7 @@
         {% if sub %}
         <div class="subscription-history">
             <h6><i class="bi bi-clock-history"></i> آخر اشتراك:</h6>
-            <p>الحالة: 
+            <p>الحالة:
                 {% if sub.status == 'paid' %}نشط
                 {% elif sub.status == 'pending' %}قيد الانتظار
                 {% elif sub.status == 'expired' %}منتهي

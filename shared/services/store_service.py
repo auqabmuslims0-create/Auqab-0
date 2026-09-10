@@ -14,20 +14,24 @@ logger = logging.getLogger(__name__)
 
 class StoreService:
     @staticmethod
-    def _create_admin_subscription(store):
-        duration_days = int(get_setting('subscription_duration_days', 30))
+    def _create_admin_subscription(store, days=None):
+        if days is None:
+            if store.custom_subscription_duration_days is not None:
+                days = int(store.custom_subscription_duration_days)
+            else:
+                days = int(get_setting('subscription_duration_days', 30))
         sub = Subscription(
             user_id=store.owner_id,
             store_id=store.id,
             start_date=current_time(),
-            end_date=current_time() + timedelta(days=duration_days),
+            end_date=current_time() + timedelta(days=days),
             amount=0.0,
             status='paid',
             payment_method='manual_delivery',
             payment_ref=None,
             proof_image=None,
             confirmation_code=None,
-            duration_days=duration_days,
+            duration_days=days,
             renewal_count=0,
             expiry_notified=False
         )

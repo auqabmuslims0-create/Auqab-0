@@ -8,7 +8,8 @@ from shared.decorators import login_required
 account_bp = Blueprint('account', __name__)
 
 def _is_ajax():
-    return request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.accept_json
+    # نعتمد فقط على X-Requested-With لضمان أن الطلبات AJAX حقيقية
+    return request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
 @account_bp.route('/favorite/toggle', methods=['POST'])
 @login_required

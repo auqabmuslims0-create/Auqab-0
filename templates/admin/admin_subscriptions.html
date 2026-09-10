@@ -156,6 +156,38 @@
         border-color: #b02a37;
         color: #fff;
     }
+    .override-form {
+        background: rgba(46,93,52,0.05);
+        border-radius: 14px;
+        padding: 14px;
+        margin-top: 12px;
+    }
+    body.dark-mode .override-form {
+        background: rgba(201,162,39,0.08);
+    }
+    .override-form label {
+        font-size: 0.78rem;
+        color: #6c757d;
+        margin-bottom: 2px;
+        display: block;
+    }
+    body.dark-mode .override-form label {
+        color: #adb5bd;
+    }
+    .admin-note-box {
+        background: #fff3cd;
+        border-right: 3px solid #ffc107;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        white-space: pre-wrap;
+        margin-top: 10px;
+    }
+    body.dark-mode .admin-note-box {
+        background: #3a2f1a;
+        color: #ffeeba;
+        border-right-color: #c9a227;
+    }
 </style>
 {% endblock %}
 
@@ -173,7 +205,11 @@
                 <option value="suspended" {% if status_filter == 'suspended' %}selected{% endif %}>موقوف</option>
             </select>
             <input type="text" name="q" value="{{ q }}" placeholder="بحث برقم العملية أو اسم المتجر أو المالك">
+            {% if store_id %}<input type="hidden" name="store_id" value="{{ store_id }}">{% endif %}
             <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill">بحث</button>
+            {% if store_id %}
+                <a href="{{ url_for('admin.admin_subscriptions') }}" class="btn btn-sm btn-outline-danger rounded-pill">إلغاء الفلترة</a>
+            {% endif %}
         </form>
     </div>
 
@@ -195,6 +231,9 @@
                         {% elif sub.status == 'suspended' %}موقوف
                         {% else %}ملغي{% endif %}
                     </span>
+                    {% if sub.store and (sub.store.custom_subscription_price is not none or sub.store.custom_subscription_duration_days is not none) %}
+                        <span class="badge bg-info text-dark rounded-pill">عرض مخصص</span>
+                    {% endif %}
                     <span class="ms-auto text-muted small">{{ sub.amount|format_price }} ل.س</span>
                 </button>
             </h2>
@@ -246,21 +285,105 @@
                     </div>
                     {% endif %}
 
+                    {% if sub.admin_note %}
+                        <div class="admin-note-box"><strong>ملاحظات إدارية:</strong>
+{{ sub.admin_note }}</div>
+                    {% endif %}
+
                     {% if sub.status == 'pending' %}
-                    <div class="action-buttons">
-                        <form action="{{ url_for('admin.admin_approve_subscription', sub_id=sub.id) }}" method="post"
-                              onsubmit="return confirm('هل تريد الموافقة على هذا الاشتراك؟')">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                            <button type="submit" class="btn btn-approve">موافقة</button>
-                        </form>
-                        <form action="{{ url_for('admin.admin_reject_subscription', sub_id=sub.id) }}" method="post"
-                              onsubmit="return confirm('هل تريد رفض هذا الاشتراك؟')">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                            <button type="submit" class="btn btn-reject">رفض</button>
-                        </form>
-                    </div>
+                    <form action="{{ url_for('admin.admin_approve_subscription', sub_id=sub.id) }}" method="post"
+                          onsubmit="return confirm('هل تريد الموافقة على هذا الاشتراك؟')">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <div class="override-form">
+                            <div class="row g-2">
+                                <div class="col-6 col-md-3">
+                                    <label>المدة (أيام)</label>
+                                    <input type="number" name="override_days" class="form-control form-control-sm"
+                                           value="{{ sub.duration_days }}" min="1" max="3650">
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <label>أو تاريخ انتهاء</label>
+                                    <input type="date" name="override_end_date" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <label>المبلغ (ل.س)</label>
+                                    <input type="number" step="0.01" name="override_amount" class="form-control form-control-sm"
+                                           value="{{ sub.amount }}" min="0">
+                                </div>
+                                <div class="col-6 col-md-3">
+                                    <label>ملاحظة إدارية</label>
+                                    <input type="text" name="admin_note" class="form-control form-control-sm"
+                                           placeholder="اختياري">
+                                </div>
+                            </div>
+                            <div class="action-buttons">
+                                <button type="submit" class="btn btn-approve">
+                                    <i class="bi bi-check2-circle"></i> موافقة
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <form action="{{ url_for('admin.admin_reject_subscription', sub_id=sub.id) }}" method="post"
+                          onsubmit="return confirm('هل تريد رفض هذا الاشتراك؟')" class="mt-2">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-8 col-md-6">
+                                <input type="text" name="admin_note" class="form-control form-control-sm"
+                                       placeholder="سبب الرفض (اختياري)">
+                            </div>
+                            <div class="col-4 col-md-3">
+                                <button type="submit" class="btn btn-reject w-100">
+                                    <i class="bi bi-x-circle"></i> رفض
+                                </button>
+                            </div>
+                        </div>
+                    </form>
                     {% else %}
-                    <p class="text-muted mb-0">تمت المعالجة</p>
+                        {% if sub.status in ['paid', 'suspended'] %}
+                        <form action="{{ url_for('admin.admin_extend_subscription', sub_id=sub.id) }}" method="post">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <div class="override-form">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-6 col-md-3">
+                                        <label>تمديد (أيام)</label>
+                                        <input type="number" name="days" class="form-control form-control-sm"
+                                               value="30" min="1" max="3650">
+                                    </div>
+                                    <div class="col-6 col-md-5">
+                                        <label>ملاحظة</label>
+                                        <input type="text" name="admin_note" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-12 col-md-3">
+                                        <button type="submit" class="btn btn-warning w-100">
+                                            <i class="bi bi-plus-circle"></i> تمديد
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                        {% endif %}
+
+                        <form action="{{ url_for('admin.admin_set_subscription_end', sub_id=sub.id) }}" method="post" class="mt-2">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <div class="override-form">
+                                <div class="row g-2 align-items-end">
+                                    <div class="col-6 col-md-3">
+                                        <label>تاريخ انتهاء جديد</label>
+                                        <input type="date" name="end_date" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-6 col-md-5">
+                                        <label>ملاحظة</label>
+                                        <input type="text" name="admin_note" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-12 col-md-3">
+                                        <button type="submit" class="btn btn-info w-100">
+                                            <i class="bi bi-pencil-square"></i> تعديل
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
                     {% endif %}
                 </div>
             </div>

@@ -4,9 +4,11 @@ from sqlalchemy.orm import selectinload
 from database import db
 from models import Store, User, Product, Order
 from shared.services.store_service import StoreService
+from shared.services.subscription_service import SubscriptionService
 from shared.decorators import role_required
 from shared.time_utils import current_time
 from . import admin_bp
+
 
 @admin_bp.route('/admin/stores')
 @role_required('admin')
@@ -58,6 +60,7 @@ def admin_stores():
     return render_template('admin/admin_stores.html', stores=stores, pagination=pagination,
                            q=q, status_filter=status_filter, store_stats=store_stats)
 
+
 @admin_bp.route('/admin/stores/<int:store_id>/toggle', methods=['POST'])
 @role_required('admin')
 def admin_toggle_store(store_id):
@@ -72,5 +75,43 @@ def admin_toggle_store(store_id):
             success, msg, _ = StoreService.toggle_store_status(store_id, force_activate=False)
         else:
             success, msg, _ = StoreService.toggle_store_status(store_id, force_activate=True)
+    flash(msg, 'success' if success else 'error')
+    return redirect(url_for('admin.admin_stores'))
+
+
+@admin_bp.route('/admin/stores/<int:store_id>/subscription/settings', methods=['POST'])
+@role_required('admin')
+def admin_store_subscription_settings(store_id):
+    custom_price = request.form.get('custom_subscription_price', type=float)
+    custom_duration_days = request.form.get('custom_subscription_duration_days', type=int)
+    grace_days = request.form.get('subscription_grace_days', type=int)
+    notes = request.form.get('subscription_notes', '').strip() or None
+
+    success, msg = SubscriptionService.update_store_subscription_settings(
+        store_id,
+        custom_price=custom_price,
+        custom_duration_days=custom_duration_days,
+        grace_days=grace_days,
+        notes=notes
+    )
+    flash(msg, 'success' if success else 'error')
+    return redirect(url_for('admin.admin_stores'))
+
+
+@admin_bp.route('/admin/stores/<int:store_id>/subscription/extend', methods=['POST'])
+@role_required('admin')
+def admin_extend_store_subscription(store_id):
+    days = request.form.get('days', type=int)
+    admin_note = request.form.get('admin_note', '').strip() or None
+    success, msg = SubscriptionService.extend_store_subscription(store_id, days=days, admin_note=admin_note)
+    flash(msg, 'success' if success else 'error')
+    return redirect(url_for('admin.admin_stores'))
+
+
+@admin_bp.route('/admin/stores/<int:store_id>/subscription/suspend', methods=['POST'])
+@role_required('admin')
+def admin_suspend_store_subscription(store_id):
+    reason = request.form.get('reason', '').strip() or None
+    success, msg = SubscriptionService.suspend_store_subscription(store_id, reason=reason)
     flash(msg, 'success' if success else 'error')
     return redirect(url_for('admin.admin_stores'))

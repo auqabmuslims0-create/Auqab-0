@@ -8,6 +8,30 @@ from shared.services.subscription_service import SubscriptionService
 from . import store_bp
 from .common import check_store_access
 
+
+def _resolve_pricing(store):
+    """يرجع (subscription_price, duration_days, is_custom)."""
+    if store.custom_subscription_price is not None:
+        try:
+            price = float(store.custom_subscription_price)
+        except (TypeError, ValueError):
+            price = float(get_setting('subscription_price', 500))
+    else:
+        price = float(get_setting('subscription_price', 500))
+
+    if store.custom_subscription_duration_days is not None:
+        try:
+            days = int(store.custom_subscription_duration_days)
+        except (TypeError, ValueError):
+            days = int(get_setting('subscription_duration_days', 30))
+    else:
+        days = int(get_setting('subscription_duration_days', 30))
+
+    is_custom = (store.custom_subscription_price is not None
+                 or store.custom_subscription_duration_days is not None)
+    return price, days, is_custom
+
+
 @store_bp.route('/store/<int:store_id>/subscription')
 @role_required('owner')
 def store_subscription(store_id):
@@ -16,8 +40,7 @@ def store_subscription(store_id):
         return result[1]
     user, store = result
 
-    subscription_price = float(get_setting('subscription_price', 500))
-    duration_days = int(get_setting('subscription_duration_days', 30))
+    subscription_price, duration_days, is_custom = _resolve_pricing(store)
     wallet_number = get_setting('wallet_number', '0995680223')
 
     sub = Subscription.query.filter_by(store_id=store.id) \
@@ -26,14 +49,15 @@ def store_subscription(store_id):
     if sub and sub.status == 'paid' and sub.end_date > current_time():
         return render_template('store_owner/store_subscription.html', store=store, sub=sub,
                                subscription_price=subscription_price, wallet_number=wallet_number,
-                               active=True, duration_days=duration_days)
+                               active=True, duration_days=duration_days, is_custom=is_custom)
 
     if sub and sub.status == 'pending':
         return redirect(url_for('store.subscription_pending', store_id=store.id))
 
     return render_template('store_owner/store_subscription.html', store=store, sub=sub,
                            subscription_price=subscription_price, wallet_number=wallet_number,
-                           active=False, duration_days=duration_days)
+                           active=False, duration_days=duration_days, is_custom=is_custom)
+
 
 @store_bp.route('/store/<int:store_id>/subscription/method/<method>', methods=['GET', 'POST'])
 @role_required('owner')
@@ -46,7 +70,7 @@ def store_subscription_method(store_id, method):
     if method not in ['wallet', 'bank_transfer', 'manual_delivery']:
         abort(404)
 
-    subscription_price = float(get_setting('subscription_price', 500))
+    subscription_price, duration_days, is_custom = _resolve_pricing(store)
     wallet_number = get_setting('wallet_number', '0995680223')
 
     if method in ['wallet', 'bank_transfer']:
@@ -66,6 +90,7 @@ def store_subscription_method(store_id, method):
         flash(msg, 'error')
         return redirect(url_for('store.store_subscription_method', store_id=store.id, method='manual_delivery'))
 
+
 @store_bp.route('/store/<int:store_id>/subscription/pending')
 @role_required('owner')
 def subscription_pending(store_id):
@@ -83,6 +108,7 @@ def subscription_pending(store_id):
     wallet_number = get_setting('wallet_number', '0995680223')
     return render_template('store_owner/subscription_pending.html', store=store, sub=sub,
                            subscription_price=subscription_price, wallet_number=wallet_number)
+
 
 @store_bp.route('/store/<int:store_id>/subscription/confirm', methods=['POST'])
 @role_required('owner')

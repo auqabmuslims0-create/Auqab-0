@@ -20,6 +20,7 @@ class Subscription(db.Model):
     expiry_notified = db.Column(db.Boolean, default=False)
     duration_days = db.Column(db.Integer, default=30)
     renewal_count = db.Column(db.Integer, default=0)
+    admin_note = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=current_time)
 
     __table_args__ = (

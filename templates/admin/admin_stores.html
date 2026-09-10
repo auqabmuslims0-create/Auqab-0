@@ -117,6 +117,20 @@
         border-radius: 20px;
         font-weight: 600;
     }
+    .special-badge {
+        display: inline-block;
+        background: #cff4fc;
+        color: #055160;
+        border-radius: 20px;
+        padding: 3px 10px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        margin-right: 5px;
+    }
+    body.dark-mode .special-badge {
+        background: #0c2a33;
+        color: #6edff6;
+    }
     .store-stats {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -165,6 +179,14 @@
         background: #3e1a1d;
         color: #ff6b7a;
     }
+    .custom-info-line {
+        font-size: 0.75rem;
+        color: #0dcaf0;
+        margin-top: 4px;
+    }
+    body.dark-mode .custom-info-line {
+        color: #6edff6;
+    }
 </style>
 {% endblock %}
 
@@ -212,12 +234,24 @@
                         {% elif store.subscription_status == 'expired' %}منتهي
                         {% else %}ملغي{% endif %}
                     </span>
+                    {% if store.custom_subscription_price is not none or store.custom_subscription_duration_days is not none %}
+                        <span class="special-badge"><i class="bi bi-star-fill"></i> عرض مخصص</span>
+                    {% endif %}
                     {% if store.delete_remaining_seconds is not none %}
                         <span class="delete-countdown-badge">
                             <i class="bi bi-trash"></i> سيحذف خلال <span class="delete-countdown" data-remaining="{{ store.delete_remaining_seconds }}"></span>
                         </span>
                     {% endif %}
                 </div>
+
+                {% if store.custom_subscription_price is not none or store.custom_subscription_duration_days is not none %}
+                <div class="custom-info-line">
+                    <i class="bi bi-info-circle"></i>
+                    {% if store.custom_subscription_price is not none %}السعر: {{ store.custom_subscription_price|format_price }} ل.س{% endif %}
+                    {% if store.custom_subscription_price is not none and store.custom_subscription_duration_days is not none %} — {% endif %}
+                    {% if store.custom_subscription_duration_days is not none %}المدة: {{ store.custom_subscription_duration_days }} يوم{% endif %}
+                </div>
+                {% endif %}
 
                 <div class="store-stats">
                     <div class="stat-item">
@@ -238,7 +272,19 @@
                     {% if store.subscription_status == 'active' %}
                         <a href="{{ url_for('stores.store_public', store_id=store.id) }}" class="btn btn-sm btn-outline-primary btn-action">عرض</a>
                     {% endif %}
-                    <a href="{{ url_for('admin.admin_subscriptions') }}" class="btn btn-sm btn-outline-secondary btn-action">الاشتراكات</a>
+                    <a href="{{ url_for('admin.admin_subscriptions', store_id=store.id) }}" class="btn btn-sm btn-outline-secondary btn-action">الاشتراكات</a>
+
+                    <button type="button" class="btn btn-sm btn-outline-info btn-action"
+                            data-bs-toggle="modal" data-bs-target="#subSettingsModal{{ store.id }}">
+                        <i class="bi bi-gear"></i> إعدادات الاشتراك
+                    </button>
+
+                    {% if store.subscription_status in ['active', 'expired', 'suspended', 'cancelled'] %}
+                    <button type="button" class="btn btn-sm btn-outline-warning btn-action"
+                            data-bs-toggle="modal" data-bs-target="#extendModal{{ store.id }}">
+                        <i class="bi bi-plus-circle"></i> تمديد
+                    </button>
+                    {% endif %}
 
                     {% if store.subscription_status == 'active' %}
                         <form action="{{ url_for('admin.admin_toggle_store', store_id=store.id) }}" method="post">
@@ -254,6 +300,79 @@
                             <button type="submit" class="btn btn-sm btn-outline-success btn-action">تفعيل</button>
                         </form>
                     {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: إعدادات الاشتراك -->
+        <div class="modal fade" id="subSettingsModal{{ store.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form method="post" action="{{ url_for('admin.admin_store_subscription_settings', store_id=store.id) }}">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <div class="modal-header">
+                            <h5 class="modal-title">إعدادات اشتراك {{ store.name }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="small text-muted">اترك أي حقل فارغًا لاستخدام الإعداد العام.</p>
+                            <div class="mb-3">
+                                <label class="form-label">سعر مخصص (ل.س)</label>
+                                <input type="number" step="0.01" name="custom_subscription_price" class="form-control"
+                                       value="{{ store.custom_subscription_price if store.custom_subscription_price is not none else '' }}"
+                                       min="0" placeholder="السعر العام">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">مدة مخصصة (أيام)</label>
+                                <input type="number" name="custom_subscription_duration_days" class="form-control"
+                                       value="{{ store.custom_subscription_duration_days if store.custom_subscription_duration_days is not none else '' }}"
+                                       min="1" placeholder="المدة العامة">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">أيام سماح إضافية</label>
+                                <input type="number" name="subscription_grace_days" class="form-control"
+                                       value="{{ store.subscription_grace_days if store.subscription_grace_days is not none else '' }}"
+                                       min="0" placeholder="0">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">ملاحظات</label>
+                                <textarea name="subscription_notes" class="form-control" rows="2">{{ store.subscription_notes or '' }}</textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                            <button type="submit" class="btn btn-primary">حفظ</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: تمديد -->
+        <div class="modal fade" id="extendModal{{ store.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form method="post" action="{{ url_for('admin.admin_extend_store_subscription', store_id=store.id) }}">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <div class="modal-header">
+                            <h5 class="modal-title">تمديد اشتراك {{ store.name }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">عدد الأيام</label>
+                                <input type="number" name="days" class="form-control" min="1" max="3650" value="30" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">ملاحظة إدارية</label>
+                                <input type="text" name="admin_note" class="form-control" placeholder="اختياري">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                            <button type="submit" class="btn btn-warning">تمديد</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
