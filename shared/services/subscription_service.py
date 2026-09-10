@@ -65,7 +65,6 @@ class SubscriptionService:
                     p.status = 'paid'
                     db.session.add(p)
 
-            # إشعار: نفضل مالك المتجر، ثم المستخدم
             notify_user_id = None
             notify_store_name = 'متجرك'
             if store and store.owner_id:
@@ -269,7 +268,7 @@ class SubscriptionService:
 
     @staticmethod
     def update_store_subscription_settings(store_id, custom_price=None, custom_duration_days=None,
-                                           grace_days=None, notes=None):
+                                           grace_days=None, notes=None, auto_renew=None):
         store = db.session.get(Store, store_id)
         if not store:
             return False, 'المتجر غير موجود'
@@ -285,6 +284,8 @@ class SubscriptionService:
             store.custom_subscription_duration_days = custom_duration_days
             store.subscription_grace_days = grace_days
             store.subscription_notes = notes
+            if auto_renew is not None:
+                store.auto_renew = bool(auto_renew)
             db.session.add(store)
             db.session.commit()
 
@@ -376,27 +377,85 @@ class SubscriptionService:
         count = 0
         for sub in expired_subs:
             try:
-                # احترام أيام السماح الخاصة بالمتجر
-                grace_days = 0
                 store = None
                 if sub.store_id:
                     store = db.session.get(Store, sub.store_id)
-                    if store and store.subscription_grace_days:
-                        try:
-                            grace_days = int(store.subscription_grace_days)
-                        except (TypeError, ValueError):
-                            grace_days = 0
+
+                # 1) احترام أيام السماح الخاصة بالمتجر
+                grace_days = 0
+                if store and store.subscription_grace_days:
+                    try:
+                        grace_days = int(store.subscription_grace_days)
+                    except (TypeError, ValueError):
+                        grace_days = 0
 
                 if grace_days > 0 and sub.end_date:
                     effective_end = sub.end_date + timedelta(days=grace_days)
                     if effective_end > now:
-                        # لا نزال في فترة السماح
                         if store:
                             store.subscription_status = 'active'
                             store.subscription_expiry = effective_end
                             db.session.add(store)
                         continue
 
+                # 2) التجديد التلقائي: إنشاء اشتراك معلّق بدل الإنهاء
+                if store and store.auto_renew:
+                    existing_pending = SubscriptionRepository.get_pending_subscription_for_store(store.id)
+                    if not existing_pending:
+                        # المدة
+                        if store.custom_subscription_duration_days is not None:
+                            try:
+                                duration = int(store.custom_subscription_duration_days)
+                            except (TypeError, ValueError):
+                                duration = int(get_setting('subscription_duration_days', 30))
+                        else:
+                            duration = int(get_setting('subscription_duration_days', 30))
+
+                        # السعر
+                        if store.custom_subscription_price is not None:
+                            try:
+                                price = float(store.custom_subscription_price)
+                            except (TypeError, ValueError):
+                                price = float(get_setting('subscription_price', 500))
+                        else:
+                            price = float(get_setting('subscription_price', 500))
+
+                        new_sub = Subscription(
+                            user_id=store.owner_id,
+                            store_id=store.id,
+                            start_date=current_time(),
+                            end_date=current_time() + timedelta(days=duration),
+                            amount=price,
+                            status='pending',
+                            payment_method='manual_delivery',
+                            duration_days=duration,
+                            renewal_count=(sub.renewal_count or 0) + 1,
+                            admin_note='تم إنشاء طلب تجديد تلقائي عند انتهاء الاشتراك.'
+                        )
+                        db.session.add(new_sub)
+
+                        sub.status = 'expired'
+                        store.subscription_status = 'pending'
+                        store.subscription_expiry = sub.end_date
+                        db.session.add(sub)
+                        db.session.add(store)
+
+                        if store.owner_id:
+                            owner = db.session.get(User, store.owner_id)
+                            if owner:
+                                NotificationService.send_to_user(
+                                    user_id=owner.id,
+                                    title='تجديد تلقائي للاشتراك',
+                                    message=f'انتهى اشتراك متجرك "{store.name}" وتم إنشاء طلب تجديد تلقائي بمبلغ {price} ل.س. يرجى إتمام الدفع.',
+                                    link=url_for('store.subscription_pending', store_id=store.id),
+                                    type_=NotificationService.TYPE_SUBSCRIPTION,
+                                    priority=NotificationService.PRIORITY_URGENT,
+                                    commit=False
+                                )
+                        count += 1
+                        continue
+
+                # 3) الإنهاء العادي
                 sub.status = 'expired'
                 db.session.add(sub)
 
@@ -431,7 +490,6 @@ class SubscriptionService:
 
     @staticmethod
     def submit_subscription_request(user, store, payment_ref=None, proof_file=None, payment_method='wallet'):
-        # القيم المخصصة للمتجر تأخذ الأولوية
         try:
             if store.custom_subscription_price is not None:
                 subscription_price = float(store.custom_subscription_price)

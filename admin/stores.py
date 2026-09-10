@@ -1,3 +1,4 @@
+from datetime import timedelta
 from flask import render_template, request, redirect, url_for, flash
 from sqlalchemy import func, or_
 from sqlalchemy.orm import selectinload
@@ -15,8 +16,11 @@ from . import admin_bp
 def admin_stores():
     q = request.args.get('q', '').strip()
     status_filter = request.args.get('status', '').strip()
+    expiring_filter = request.args.get('expiring', '').strip()
     page = request.args.get('page', 1, type=int)
     per_page = 12
+
+    now = current_time()
 
     query = Store.query.options(selectinload(Store.owner))
     if q:
@@ -29,16 +33,31 @@ def admin_stores():
         )
     if status_filter in ['active', 'pending', 'suspended', 'cancelled', 'expired']:
         query = query.filter_by(subscription_status=status_filter)
+    if expiring_filter in ['7', '14', '30']:
+        days = int(expiring_filter)
+        threshold = now + timedelta(days=days)
+        query = query.filter(
+            Store.subscription_status == 'active',
+            Store.subscription_expiry.isnot(None),
+            Store.subscription_expiry > now,
+            Store.subscription_expiry <= threshold
+        )
 
     pagination = query.order_by(Store.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
     stores = pagination.items
-    now = current_time()
+
     for store in stores:
         if store.pending_deletion_at:
             remaining = (store.pending_deletion_at - now).total_seconds()
             store.delete_remaining_seconds = max(0, int(remaining))
         else:
             store.delete_remaining_seconds = None
+
+        if store.subscription_expiry and store.subscription_status in ('active', 'pending'):
+            delta_seconds = (store.subscription_expiry - now).total_seconds()
+            store.days_remaining = max(0, int(delta_seconds // 86400))
+        else:
+            store.days_remaining = None
 
     store_stats = {}
     if stores:
@@ -58,7 +77,8 @@ def admin_stores():
             }
 
     return render_template('admin/admin_stores.html', stores=stores, pagination=pagination,
-                           q=q, status_filter=status_filter, store_stats=store_stats)
+                           q=q, status_filter=status_filter, expiring_filter=expiring_filter,
+                           store_stats=store_stats)
 
 
 @admin_bp.route('/admin/stores/<int:store_id>/toggle', methods=['POST'])
@@ -86,13 +106,15 @@ def admin_store_subscription_settings(store_id):
     custom_duration_days = request.form.get('custom_subscription_duration_days', type=int)
     grace_days = request.form.get('subscription_grace_days', type=int)
     notes = request.form.get('subscription_notes', '').strip() or None
+    auto_renew = request.form.get('auto_renew') == '1'
 
     success, msg = SubscriptionService.update_store_subscription_settings(
         store_id,
         custom_price=custom_price,
         custom_duration_days=custom_duration_days,
         grace_days=grace_days,
-        notes=notes
+        notes=notes,
+        auto_renew=auto_renew
     )
     flash(msg, 'success' if success else 'error')
     return redirect(url_for('admin.admin_stores'))

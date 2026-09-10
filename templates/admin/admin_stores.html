@@ -131,6 +131,52 @@
         background: #0c2a33;
         color: #6edff6;
     }
+    .days-badge {
+        display: inline-block;
+        border-radius: 20px;
+        padding: 3px 10px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        margin-right: 5px;
+    }
+    .days-badge.urgent {
+        background: #f8d7da;
+        color: #842029;
+    }
+    .days-badge.warn {
+        background: #fff3cd;
+        color: #664d03;
+    }
+    .days-badge.safe {
+        background: #d1e7dd;
+        color: #0f5132;
+    }
+    body.dark-mode .days-badge.urgent {
+        background: #3e1a1d;
+        color: #ff8a95;
+    }
+    body.dark-mode .days-badge.warn {
+        background: #3a2f1a;
+        color: #ffd666;
+    }
+    body.dark-mode .days-badge.safe {
+        background: #102e1a;
+        color: #6edfa0;
+    }
+    .auto-renew-badge {
+        display: inline-block;
+        background: #e2d9f3;
+        color: #432874;
+        border-radius: 20px;
+        padding: 3px 10px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        margin-right: 5px;
+    }
+    body.dark-mode .auto-renew-badge {
+        background: #221833;
+        color: #b8a3e6;
+    }
     .store-stats {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -203,6 +249,12 @@
                 <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>ملغي</option>
                 <option value="expired" {% if status_filter == 'expired' %}selected{% endif %}>منتهي</option>
             </select>
+            <select name="expiring">
+                <option value="">كل المدد</option>
+                <option value="7" {% if expiring_filter == '7' %}selected{% endif %}>ينتهي خلال 7 أيام</option>
+                <option value="14" {% if expiring_filter == '14' %}selected{% endif %}>ينتهي خلال 14 يوم</option>
+                <option value="30" {% if expiring_filter == '30' %}selected{% endif %}>ينتهي خلال 30 يوم</option>
+            </select>
             <input type="text" name="q" value="{{ q }}" placeholder="بحث باسم المتجر أو المالك">
             <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill">بحث</button>
         </form>
@@ -234,9 +286,25 @@
                         {% elif store.subscription_status == 'expired' %}منتهي
                         {% else %}ملغي{% endif %}
                     </span>
+
+                    {% if store.days_remaining is not none %}
+                        {% if store.days_remaining <= 7 %}
+                            <span class="days-badge urgent"><i class="bi bi-hourglass-split"></i> {{ store.days_remaining }} يوم متبقٍ</span>
+                        {% elif store.days_remaining <= 14 %}
+                            <span class="days-badge warn"><i class="bi bi-hourglass"></i> {{ store.days_remaining }} يوم متبقٍ</span>
+                        {% else %}
+                            <span class="days-badge safe"><i class="bi bi-clock-history"></i> {{ store.days_remaining }} يوم متبقٍ</span>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if store.auto_renew %}
+                        <span class="auto-renew-badge"><i class="bi bi-arrow-repeat"></i> تجديد تلقائي</span>
+                    {% endif %}
+
                     {% if store.custom_subscription_price is not none or store.custom_subscription_duration_days is not none %}
                         <span class="special-badge"><i class="bi bi-star-fill"></i> عرض مخصص</span>
                     {% endif %}
+
                     {% if store.delete_remaining_seconds is not none %}
                         <span class="delete-countdown-badge">
                             <i class="bi bi-trash"></i> سيحذف خلال <span class="delete-countdown" data-remaining="{{ store.delete_remaining_seconds }}"></span>
@@ -333,6 +401,17 @@
                                 <input type="number" name="subscription_grace_days" class="form-control"
                                        value="{{ store.subscription_grace_days if store.subscription_grace_days is not none else '' }}"
                                        min="0" placeholder="0">
+                            </div>
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" role="switch"
+                                       name="auto_renew" value="1" id="autoRenew{{ store.id }}"
+                                       {% if store.auto_renew %}checked{% endif %}>
+                                <label class="form-check-label" for="autoRenew{{ store.id }}">
+                                    <strong>تجديد تلقائي عند الانتهاء</strong>
+                                </label>
+                                <small class="d-block text-muted">
+                                    عند التفعيل: لحظة انتهاء الاشتراك، يُنشئ النظام طلب اشتراك معلّق جديد تلقائيًا (بنفس السعر/المدة) ويُشعر المالك للدفع، بدل توقف المتجر فورًا.
+                                </small>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">ملاحظات</label>

@@ -9,6 +9,7 @@ from shared.services.subscription_service import SubscriptionService
 from shared.services.delivery_service import DeliveryService
 from . import api_bp
 from .helpers import token_required, serialize_user, serialize_store, serialize_order
+from shared.time_utils import current_time
 
 
 def is_admin(user):
@@ -96,9 +97,19 @@ def admin_get_stores(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
     status = request.args.get('status')
     q = request.args.get('q')
+    expiring = request.args.get('expiring')
     query = Store.query
     if status:
         query = query.filter_by(subscription_status=status)
+    if expiring and expiring in ['7', '14', '30']:
+        now = current_time()
+        threshold = now + timedelta(days=int(expiring))
+        query = query.filter(
+            Store.subscription_status == 'active',
+            Store.subscription_expiry.isnot(None),
+            Store.subscription_expiry > now,
+            Store.subscription_expiry <= threshold
+        )
     if q:
         query = query.join(User, Store.owner_id == User.id).filter(or_(
             Store.name.ilike(f'%{q}%'),
@@ -132,7 +143,8 @@ def admin_store_subscription_settings(current_user, store_id):
         custom_price=data.get('custom_subscription_price'),
         custom_duration_days=data.get('custom_subscription_duration_days'),
         grace_days=data.get('subscription_grace_days'),
-        notes=data.get('subscription_notes')
+        notes=data.get('subscription_notes'),
+        auto_renew=data.get('auto_renew')
     )
     if not success:
         return jsonify({'message': msg}), 400
