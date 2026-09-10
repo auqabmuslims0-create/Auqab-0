@@ -118,15 +118,8 @@
         </a>
 
         <a href="{{ url_for('admin.admin_finance') }}" class="stat-card">
-            <i class="bi bi-cash stat-icon text-success"></i>
-            <div class="stat-value">{{ delivery_fee_total|format_price }} <small>ل.س</small></div>
-            <p class="stat-label">رسوم التوصيل</p>
-        </a>
-
-        <a href="{{ url_for('admin.admin_finance') }}" class="stat-card">
             <i class="bi bi-graph-up stat-icon text-secondary"></i>
-            <div class="stat-value">{{ total_paid_payments|format_price }}</div>
-            <p class="stat-label">المدفوعات المكتملة</p>
+            <p class="stat-label">إحصاءات عامة</p>
         </a>
 
         <a href="{{ url_for('admin.admin_payments') }}" class="stat-card">
