@@ -41,6 +41,48 @@
         margin-top: 0.5rem;
         border-radius: var(--radius-pill);
     }
+    .whatsapp-card {
+        border-radius: 15px;
+        padding: 16px;
+        margin-top: 20px;
+        background: linear-gradient(135deg, rgba(37,211,102,0.12), rgba(37,211,102,0.06));
+        border: 1px solid rgba(37,211,102,0.3);
+        text-align: center;
+    }
+    body.dark-mode .whatsapp-card {
+        background: linear-gradient(135deg, rgba(37,211,102,0.15), rgba(37,211,102,0.05));
+        border-color: rgba(37,211,102,0.4);
+    }
+    .whatsapp-card .wa-icon {
+        color: #25D366;
+        font-size: 2rem;
+        display: block;
+        margin-bottom: 6px;
+    }
+    .whatsapp-card .wa-text {
+        font-weight: 700;
+        font-size: 0.95rem;
+        margin-bottom: 12px;
+        color: var(--text-light);
+    }
+    body.dark-mode .whatsapp-card .wa-text {
+        color: #fff;
+    }
+    .btn-whatsapp {
+        background: #25D366;
+        border-color: #25D366;
+        color: #fff;
+        border-radius: 25px;
+        padding: 8px 24px;
+        font-weight: 600;
+        transition: background 0.2s, transform 0.2s;
+    }
+    .btn-whatsapp:hover {
+        background: #1ebe57;
+        border-color: #1ebe57;
+        color: #fff;
+        transform: translateY(-2px);
+    }
 </style>
 {% endblock %}
 
@@ -63,6 +105,28 @@
                 <div class="mt-3 text-warning small">
                     <i class="bi bi-exclamation-triangle"></i> يرجى حفظ هذا المعرف في مكان آمن، لن تتمكن من استعادة كلمة المرور بدونه.
                 </div>
+
+                {# بطاقة واتساب حسب الدور #}
+                {% if session.get('role') == 'customer' %}
+                <div class="whatsapp-card">
+                    <i class="bi bi-whatsapp wa-icon"></i>
+                    <div class="wa-text">انضم إلى مجموعة دليل المنصة على واتساب</div>
+                    <a href="https://chat.whatsapp.com/BYRF5QdBAGDAumPhTH0urG?s=sh&p=a&mlu=4&ilr=4"
+                       target="_blank" rel="noopener noreferrer" class="btn btn-whatsapp">
+                        <i class="bi bi-box-arrow-up-right"></i> اضغط للانضمام
+                    </a>
+                </div>
+                {% elif session.get('role') == 'owner' %}
+                <div class="whatsapp-card">
+                    <i class="bi bi-whatsapp wa-icon"></i>
+                    <div class="wa-text">انضم إلى مجموعة المتاجر على واتساب</div>
+                    <a href="https://chat.whatsapp.com/HYeGLPzu2Cw46U8qrbzvzW?s=sh&p=a&mlu=4&ilr=4"
+                       target="_blank" rel="noopener noreferrer" class="btn btn-whatsapp">
+                        <i class="bi bi-box-arrow-up-right"></i> اضغط للانضمام
+                    </a>
+                </div>
+                {% endif %}
+
                 <div class="mt-4">
                     <a href="{{ url_for('auth.dashboard') }}" class="btn btn-custom" style="color:#fff !important;">الانتقال للوحة التحكم</a>
                 </div>
