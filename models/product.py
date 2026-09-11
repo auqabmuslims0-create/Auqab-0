@@ -2,6 +2,7 @@ from database import db
 from sqlalchemy import CheckConstraint, Index
 from shared.time_utils import current_time
 
+
 class Product(db.Model):
     __tablename__ = 'products'
     id = db.Column(db.Integer, primary_key=True)
@@ -21,6 +22,8 @@ class Product(db.Model):
     sub_images = db.Column(db.Text, nullable=True)
     video = db.Column(db.String(300), nullable=True)
     views = db.Column(db.Integer, default=0)
+    # S6: إخفاء السعر — يمنع المنتج من ميزة التوصيل ويُعرض "حصراً من المتجر"
+    hide_price = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=current_time, index=True)
 
     __table_args__ = (
@@ -41,6 +44,18 @@ class Product(db.Model):
     comments = db.relationship('ProductComment', back_populates='product', cascade="all, delete-orphan")
     cart_items = db.relationship('CartItem', back_populates='product', cascade="all, delete-orphan")
     reels = db.relationship('Reel', back_populates='product', cascade="all, delete-orphan")
+
+    @property
+    def effective_price(self):
+        """السعر الفعلي بعد تطبيق العروض (المصدر الوحيد للحقيقة)."""
+        if self.is_offer and self.offer_price is not None:
+            return self.offer_price
+        return self.price
+
+    @property
+    def can_be_delivered(self):
+        """هل يمكن إضافة هذا المنتج لطلب توصيل؟ (لا لو السعر مخفي)."""
+        return not self.hide_price
 
     @property
     def images(self):
@@ -68,6 +83,7 @@ class Product(db.Model):
     def __repr__(self):
         return f'<Product {self.name}>'
 
+
 class ProductReaction(db.Model):
     __tablename__ = 'product_reactions'
     __table_args__ = (
@@ -83,6 +99,7 @@ class ProductReaction(db.Model):
 
     product = db.relationship('Product', back_populates='reactions')
     user = db.relationship('User')
+
 
 class ProductComment(db.Model):
     __tablename__ = 'product_comments'

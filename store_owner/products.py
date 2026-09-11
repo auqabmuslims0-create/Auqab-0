@@ -62,10 +62,14 @@ def new_product(store_id):
         offer_price = request.form.get('offer_price', type=float)
         original_price = request.form.get('original_price', type=float)
         offer_description = request.form.get('offer_description', '').strip()
+        hide_price = request.form.get('hide_price') == 'yes'
 
-        if not name or price is None:
+        if not name or (price is None and not hide_price):
             flash('اسم المنتج والسعر مطلوبان')
             return redirect(url_for('store.new_product', store_id=store.id))
+
+        if hide_price and price is None:
+            price = 0.0
 
         if price < 0 or stock_quantity < 0:
             flash('القيم لا يمكن أن تكون سالبة')
@@ -137,8 +141,10 @@ def new_product(store_id):
             main_image=main_image,
             sub_images=','.join(sub_images) if sub_images else None,
             video=video_filename,
-            options=options
+            options=options,
+            hide_price=hide_price
         )
+        db.session.add(product)
         db.session.add(product)
         db.session.flush()
 
@@ -186,10 +192,14 @@ def edit_product(store_id, product_id):
         offer_price = request.form.get('offer_price', type=float)
         original_price = request.form.get('original_price', type=float)
         offer_description = request.form.get('offer_description', '').strip()
+        hide_price = request.form.get('hide_price') == 'yes'
 
-        if not name or price is None:
+        if not name or (price is None and not hide_price):
             flash('اسم المنتج والسعر مطلوبان')
             return redirect(url_for('store.edit_product', store_id=store.id, product_id=product.id))
+
+        if hide_price and price is None:
+            price = 0.0
 
         if price < 0 or stock_quantity < 0:
             flash('القيم لا يمكن أن تكون سالبة')
@@ -286,6 +296,7 @@ def edit_product(store_id, product_id):
         product.offer_price = offer_price if is_offer else None
         product.original_price = original_price if is_offer else None
         product.offer_description = offer_description if is_offer else ''
+        product.hide_price = hide_price
 
         db.session.flush()
 

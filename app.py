@@ -20,7 +20,6 @@ import models
 from werkzeug.security import generate_password_hash
 from flask_wtf.csrf import CSRFProtect
 from shared.time_utils import current_time
-from sqlalchemy import inspect
 
 load_dotenv()
 
@@ -80,6 +79,7 @@ csrf = CSRFProtect(app)
 for bp in [api_bp, social_bp, reels_bp, delivery_bp, notifications_bp]:
     csrf.exempt(bp)
 
+
 def get_secret_key():
     key = os.environ.get('SECRET_KEY')
     if key:
@@ -97,7 +97,9 @@ def get_secret_key():
         return key
     raise RuntimeError('SECRET_KEY must be set in production environment')
 
+
 app.config['SECRET_KEY'] = get_secret_key()
+
 
 def get_jwt_secret_key():
     key = os.environ.get('JWT_SECRET_KEY')
@@ -115,6 +117,7 @@ def get_jwt_secret_key():
         os.chmod(key_file, 0o600)
         return key
     raise RuntimeError('JWT_SECRET_KEY must be set in production environment')
+
 
 app.config['JWT_SECRET_KEY'] = get_jwt_secret_key()
 
@@ -152,13 +155,6 @@ else:
 db.init_app(app)
 migrate = Migrate(app, db)
 
-with app.app_context():
-    db.create_all()
-    # التأكد من وجود جدول user_activity
-    inspector = inspect(db.engine)
-    if not inspector.has_table('user_activity'):
-        db.create_all()
-
 app.register_blueprint(auth_bp)
 app.register_blueprint(store_bp)
 app.register_blueprint(delivery_bp)
@@ -174,9 +170,11 @@ app.register_blueprint(account_bp)
 app.register_blueprint(cart_bp)
 app.register_blueprint(notifications_bp)
 
+
 @app.cli.command("create-admin")
 def create_admin_command():
     ensure_admin()
+
 
 def ensure_admin():
     with app.app_context():
@@ -205,6 +203,12 @@ def ensure_admin():
         else:
             print("المدير موجود بالفعل.")
 
+
+# v1: cache لتقليل ضغط الكتابة على user_activity (يمنع SQLite lock)
+_user_activity_cache = {}
+_ACTIVITY_UPDATE_INTERVAL_SECONDS = 60  # حدّث آخر ظهور كل دقيقة كحد أقصى
+
+
 @app.before_request
 def before_request_checks():
     g.user = None
@@ -213,18 +217,20 @@ def before_request_checks():
         user = db.session.get(models.User, session['user_id'])
         if user:
             g.user = user
-            # تحديث جدول النشاط مع طباعة الخطأ للتشخيص
+            # تحديث آخر ظهور — بحذر شديد لتجنب SQLite locks
             try:
                 now = current_time()
-                activity = db.session.get(models.UserActivity, user.id)
-                if activity:
-                    activity.last_seen = now
-                else:
-                    activity = models.UserActivity(user_id=user.id, last_seen=now)
-                    db.session.add(activity)
-                db.session.commit()
-                if os.environ.get('FLASK_DEBUG', 'False').lower() == 'true':
-                    app.logger.info(f"Updated activity for user {user.id} at {now}")
+                last_update = _user_activity_cache.get(user.id)
+                should_update = (last_update is None) or ((now - last_update).total_seconds() >= _ACTIVITY_UPDATE_INTERVAL_SECONDS)
+                if should_update:
+                    activity = db.session.get(models.UserActivity, user.id)
+                    if activity:
+                        activity.last_seen = now
+                    else:
+                        activity = models.UserActivity(user_id=user.id, last_seen=now)
+                        db.session.add(activity)
+                    db.session.commit()
+                    _user_activity_cache[user.id] = now
             except Exception as e:
                 db.session.rollback()
                 app.logger.error(f"Failed to update user activity for {user.id}: {str(e)}")
@@ -246,9 +252,11 @@ def before_request_checks():
             flash('يجب تسجيل الدخول أولاً')
             return redirect(url_for('auth.login'))
 
+
 _notifications_cache = {}
 _offers_cache = {}
 CACHE_TIMEOUT = 30
+
 
 @app.context_processor
 def inject_notifications_count():
@@ -266,6 +274,7 @@ def inject_notifications_count():
     _notifications_cache[user_id] = {'count': unread_count, 'timestamp': current_ts}
     return dict(unread_notifications=unread_count)
 
+
 @app.context_processor
 def inject_offers_count():
     if request.endpoint not in ['market.market', 'offers.offers_page', 'stores.stores_page']:
@@ -278,14 +287,17 @@ def inject_offers_count():
     _offers_cache['global'] = {'count': offer_count, 'timestamp': current_ts}
     return dict(offers_count=offer_count)
 
+
 @app.context_processor
 def inject_current_user():
     return dict(current_user=g.user)
+
 
 @app.context_processor
 def inject_csrf_token():
     from flask_wtf.csrf import generate_csrf
     return dict(csrf_token=generate_csrf())
+
 
 @app.context_processor
 def inject_nav_items():
@@ -328,6 +340,7 @@ def inject_nav_items():
     nav_items.append({'type': 'link', 'url': url_for('auth.logout'), 'label': 'تسجيل الخروج', 'icon': 'bi-box-arrow-left', 'active': False})
     return dict(nav_items=nav_items)
 
+
 @app.context_processor
 def inject_show_bottom_nav():
     user = g.user
@@ -354,6 +367,7 @@ def inject_show_bottom_nav():
             show = True
     return dict(show_bottom_nav=show)
 
+
 @app.template_filter('format_price')
 def format_price(value):
     try:
@@ -361,8 +375,9 @@ def format_price(value):
     except (ValueError, TypeError):
         return value
 
+
 @app.template_filter('get_image_url')
-def get_image_url(filename):
+def get_image_url_filter(filename):
     if not filename:
         return ''
     if filename.startswith('http'):
@@ -373,37 +388,45 @@ def get_image_url(filename):
         return url_for('static', filename=filename)
     return url_for('static', filename='uploads/' + filename)
 
+
 @app.route('/sw.js')
 def service_worker():
     response = app.send_static_file('sw.js')
     response.headers['Content-Type'] = 'application/javascript'
     return response
 
+
 @app.route('/onboarding')
 def onboarding():
     return render_template('onboarding.html')
+
 
 @app.errorhandler(403)
 def forbidden(e):
     return render_template('shared/error.html', code=403, message='غير مسموح بالوصول إلى هذه الصفحة'), 403
 
+
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('shared/error.html', code=404, message='الصفحة غير موجودة'), 404
+
 
 @app.errorhandler(500)
 def internal_error(e):
     app.logger.exception('حدث خطأ 500')
     return render_template('shared/error.html', code=500, message='حدث خطأ داخلي في الخادم، يرجى المحاولة لاحقاً'), 500
 
+
 @app.route('/.well-known/assetlinks.json')
 def assetlinks():
     return app.send_static_file('.well-known/assetlinks.json')
+
 
 def _handle_sigterm(signum, frame):
     from scheduler import shutdown_scheduler
     shutdown_scheduler()
     sys.exit(0)
+
 
 if __name__ == '__main__':
     ensure_admin()
@@ -413,4 +436,4 @@ if __name__ == '__main__':
     signal.signal(signal.SIGINT, _handle_sigterm)
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     port = int(os.environ.get('PORT', 8000))
-    app.run(host='0.0.0.0', port=port, debug=debug_mode)
+    app.run(host='0.0.0.0', port=port, debug=debug_mode, threaded=True)

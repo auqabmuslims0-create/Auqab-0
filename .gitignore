@@ -18,3 +18,19 @@ static/uploads/
 
 # ملفات البيئة
 .env
+
+# ==== v1: إضافات بعد التنظيف ====
+# ملفات النسخ الاحتياطية
+*.db.before_cleanup_*
+*.db.backup
+*.bak
+*.backup
+*.old
+
+# instance ومتغيرات محلية
+.flaskenv
+.pytest_cache/
+
+# متغيرات بيئة محلية (تبقى .env.example)
+.env.local
+.env.*.local

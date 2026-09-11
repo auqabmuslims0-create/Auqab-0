@@ -1,9 +1,15 @@
 from flask import request, jsonify
 from database import db
-from models import Favorite, Notification, Product, Store
+from models import Favorite, Product, Store
 from shared.utils import save_image
 from . import api_bp
-from .helpers import token_required, serialize_product, serialize_store, serialize_notification
+from .helpers import token_required, serialize_product, serialize_store
+
+# ملاحظة (v1):
+# تمت إزالة المسارات /notifications و /notifications/<id>/read من هذا الملف
+# لأنها كانت تتعارض مع مسارات notifications_bp (نفس الـ URL: /api/notifications)
+# والنسخة الموجودة في notifications_bp هي الأحدث وتستخدم الجلسة (session) لا JWT.
+
 
 @api_bp.route('/favorites', methods=['GET'])
 @token_required
@@ -23,6 +29,7 @@ def get_favorites(current_user):
             item['store'] = serialize_store(fav.store)
         favorites_data.append(item)
     return jsonify({'favorites': favorites_data}), 200
+
 
 @api_bp.route('/favorites/toggle', methods=['POST'])
 @token_required
@@ -69,23 +76,3 @@ def toggle_favorite(current_user):
     except Exception:
         db.session.rollback()
         return jsonify({'message': 'حدث خطأ أثناء تحديث المفضلة'}), 500
-
-@api_bp.route('/notifications', methods=['GET'])
-@token_required
-def get_notifications(current_user):
-    notifs = Notification.query.filter_by(user_id=current_user.id).order_by(Notification.created_at.desc()).all()
-    return jsonify({'notifications': [serialize_notification(n) for n in notifs]}), 200
-
-@api_bp.route('/notifications/<int:notif_id>/read', methods=['POST'])
-@token_required
-def mark_notification_read(current_user, notif_id):
-    notif = Notification.query.get_or_404(notif_id)
-    if notif.user_id != current_user.id:
-        return jsonify({'message': 'غير مسموح'}), 403
-    notif.is_read = True
-    try:
-        db.session.commit()
-        return jsonify({'message': 'تم تحديد الإشعار كمقروء'}), 200
-    except Exception:
-        db.session.rollback()
-        return jsonify({'message': 'حدث خطأ أثناء التحديث'}), 500

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import request, jsonify, url_for
 from sqlalchemy import func, or_
 from database import db
@@ -7,8 +7,9 @@ from shared.services.user_service import UserService
 from shared.services.store_service import StoreService
 from shared.services.subscription_service import SubscriptionService
 from shared.services.delivery_service import DeliveryService
+from shared.services.order_service import OrderService
 from . import api_bp
-from .helpers import token_required, serialize_user, serialize_store, serialize_order
+from .helpers import token_required, serialize_user, serialize_store, serialize_order, get_image_url
 from shared.time_utils import current_time
 
 
@@ -214,19 +215,15 @@ def admin_update_order_status(current_user, order_id):
     if new_status not in ['new', 'confirmed', 'preparing', 'ready', 'delivering', 'delivered', 'cancelled']:
         return jsonify({'message': 'حالة غير صالحة'}), 400
 
-    if new_status == 'cancelled' and order.status != 'cancelled':
-        for item in order.items:
-            product = item.product
-            if product:
-                product.stock_quantity += item.quantity
-                db.session.add(product)
-
-    order.status = new_status
-    if new_status == 'cancelled':
-        order.is_cancelled = True
-    elif new_status == 'delivered':
-        order.delivered_at = current_time()
-    db.session.commit()
+    # ملاحظة (v1): نستخدم OrderService لضمان احترام ALLOWED_TRANSITIONS
+    # وإرجاع المخزون عند الإلغاء وإرسال الإشعارات وحفظ السجل.
+    updated, error = OrderService.update_order_status_by_admin(
+        order,
+        new_status,
+        actor_id=current_user.id
+    )
+    if error:
+        return jsonify({'message': error}), 400
     return jsonify({'message': 'تم تحديث حالة الطلب'}), 200
 
 
@@ -249,7 +246,7 @@ def admin_get_subscriptions(current_user):
             'amount': sub.amount,
             'status': sub.status,
             'payment_ref': sub.payment_ref,
-            'proof_image': url_for('static', filename='uploads/' + sub.proof_image, _external=True) if sub.proof_image else None,
+            'proof_image': get_image_url(sub.proof_image) if sub.proof_image else None,
             'start_date': sub.start_date.strftime('%Y-%m-%d') if sub.start_date else None,
             'end_date': sub.end_date.strftime('%Y-%m-%d') if sub.end_date else None,
             'duration_days': sub.duration_days,

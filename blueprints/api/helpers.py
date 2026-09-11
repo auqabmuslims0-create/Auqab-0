@@ -1,19 +1,19 @@
 from functools import wraps
 from flask import request, jsonify, url_for, current_app
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 import jwt
 from database import db
 import models
-from shared.utils import get_upload_path
-from shared.time_utils import current_time
+
 
 def encode_auth_token(user_id):
-    """توليد JWT token."""
+    """توليد JWT token. يُستخدم UTC (وليس توقيت سوريا) لأن PyJWT يفسّر naive datetime كـ UTC."""
     payload = {
         'user_id': user_id,
-        'exp': current_time() + timedelta(days=1)
+        'exp': datetime.now(timezone.utc) + timedelta(days=1)
     }
     return jwt.encode(payload, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
+
 
 def decode_auth_token(token):
     """فك تشفير JWT token وإرجاع user_id."""
@@ -24,6 +24,7 @@ def decode_auth_token(token):
         return None
     except jwt.InvalidTokenError:
         return None
+
 
 def token_required(f):
     """ديكوريتور للتحقق من JWT token."""
@@ -43,15 +44,19 @@ def token_required(f):
         return f(current_user, *args, **kwargs)
     return decorated
 
+
 def get_image_url(filename):
-    """تحويل اسم الملف إلى رابط كامل."""
+    """تحويل اسم الملف إلى رابط كامل (external)."""
     if not filename:
         return None
     if filename.startswith('http'):
         return filename
+    if filename.startswith('static/'):
+        return url_for('static', filename=filename[7:], _external=True)
     if filename.startswith('uploads/'):
         return url_for('static', filename=filename, _external=True)
     return url_for('static', filename='uploads/' + filename, _external=True)
+
 
 def serialize_user(user):
     return {
@@ -68,6 +73,7 @@ def serialize_user(user):
         'shift_end_time': user.shift_end_time.strftime('%H:%M') if user.shift_end_time else None,
         'max_active_orders': user.max_active_orders
     }
+
 
 def serialize_store(store):
     return {
@@ -86,6 +92,7 @@ def serialize_store(store):
         'longitude': store.longitude,
         'created_at': store.created_at.strftime('%Y-%m-%d %H:%M') if store.created_at else None
     }
+
 
 def serialize_product(product, include_store=False):
     data = {
@@ -106,6 +113,7 @@ def serialize_product(product, include_store=False):
     if include_store and product.store:
         data['store'] = serialize_store(product.store)
     return data
+
 
 def serialize_order(order):
     items = []
@@ -136,6 +144,7 @@ def serialize_order(order):
         'items': items
     }
 
+
 def serialize_notification(notif):
     return {
         'id': notif.id,
@@ -151,6 +160,7 @@ def serialize_notification(notif):
         'read_at': notif.read_at.strftime('%Y-%m-%d %H:%M') if notif.read_at else None,
         'expires_at': notif.expires_at.strftime('%Y-%m-%d %H:%M') if notif.expires_at else None
     }
+
 
 def is_admin(user):
     return user.role == 'admin'

@@ -2,6 +2,7 @@ from database import db
 from sqlalchemy import CheckConstraint, Index
 from shared.time_utils import current_time
 
+
 class Order(db.Model):
     __tablename__ = 'orders'
     id = db.Column(db.Integer, primary_key=True)
@@ -12,12 +13,18 @@ class Order(db.Model):
     total = db.Column(db.Float, nullable=False)
     delivery_fee = db.Column(db.Float, default=0.0)
     delivery_code = db.Column(db.String(6), nullable=True)
+    # S13: كود الاستلام من المتجر (يؤكده المندوب عند استلام الطلب)
+    pickup_code = db.Column(db.String(6), nullable=True, index=True)
     delivery_address = db.Column(db.String(200), nullable=True)
     latitude = db.Column(db.Float, nullable=True)
     longitude = db.Column(db.Float, nullable=True)
     is_cancelled = db.Column(db.Boolean, default=False)
     payment_method = db.Column(db.String(30), default='cash')
+    # E4: ملاحظة الزبون على الطلب
+    customer_note = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=current_time, index=True)
+    # M1: آخر تحديث
+    updated_at = db.Column(db.DateTime, default=current_time, onupdate=current_time)
     delivered_at = db.Column(db.DateTime, nullable=True)
 
     __table_args__ = (
@@ -48,6 +55,7 @@ class Order(db.Model):
     def __repr__(self):
         return f'<Order {self.id}>'
 
+
 class OrderItem(db.Model):
     __tablename__ = 'order_items'
     id = db.Column(db.Integer, primary_key=True)
@@ -67,6 +75,7 @@ class OrderItem(db.Model):
 
     def __repr__(self):
         return f'<OrderItem {self.product_id} x{self.quantity}>'
+
 
 class OrderStatusHistory(db.Model):
     __tablename__ = 'order_status_history'

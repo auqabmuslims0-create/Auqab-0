@@ -8,6 +8,7 @@ from shared.time_utils import current_time
 
 market_bp = Blueprint('market', __name__)
 
+
 @market_bp.route('/')
 def home():
     if 'user_id' not in session:
@@ -24,6 +25,7 @@ def home():
         return redirect(url_for('delivery.delivery_dashboard'))
     else:
         return redirect(url_for('market.market'))
+
 
 def _get_active_shoppers_count():
     """حساب عدد المستخدمين النشطين خلال آخر 30 ثانية."""
@@ -42,6 +44,7 @@ def _get_active_shoppers_count():
     except Exception:
         return 0
 
+
 @market_bp.route('/api/active-shoppers')
 def active_shoppers():
     """API لإرجاع عدد المتسوقين النشطين."""
@@ -54,6 +57,60 @@ def active_shoppers():
     response.headers['Pragma'] = 'no-cache'
     response.headers['Expires'] = '0'
     return response
+
+
+def _resolve_image_url(filename):
+    """تحويل اسم ملف مخزّن إلى رابط قابل للعرض في القالب (JSON)."""
+    if not filename:
+        return ''
+    if filename.startswith('http'):
+        return filename
+    if filename.startswith('static/'):
+        return url_for('static', filename=filename[7:])
+    if filename.startswith('uploads/'):
+        return url_for('static', filename=filename)
+    return url_for('static', filename='uploads/' + filename)
+
+
+@market_bp.route('/search_suggestions')
+def search_suggestions():
+    """اقتراحات البحث الفورية (متاجر + منتجات) لصفحة السوق."""
+    q = request.args.get('q', '').strip()
+    if len(q) < 2:
+        return jsonify({'stores': [], 'products': [], 'services': []})
+
+    pattern = f'%{q}%'
+
+    stores = Store.query.filter(
+        Store.subscription_status == 'active',
+        Store.name.ilike(pattern)
+    ).order_by(Store.name).limit(5).all()
+
+    products = Product.query.join(Store).filter(
+        Store.subscription_status == 'active',
+        Product.name.ilike(pattern)
+    ).order_by(Product.created_at.desc()).limit(5).all()
+
+    stores_data = [{'id': s.id, 'name': s.name} for s in stores]
+
+    products_data = []
+    for p in products:
+        first_image = ''
+        if p.images:
+            first_image = p.images.split(',')[0].strip()
+        products_data.append({
+            'id': p.id,
+            'name': p.name,
+            'price': p.price,
+            'image_url': _resolve_image_url(first_image)
+        })
+
+    return jsonify({
+        'stores': stores_data,
+        'products': products_data,
+        'services': []
+    })
+
 
 @market_bp.route('/market')
 def market():

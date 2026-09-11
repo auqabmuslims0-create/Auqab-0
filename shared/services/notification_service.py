@@ -1,10 +1,15 @@
+import os
+import json
+import threading
 from flask import current_app
 from database import db
 from models import User, Notification
 from shared.repositories.notification_repository import NotificationRepository
-from shared.time_utils import current_time
-import json
-import threading
+
+
+def _push_enabled():
+    return os.environ.get('PUSH_ENABLED', '0') == '1'
+
 
 class NotificationService:
     # الأنواع
@@ -28,13 +33,24 @@ class NotificationService:
     BATCH_SIZE = 100
 
     @staticmethod
-    def _send_push_async(app, user_id, notif):
-        with app.app_context():
-            try:
-                from shared.services.push_service import send_to_user as push_send_to_user
-                push_send_to_user(user_id, notif)
-            except Exception as e:
-                app.logger.error(f"Async push failed for notification {notif.id}: {e}")
+    def _send_push_async(app, user_id, notif_snapshot):
+        """
+        v1: يستقبل snapshot (dict) بدل ORM object لتفادي lazy load من thread آخر.
+        يُغلق الجلسة في كل الحالات لتحرير SQLite lock.
+        """
+        try:
+            with app.app_context():
+                try:
+                    from shared.services.push_service import send_to_user as push_send_to_user
+                    # نبني كائن بسيط من الـ snapshot
+                    n = type('NotificationSnapshot', (), notif_snapshot)()
+                    push_send_to_user(user_id, n)
+                except Exception as e:
+                    app.logger.error(f"Async push failed for user {user_id}: {e}")
+                finally:
+                    db.session.remove()
+        except Exception as outer:
+            app.logger.error(f"_send_push_async outer error: {outer}")
 
     @staticmethod
     def _create_notification(user_id, message, title=None, link=None, type_=None,
@@ -81,11 +97,29 @@ class NotificationService:
                 db.session.rollback()
                 raise
 
-        if send_push:
-            app = current_app._get_current_object()
-            thread = threading.Thread(target=NotificationService._send_push_async, args=(app, user_id, notif))
-            thread.daemon = True
-            thread.start()
+        # إرسال push فقط إذا مُفعّل + البيانات مُنسوخة بأمان
+        if send_push and _push_enabled():
+            try:
+                # Snapshot قبل الـ thread — لا نمرر ORM object
+                snapshot = {
+                    'id': notif.id,
+                    'title': notif.title,
+                    'message': notif.message,
+                    'link': notif.link,
+                }
+                app = current_app._get_current_object()
+                thread = threading.Thread(
+                    target=NotificationService._send_push_async,
+                    args=(app, user_id, snapshot),
+                    daemon=True
+                )
+                thread.start()
+            except Exception as e:
+                try:
+                    current_app.logger.error(f"Failed to start push thread: {e}")
+                except Exception:
+                    pass
+
         return notif
 
     @staticmethod
@@ -96,7 +130,6 @@ class NotificationService:
         notifs = []
         unique_ids = list(set(user_ids))
 
-        # تقسيم الإرسال إلى دفعات لتجنب المعاملات الكبيرة
         for i in range(0, len(unique_ids), NotificationService.BATCH_SIZE):
             batch_ids = unique_ids[i:i + NotificationService.BATCH_SIZE]
             batch_notifs = []
@@ -117,13 +150,27 @@ class NotificationService:
                     db.session.rollback()
                     raise
 
-                if send_push:
-                    app = current_app._get_current_object()
-                    for notif in batch_notifs:
-                        thread = threading.Thread(target=NotificationService._send_push_async,
-                                                  args=(app, notif.user_id, notif))
-                        thread.daemon = True
-                        thread.start()
+                if send_push and _push_enabled():
+                    try:
+                        app = current_app._get_current_object()
+                        for notif in batch_notifs:
+                            snapshot = {
+                                'id': notif.id,
+                                'title': notif.title,
+                                'message': notif.message,
+                                'link': notif.link,
+                            }
+                            thread = threading.Thread(
+                                target=NotificationService._send_push_async,
+                                args=(app, notif.user_id, snapshot),
+                                daemon=True
+                            )
+                            thread.start()
+                    except Exception as e:
+                        try:
+                            current_app.logger.error(f"Failed to start batch push threads: {e}")
+                        except Exception:
+                            pass
 
         return notifs
 
@@ -212,8 +259,7 @@ class NotificationService:
     def send_to_followers(store, message, title=None, link=None, type_=None, priority=None, icon=None,
                           extra_data=None, send_push=True, expires_at=None,
                           entity_type=None, entity_id=None):
-        """إرسال إشعار لمتابعي متجر معين. يفترض وجود علاقة Follow لاحقاً."""
-        follower_ids = []  # تعديل لاحق بعد نظام المتابعة
+        follower_ids = []
         return NotificationService._send_to_many(
             follower_ids, message, title=title, link=link,
             type_=type_ or NotificationService.TYPE_STORE_FOLLOW,
@@ -225,13 +271,12 @@ class NotificationService:
     # ========== دوال مساعدة للأنظمة الأخرى ==========
     @staticmethod
     def notify_order_status_changed(order, new_status):
-        """إرسال إشعار للعميل وصاحب المتجر عند تغيير حالة الطلب."""
         message_customer = f"تم تحديث حالة طلبك إلى: {new_status}"
         NotificationService.send_to_customer(
             order, message_customer,
             title="تحديث حالة الطلب",
             type_=NotificationService.TYPE_ORDER,
-            link=f"/customer/orders/{order.id}",
+            link=f"/cart/order/{order.id}",
             entity_type='order', entity_id=order.id
         )
         store = order.store
@@ -241,26 +286,24 @@ class NotificationService:
                 store, message_owner,
                 title="تحديث حالة طلب",
                 type_=NotificationService.TYPE_ORDER,
-                link=f"/store/orders/{order.id}",
+                link=f"/store/{store.id}/orders",
                 entity_type='order', entity_id=order.id
             )
 
     @staticmethod
     def notify_new_order(order):
-        """إشعار صاحب المتجر بوجود طلب جديد."""
         store = order.store
         if store:
             NotificationService.send_to_store_owner(
                 store, f"لديك طلب جديد رقم {order.id}",
                 title="طلب جديد",
                 type_=NotificationService.TYPE_ORDER,
-                link=f"/store/orders/{order.id}",
+                link=f"/store/{store.id}/orders",
                 entity_type='order', entity_id=order.id
             )
 
     @staticmethod
     def notify_new_product(product):
-        """إشعار متابعي المتجر بإضافة منتج جديد."""
         if product and product.store:
             NotificationService.send_to_followers(
                 product.store,
@@ -273,7 +316,6 @@ class NotificationService:
 
     @staticmethod
     def notify_new_offer(product):
-        """إشعار متابعي المتجر بوجود عرض جديد."""
         if product and product.store and product.is_offer:
             NotificationService.send_to_followers(
                 product.store,
@@ -286,7 +328,6 @@ class NotificationService:
 
     @staticmethod
     def notify_new_reel(reel):
-        """إشعار متابعي المتجر بإضافة ريل جديد."""
         if reel and reel.store:
             NotificationService.send_to_followers(
                 reel.store,
