@@ -1,11 +1,64 @@
 from flask import Blueprint, render_template, request, abort, session
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy import or_
+from datetime import datetime, timedelta
 from database import db
 from models import Store, User, Product, Category, Favorite, Review, ProductComment, ProductReaction
+from shared.repositories.product_repository import ProductRepository
 from shared.utils import is_store_open, is_store_active
 
 stores_bp = Blueprint('stores', __name__)
+
+# مدة صلاحية تسجيل المشاهدة لكل جلسة (بالدقائق)
+VIEW_COOLDOWN_MINUTES = 30
+# الحد الأقصى لعدد المنتجات المتتبَّعة في الجلسة (لتفادي تضخّم الـ cookie)
+MAX_TRACKED_VIEWS = 200
+
+
+def _should_count_view(product_id):
+    """
+    هل يجب احتساب مشاهدة جديدة لهذا المنتج في الجلسة الحالية؟
+
+    المنطق:
+      - إذا لم يُسجَّل من قبل    → احتسب
+      - إذا مرّت مدة التهدئة     → احتسب (زيارة جديدة)
+      - غير ذلك                  → لا تحتسب (refresh أو تنقل سريع)
+    """
+    now_iso = datetime.utcnow().isoformat()
+    viewed = session.get('viewed_products', {})
+
+    if not isinstance(viewed, dict):
+        # ترحيل من صيغة قديمة (قائمة) إن وُجدت
+        viewed = {}
+
+    last_seen = viewed.get(str(product_id))
+    if last_seen:
+        try:
+            last_dt = datetime.fromisoformat(last_seen)
+            if datetime.utcnow() - last_dt < timedelta(minutes=VIEW_COOLDOWN_MINUTES):
+                return False
+        except (ValueError, TypeError):
+            pass  # قيمة تالفة → اعتبرها مشاهدة جديدة
+
+    return True
+
+
+def _mark_viewed(product_id):
+    """يحدّث قاموس المشاهدات في الجلسة مع تنظيف القديم عند التجاوز."""
+    viewed = session.get('viewed_products', {})
+    if not isinstance(viewed, dict):
+        viewed = {}
+
+    viewed[str(product_id)] = datetime.utcnow().isoformat()
+
+    # تنظيف: احتفظ فقط بأحدث MAX_TRACKED_VIEWS عنصر
+    if len(viewed) > MAX_TRACKED_VIEWS:
+        sorted_items = sorted(viewed.items(), key=lambda kv: kv[1], reverse=True)
+        viewed = dict(sorted_items[:MAX_TRACKED_VIEWS])
+
+    session['viewed_products'] = viewed
+    session.modified = True
+
 
 @stores_bp.route('/stores')
 def stores_page():
@@ -72,6 +125,7 @@ def stores_page():
                            q=q,
                            status_filter=status_filter)
 
+
 @stores_bp.route('/store/<int:store_id>/public')
 def store_public(store_id):
     store = db.session.get(Store, store_id)
@@ -120,6 +174,7 @@ def store_public(store_id):
         featured_products=featured_products
     )
 
+
 @stores_bp.route('/product/<int:product_id>')
 def product_public(product_id):
     product = Product.query.options(
@@ -146,11 +201,15 @@ def product_public(product_id):
         if existing_fav:
             is_favorite = True
 
-    try:
-        product.views += 1
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
+    # ===== عداد المشاهدات المحمي من التكرار =====
+    if _should_count_view(product.id):
+        try:
+            ProductRepository.increment_views(product)
+            db.session.commit()
+            _mark_viewed(product.id)
+        except Exception:
+            db.session.rollback()
+    # ==========================================
 
     return render_template(
         'customer/product_public.html',

@@ -21,7 +21,7 @@ class Product(db.Model):
     main_image = db.Column(db.String(300), nullable=True)
     sub_images = db.Column(db.Text, nullable=True)
     video = db.Column(db.String(300), nullable=True)
-    views = db.Column(db.Integer, default=0)
+    views = db.Column(db.Integer, default=0, index=True)
     # S6: إخفاء السعر — يمنع المنتج من ميزة التوصيل ويُعرض "حصراً من المتجر"
     hide_price = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=current_time, index=True)

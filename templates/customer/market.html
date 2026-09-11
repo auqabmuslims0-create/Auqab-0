@@ -33,6 +33,29 @@
         background: rgba(13,110,253,0.2); color: #6ea8fe;
     }
 
+    /* شريط الترتيب */
+    .sort-tabs {
+        display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px;
+        -webkit-overflow-scrolling: touch; scrollbar-width: none;
+    }
+    .sort-tabs::-webkit-scrollbar { display: none; }
+    .sort-tab {
+        flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+        font-size: 0.85rem; font-weight: 600;
+        background: #f1f3f5; color: #495057; text-decoration: none;
+        border: 1px solid transparent; transition: all 0.2s ease;
+        display: inline-flex; align-items: center; gap: 4px;
+    }
+    .sort-tab:hover { background: #e9ecef; color: #212529; }
+    .sort-tab.active {
+        background: var(--primary); color: #fff;
+        border-color: var(--primary);
+        box-shadow: 0 2px 8px rgba(46, 93, 52, 0.25);
+    }
+    body.dark-mode .sort-tab { background: #2d2d2d; color: #ccc; }
+    body.dark-mode .sort-tab:hover { background: #3a3a3a; color: #fff; }
+    body.dark-mode .sort-tab.active { background: var(--accent); color: #000; }
+
     .products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; }
     @media (max-width: 480px) { .products-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
     .product-card-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -85,10 +108,32 @@
             </div>
         </div>
 
-        <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex justify-content-between align-items-center mb-2">
             <h5 class="fw-bold mb-0">المنتجات</h5>
             <span class="text-muted small">{{ pagination.total }} منتج</span>
         </div>
+
+        {# ===== أزرار الترتيب ===== #}
+        <div class="sort-tabs mb-3">
+            <a href="{{ url_for('market.market', sort='views', **filter_params) }}"
+               class="sort-tab {% if current_sort == 'views' %}active{% endif %}">
+                <i class="bi bi-fire"></i> الأكثر مشاهدة
+            </a>
+            <a href="{{ url_for('market.market', sort='newest', **filter_params) }}"
+               class="sort-tab {% if current_sort == 'newest' %}active{% endif %}">
+                <i class="bi bi-stars"></i> الأحدث
+            </a>
+            <a href="{{ url_for('market.market', sort='price_asc', **filter_params) }}"
+               class="sort-tab {% if current_sort == 'price_asc' %}active{% endif %}">
+                <i class="bi bi-arrow-down-circle"></i> الأرخص
+            </a>
+            <a href="{{ url_for('market.market', sort='price_desc', **filter_params) }}"
+               class="sort-tab {% if current_sort == 'price_desc' %}active{% endif %}">
+                <i class="bi bi-arrow-up-circle"></i> الأغلى
+            </a>
+        </div>
+        {# ===== نهاية أزرار الترتيب ===== #}
+
         <div class="products-grid">
             {% for product in products %}
                 {{ macros.render_product_card(product, None, user_reaction_map, show_add_to_cart=True) }}
@@ -99,7 +144,7 @@
             {% endfor %}
         </div>
 
-        {{ macros.render_pagination(pagination, 'market.market', {'q': q, 'category_id': selected_category, 'store_id': selected_store, 'min_price': min_price, 'max_price': max_price}) }}
+        {{ macros.render_pagination(pagination, 'market.market', {'sort': current_sort, **filter_params}) }}
     </div>
 
     <div id="offlineContent">
@@ -123,6 +168,7 @@
     <div class="offcanvas-body">
         <form method="GET" action="{{ url_for('market.market') }}">
             <input type="hidden" name="q" value="{{ q or '' }}">
+            <input type="hidden" name="sort" value="{{ current_sort }}">
             <div class="mb-3">
                 <label class="form-label">التصنيف</label>
                 <select name="category_id" class="form-select">
@@ -228,7 +274,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 cache: 'no-store'
             });
             const data = await res.json();
-            console.log('Active shoppers update:', data); // للتشخيص
             if (typeof data.active_shoppers_count !== 'undefined') {
                 const badge = document.getElementById('activeShoppersBadge');
                 if (badge) {
@@ -240,8 +285,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     updateActiveShoppers();
-    setInterval(updateActiveShoppers, 5000); // كل 5 ثوانٍ
-    // ====== نهاية التحديث الدوري ======
+    setInterval(updateActiveShoppers, 5000);
 
     if (navigator.onLine && typeof OfflineDB !== 'undefined') {
         const productsData = [

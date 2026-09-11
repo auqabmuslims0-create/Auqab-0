@@ -1,8 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, make_response
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import selectinload
 from datetime import timedelta
 from database import db
 from models import User, Product, Store, Category, ProductReaction, UserActivity
+from shared.repositories.product_repository import ProductRepository, DEFAULT_SORT
 from shared.utils import is_store_open
 from shared.time_utils import current_time
 
@@ -112,6 +113,22 @@ def search_suggestions():
     })
 
 
+def _build_filter_params(q, category_id, store_id, min_price, max_price):
+    """يبني dict نظيف بالمعاملات غير الفارغة (لتمريرها للـ pagination وأزرار الترتيب)."""
+    params = {}
+    if q:
+        params['q'] = q
+    if category_id:
+        params['category_id'] = category_id
+    if store_id:
+        params['store_id'] = store_id
+    if min_price is not None:
+        params['min_price'] = min_price
+    if max_price is not None:
+        params['max_price'] = max_price
+    return params
+
+
 @market_bp.route('/market')
 def market():
     page = request.args.get('page', 1, type=int)
@@ -121,6 +138,11 @@ def market():
     min_price = request.args.get('min_price', type=float)
     max_price = request.args.get('max_price', type=float)
     q = request.args.get('q', '').strip()
+
+    # الترتيب: افتراضياً "الأكثر مشاهدة"
+    sort = request.args.get('sort', DEFAULT_SORT)
+    if not ProductRepository.is_valid_sort(sort):
+        sort = DEFAULT_SORT
 
     query = Product.query.join(Store).filter(
         Store.subscription_status == 'active'
@@ -136,12 +158,14 @@ def market():
     if q:
         query = query.filter(Product.name.ilike(f'%{q}%'))
 
+    # تطبيق الترتيب المطلوب بأمان
+    query = ProductRepository.apply_sort(query, sort)
+
     products_pagination = query \
         .options(
             selectinload(Product.store),
             selectinload(Product.category)
         ) \
-        .order_by(Product.created_at.desc()) \
         .paginate(page=page, per_page=per_page, error_out=False)
 
     stores = Store.query.filter(Store.subscription_status == 'active').limit(50).all()
@@ -162,6 +186,8 @@ def market():
 
     active_shoppers_count = _get_active_shoppers_count()
 
+    filter_params = _build_filter_params(q, category_id, store_id, min_price, max_price)
+
     return render_template('customer/market.html',
                            open_stores=open_stores,
                            products=products_pagination.items,
@@ -174,4 +200,6 @@ def market():
                            min_price=min_price,
                            max_price=max_price,
                            q=q,
+                           current_sort=sort,
+                           filter_params=filter_params,
                            active_shoppers_count=active_shoppers_count)

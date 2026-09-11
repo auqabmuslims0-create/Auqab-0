@@ -34,3 +34,5 @@ static/uploads/
 # متغيرات بيئة محلية (تبقى .env.example)
 .env.local
 .env.*.local
+gunicorn.pid
+gunicorn.log
