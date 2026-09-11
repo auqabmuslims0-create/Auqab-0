@@ -5,126 +5,146 @@
 
 {% block head %}
 <style>
-    .checkout-container {
-        max-width: 1000px;
-    }
+    .checkout-container { max-width: 1000px; }
     .checkout-item-image {
-        width: 60px;
-        height: 60px;
-        object-fit: cover;
-        border-radius: 50%;
+        width: 60px; height: 60px; object-fit: cover; border-radius: 50%;
         border: 2px solid #e0e0e0;
     }
-    body.dark-mode .checkout-item-image {
-        border-color: #444;
-    }
+    body.dark-mode .checkout-item-image { border-color: #444; }
     .quantity-control {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background: #f8f9fa;
-        border-radius: 25px;
-        padding: 5px 12px;
+        display: flex; align-items: center; gap: 10px;
+        background: #f8f9fa; border-radius: 25px; padding: 5px 12px;
         width: fit-content;
     }
-    body.dark-mode .quantity-control {
-        background: #2d2d2d;
-    }
+    body.dark-mode .quantity-control { background: #2d2d2d; }
     .quantity-btn {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        border: 1px solid #ced4da;
-        background: #fff;
-        color: var(--primary);
-        font-size: 1.2rem;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: background 0.2s, color 0.2s, border-color 0.2s;
-        padding: 0;
-        line-height: 1;
+        width: 32px; height: 32px; border-radius: 50%;
+        border: 1px solid #ced4da; background: #fff; color: var(--primary);
+        font-size: 1.2rem; display: flex; align-items: center; justify-content: center;
+        cursor: pointer; transition: background 0.2s, color 0.2s, border-color 0.2s;
+        padding: 0; line-height: 1;
     }
     .quantity-btn:hover:not(:disabled) {
-        background: var(--primary);
-        color: #fff;
-        border-color: var(--primary);
+        background: var(--primary); color: #fff; border-color: var(--primary);
     }
-    .quantity-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
+    .quantity-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     body.dark-mode .quantity-btn {
-        background: #1e1e1e;
-        border-color: #555;
-        color: #ccc;
+        background: #1e1e1e; border-color: #555; color: #ccc;
     }
     body.dark-mode .quantity-btn:hover:not(:disabled) {
-        background: var(--accent);
-        color: #000;
-        border-color: var(--accent);
+        background: var(--accent); color: #000; border-color: var(--accent);
     }
     .quantity-value {
-        font-weight: 700;
-        font-size: 1.1rem;
-        min-width: 30px;
-        text-align: center;
+        font-weight: 700; font-size: 1.1rem; min-width: 30px; text-align: center;
     }
-    .item-subtotal {
-        font-weight: 700;
-        color: var(--primary);
-        white-space: nowrap;
-    }
-    body.dark-mode .item-subtotal {
-        color: var(--accent);
-    }
+    .item-subtotal { font-weight: 700; color: var(--primary); white-space: nowrap; }
+    body.dark-mode .item-subtotal { color: var(--accent); }
     .quantity-card {
-        border: 1px solid #e0e0e0;
-        border-radius: 15px;
-        padding: 10px;
-        background: #fff;
-        transition: box-shadow 0.2s;
+        border: 1px solid #e0e0e0; border-radius: 15px; padding: 10px;
+        background: #fff; transition: box-shadow 0.2s;
     }
-    .quantity-card:hover {
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
-    body.dark-mode .quantity-card {
-        background: #1e1e1e;
-        border-color: #333;
-    }
+    .quantity-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    body.dark-mode .quantity-card { background: #1e1e1e; border-color: #333; }
     .map-container {
-        height: 300px;
-        border-radius: 15px;
-        overflow: hidden;
+        height: 300px; border-radius: 15px; overflow: hidden;
         box-shadow: var(--shadow-sm);
     }
-    .modal-content {
-        border-radius: 20px;
-        border: none;
-    }
-    body.dark-mode .modal-content {
-        background: #1e1e1e;
-        color: #fff;
-    }
+    .modal-content { border-radius: 20px; border: none; }
+    body.dark-mode .modal-content { background: #1e1e1e; color: #fff; }
     .store-marker-icon {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        background: #fff;
+        width: 36px; height: 36px; border-radius: 50%; background: #fff;
         border: 2px solid var(--primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-        color: var(--primary);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 18px; color: var(--primary);
         box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
     body.dark-mode .store-marker-icon {
-        background: #1e1e1e;
-        border-color: var(--accent);
+        background: #1e1e1e; border-color: var(--accent); color: var(--accent);
+    }
+    /* U7: علامة المستخدم على الخريطة (صورة دائرية كعلامة المتجر) */
+    .user-marker-icon {
+        width: 44px; height: 44px; border-radius: 50%;
+        background: #fff; border: 3px solid var(--primary);
+        overflow: hidden; display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.35);
+        color: var(--primary); font-size: 1.2rem;
+        animation: userMarkerPulse 1.8s ease-in-out infinite;
+    }
+    .user-marker-icon img {
+        width: 100%; height: 100%; object-fit: cover; border-radius: 50%;
+    }
+    body.dark-mode .user-marker-icon {
+        border-color: var(--accent); background: #1e1e1e;
         color: var(--accent);
     }
+    @keyframes userMarkerPulse {
+        0%, 100% { box-shadow: 0 3px 10px rgba(0,0,0,0.35), 0 0 0 0 rgba(46,93,52,0.4); }
+        50% { box-shadow: 0 3px 10px rgba(0,0,0,0.35), 0 0 0 8px rgba(46,93,52,0); }
+    }
+    body.dark-mode .user-marker-icon {
+        animation: userMarkerPulseDark 1.8s ease-in-out infinite;
+    }
+    @keyframes userMarkerPulseDark {
+        0%, 100% { box-shadow: 0 3px 10px rgba(0,0,0,0.35), 0 0 0 0 rgba(201,162,39,0.4); }
+        50% { box-shadow: 0 3px 10px rgba(0,0,0,0.35), 0 0 0 8px rgba(201,162,39,0); }
+    }
+    .location-status {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 0.9rem; padding: 10px 14px; border-radius: 12px;
+        margin-top: 10px;
+    }
+    .location-status.pending {
+        background: #fff3cd; color: #664d03; border: 1px solid #ffe69c;
+    }
+    .location-status.success {
+        background: #d1e7dd; color: #0f5132; border: 1px solid #a3cfbb;
+    }
+    .location-status.error {
+        background: #f8d7da; color: #842029; border: 1px solid #f1aeb5;
+    }
+    body.dark-mode .location-status.pending { background: #3a2f1a; color: #ffd666; border-color: #5c4a2a; }
+    body.dark-mode .location-status.success { background: #102e1a; color: #6edfa0; border-color: #1e5c36; }
+    body.dark-mode .location-status.error { background: #3e1a1d; color: #ff8a95; border-color: #6b2a30; }
+    /* U5: تحذير صارم */
+    .strict-warning-card {
+        border: 2px solid #dc3545; border-radius: 15px;
+        background: #fff5f5; padding: 16px;
+        margin-top: 15px;
+    }
+    body.dark-mode .strict-warning-card { background: #3e1a1d; border-color: #842029; }
+    .strict-warning-title {
+        color: #842029; font-weight: 700; font-size: 1rem;
+        display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+    }
+    body.dark-mode .strict-warning-title { color: #ff8a95; }
+    .strict-warning-text {
+        color: #58151c; font-size: 0.85rem; line-height: 1.6; margin-bottom: 12px;
+    }
+    body.dark-mode .strict-warning-text { color: #ffc9ce; }
+    .strict-commit-check {
+        display: flex; align-items: flex-start; gap: 10px;
+        padding: 12px; border-radius: 10px;
+        background: rgba(220,53,69,0.08);
+        border: 1px solid rgba(220,53,69,0.2);
+    }
+    body.dark-mode .strict-commit-check {
+        background: rgba(255,138,149,0.1);
+        border-color: rgba(255,138,149,0.3);
+    }
+    .strict-commit-check input[type="checkbox"] {
+        width: 20px; height: 20px; margin-top: 2px; flex-shrink: 0;
+        accent-color: #dc3545; cursor: pointer;
+    }
+    .strict-commit-check label {
+        cursor: pointer; font-weight: 600; color: #842029; font-size: 0.9rem;
+        line-height: 1.5;
+    }
+    body.dark-mode .strict-commit-check label { color: #ff8a95; }
+    .btn-confirm:disabled {
+        opacity: 0.5; cursor: not-allowed !important;
+    }
+    .delivery-fee-display { color: #dc3545 !important; font-weight: 700; }
+    body.dark-mode .delivery-fee-display { color: #ff8a95 !important; }
 </style>
 {% endblock %}
 
@@ -132,19 +152,20 @@
 <div class="container checkout-container">
     <h4 class="fw-bold mb-4"><i class="bi bi-credit-card"></i> إتمام الطلب</h4>
 
-    <form method="POST" action="{{ url_for('cart.place_order', store_id=store.id) }}" id="checkoutForm">
+    <form method="POST" action="{{ url_for('cart.place_order', store_id=store.id) }}" id="checkoutForm" novalidate>
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <div class="row g-4">
             <div class="col-md-8">
                 <div class="card mb-4">
                     <div class="card-header">
-                        <h5 class="mb-0">{{ store.name }}</h5>
+                        <h5 class="mb-0"><i class="bi bi-shop"></i> {{ store.name }}</h5>
                     </div>
                     <div class="card-body">
                         <h6 class="fw-bold mb-3">المنتجات والكمية</h6>
                         <div class="d-flex flex-column gap-3">
                             {% for item in items %}
-                            <div class="quantity-card d-flex align-items-center flex-wrap gap-2">
+                            {% set effective = item.product.effective_price %}
+                            <div class="quantity-card d-flex align-items-center flex-wrap gap-2" data-product-card="{{ item.product.id }}">
                                 {% if item.product.images %}
                                     {% set img = item.product.images.split(',')[0].strip() %}
                                     <img src="{{ img | get_image_url }}" class="checkout-item-image" alt="{{ item.product.name }}">
@@ -153,16 +174,33 @@
                                 {% endif %}
                                 <div class="flex-grow-1">
                                     <h6 class="mb-1">{{ item.product.name }}</h6>
-                                    <small class="text-muted">السعر: {{ item.product.price|format_price }} ل.س</small>
+                                    <small class="text-muted">
+                                        السعر:
+                                        {% if item.product.is_offer and item.product.original_price and item.product.original_price > effective %}
+                                            <span class="text-danger fw-bold">{{ effective|format_price }} ل.س</span>
+                                            <span class="text-decoration-line-through ms-1">{{ item.product.original_price|format_price }}</span>
+                                        {% else %}
+                                            {{ effective|format_price }} ل.س
+                                        {% endif %}
+                                    </small>
                                 </div>
                                 <div class="d-flex flex-column align-items-end gap-2">
                                     <div class="quantity-control">
-                                        <button type="button" class="quantity-btn" data-product-id="{{ item.product.id }}" data-action="decrease" {% if item.quantity <= 1 %}disabled{% endif %}>-</button>
+                                        <button type="button" class="quantity-btn"
+                                                data-product-id="{{ item.product.id }}"
+                                                data-action="decrease"
+                                                data-stock="{{ item.product.stock_quantity }}"
+                                                {% if item.quantity <= 1 %}disabled{% endif %}>−</button>
                                         <span class="quantity-value" data-product-id="{{ item.product.id }}">{{ item.quantity }}</span>
-                                        <button type="button" class="quantity-btn" data-product-id="{{ item.product.id }}" data-action="increase" {% if item.quantity >= item.product.stock_quantity %}disabled{% endif %}>+</button>
+                                        <button type="button" class="quantity-btn"
+                                                data-product-id="{{ item.product.id }}"
+                                                data-action="increase"
+                                                data-stock="{{ item.product.stock_quantity }}"
+                                                {% if item.quantity >= item.product.stock_quantity %}disabled{% endif %}>+</button>
                                     </div>
-                                    <span class="item-subtotal" data-product-id="{{ item.product.id }}">
-                                        {{ (item.product.price * item.quantity)|format_price }} ل.س
+                                    <span class="item-subtotal" data-product-id="{{ item.product.id }}"
+                                          data-unit-price="{{ effective }}">
+                                        {{ (effective * item.quantity)|format_price }} ل.س
                                     </span>
                                 </div>
                             </div>
@@ -171,11 +209,23 @@
 
                         {% if store.has_delivery %}
                         <div class="mt-4">
-                            <label class="form-label fw-bold">موقع التوصيل</label>
+                            <label class="form-label fw-bold">
+                                <i class="bi bi-geo-alt-fill"></i> موقع التوصيل
+                            </label>
                             <div class="map-container" id="checkoutMap"></div>
+                            <div id="locationStatus" class="location-status pending">
+                                <i class="bi bi-hourglass-split"></i>
+                                <span>جارٍ تحديد موقعك تلقائياً...</span>
+                            </div>
+                            <p class="text-muted small mt-2 mb-2">
+                                <i class="bi bi-info-circle"></i>
+                                يتم تحديد موقعك تلقائياً لأغراض التوصيل. <strong>لا يمكن التعديل اليدوي.</strong>
+                            </p>
                             <div class="address-hint mt-3">
-                                <label class="form-label fw-bold">تلميح عن موقعك الحالي</label>
-                                <input type="text" name="delivery_address" class="form-control" placeholder="اضف تلميحا للدلالة على موقعك" required>
+                                <label class="form-label fw-bold">تلميح للدلالة على موقعك (اختياري)</label>
+                                <input type="text" name="delivery_address" id="deliveryAddressInput"
+                                       class="form-control"
+                                       placeholder="مثال: بجانب مسجد الحسينية، الطابق الثاني">
                             </div>
                             <input type="hidden" name="latitude" id="latInput">
                             <input type="hidden" name="longitude" id="lngInput">
@@ -188,10 +238,11 @@
                     </div>
                 </div>
             </div>
+
             <div class="col-md-4">
                 <div class="card">
                     <div class="card-header">
-                        <h5 class="mb-0">ملخص الطلب</h5>
+                        <h5 class="mb-0"><i class="bi bi-receipt"></i> ملخص الطلب</h5>
                     </div>
                     <div class="card-body">
                         <div class="d-flex justify-content-between mb-2">
@@ -201,15 +252,38 @@
                         {% if store.has_delivery %}
                         <div class="d-flex justify-content-between mb-2">
                             <span>رسوم التوصيل</span>
-                            <span id="deliveryFee">{{ delivery_fee|format_price }} ل.س</span>
+                            <span class="delivery-fee-display" id="deliveryFee">{{ delivery_fee|format_price }} ل.س</span>
                         </div>
                         {% endif %}
                         <hr>
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex justify-content-between mb-3">
                             <strong>الإجمالي</strong>
                             <strong class="text-success" id="grandTotal">{{ grand_total|format_price }} ل.س</strong>
                         </div>
-                        <button type="button" class="btn btn-custom btn-lg w-100 mt-4" id="confirmOrderBtn">تأكيد الطلب</button>
+
+                        <!-- U5: تحذير صارم + تعهد إلزامي -->
+                        <div class="strict-warning-card">
+                            <div class="strict-warning-title">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                <span>تنبيه هام قبل التأكيد</span>
+                            </div>
+                            <div class="strict-warning-text">
+                                عند تأكيد الطلب، سيقوم المتجر بتجهيز المنتج وتحضيره خصيصاً لك،
+                                وسيتم إشعار المندوب في حال التوصيل.
+                                <strong>الطلب الوهمي أو المتكرر بدون نية الاستلام سيعرضك للمسائلة القانونية.</strong>
+                            </div>
+                            <div class="strict-commit-check">
+                                <input type="checkbox" id="strictCommit" name="commit_confirm">
+                                <label for="strictCommit">
+                                    أتعهد بأنني أريد استلام هذا المنتج فعلاً، وأتحمل مسؤولية الطلب.
+                                </label>
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn btn-custom btn-lg w-100 mt-4 btn-confirm"
+                                id="confirmOrderBtn" disabled>
+                            <i class="bi bi-check-circle"></i> تأكيد الطلب
+                        </button>
                     </div>
                 </div>
             </div>
@@ -217,41 +291,84 @@
     </form>
 </div>
 
-{% if store.has_delivery %}
-<div class="modal fade" id="deliveryFeeModal" tabindex="-1" aria-hidden="true">
+<!-- U8: مودال تأكيد موحّد -->
+<div class="modal fade" id="finalConfirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">تأكيد الطلب</h5>
+            <div class="modal-header border-0">
+                <h5 class="modal-title d-flex align-items-center gap-2">
+                    <i class="bi bi-patch-question-fill text-primary"></i>
+                    <span>تأكيد نهائي</span>
+                </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
             </div>
             <div class="modal-body">
-                <p>سيتم تطبيق رسوم توصيل قدرها <strong>{{ delivery_fee|format_price }} ل.س</strong> على هذا الطلب.</p>
-                <p>هل تريد المتابعة؟</p>
+                {% if store.has_delivery %}
+                <p class="mb-2">سيتم تطبيق رسوم توصيل قدرها <strong class="delivery-fee-display">{{ delivery_fee|format_price }} ل.س</strong>.</p>
+                {% endif %}
+                <p class="mb-0 text-muted small">
+                    بإتمامك الطلب، يبدأ المتجر بتحضير منتجاتك فوراً. لا يمكن التراجع بعد التأكيد.
+                </p>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
-                <button type="button" class="btn btn-custom" id="agreeBtn">موافق</button>
+            <div class="modal-footer border-0 d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> إلغاء
+                </button>
+                <button type="button" class="btn btn-custom flex-fill" id="agreeBtn">
+                    <i class="bi bi-check-circle-fill"></i> نعم، أؤكد الطلب
+                </button>
             </div>
         </div>
     </div>
 </div>
-{% endif %}
 {% endblock %}
 
 {% block scripts %}
 {% if store.has_delivery %}
-<script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
 <link href="{{ url_for('static', filename='vendor/leaflet/leaflet.css') }}" rel="stylesheet">
+<script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
 {% endif %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const csrfToken = "{{ csrf_token }}";
-    const deliveryFee = parseFloat("{{ delivery_fee }}");
+    const deliveryFee = parseFloat("{{ delivery_fee }}") || 0;
     const hasDelivery = {{ 'true' if store.has_delivery else 'false' }};
+
+    // ===== U4: تحديث حالة أزرار الكمية =====
+    function updateQuantityButtons(productId, qty, maxQty) {
+        const minusBtn = document.querySelector(`.quantity-btn[data-product-id="${productId}"][data-action="decrease"]`);
+        const plusBtn = document.querySelector(`.quantity-btn[data-product-id="${productId}"][data-action="increase"]`);
+        if (minusBtn) minusBtn.disabled = (qty <= 1);
+        if (plusBtn) plusBtn.disabled = (qty >= maxQty);
+    }
+
+    function updateTotals() {
+        let newTotal = 0;
+        document.querySelectorAll('.item-subtotal').forEach(span => {
+            const unitPrice = parseFloat(span.dataset.unitPrice) || 0;
+            const qtySpan = document.querySelector(`.quantity-value[data-product-id="${span.dataset.productId}"]`);
+            const qty = qtySpan ? parseInt(qtySpan.textContent) : 0;
+            newTotal += unitPrice * qty;
+        });
+        const totalEl = document.getElementById('totalPrice');
+        const grandEl = document.getElementById('grandTotal');
+        if (totalEl) totalEl.textContent = `${newTotal.toLocaleString('en-US')} ل.س`;
+        const grand = hasDelivery ? newTotal + deliveryFee : newTotal;
+        if (grandEl) grandEl.textContent = `${grand.toLocaleString('en-US')} ل.س`;
+    }
 
     async function updateQuantity(productId, newQty) {
         if (newQty < 1) return;
+        const qtySpan = document.querySelector(`.quantity-value[data-product-id="${productId}"]`);
+        const subtotalSpan = document.querySelector(`.item-subtotal[data-product-id="${productId}"]`);
+        const currentQty = qtySpan ? parseInt(qtySpan.textContent) : 1;
+        if (currentQty === newQty) return;
+
+        // تعطيل مؤقت لمنع النقر السريع المزدوج
+        const card = document.querySelector(`.quantity-card[data-product-card="${productId}"]`);
+        const allBtns = card ? card.querySelectorAll('.quantity-btn') : [];
+        allBtns.forEach(b => b.disabled = true);
+
         try {
             const formData = new FormData();
             formData.append('_csrf_token', csrfToken);
@@ -266,56 +383,94 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             const data = await response.json();
             if (data.status === 'success') {
-                const qtySpan = document.querySelector(`.quantity-value[data-product-id="${productId}"]`);
-                if (qtySpan) qtySpan.textContent = newQty;
-                const subtotalSpan = document.querySelector(`.item-subtotal[data-product-id="${productId}"]`);
-                if (subtotalSpan && data.item_total) {
-                    subtotalSpan.textContent = `${Number(data.item_total).toLocaleString('en-US')} ل.س`;
+                const actualQty = data.quantity || newQty;
+                if (qtySpan) qtySpan.textContent = actualQty;
+                if (subtotalSpan) {
+                    const unitPrice = parseFloat(subtotalSpan.dataset.unitPrice) || 0;
+                    subtotalSpan.textContent = `${(unitPrice * actualQty).toLocaleString('en-US')} ل.س`;
                 }
+                const stockAttr = card ? card.querySelector('.quantity-btn')?.dataset.stock : 999;
+                const maxQty = parseInt(stockAttr) || 999;
+                updateQuantityButtons(productId, actualQty, maxQty);
                 updateTotals();
-                if (typeof updateCartBadges === 'function') {
-                    updateCartBadges(data.cart_count);
+
+                if (typeof LocalStore !== 'undefined') {
+                    LocalStore.updateCart(parseInt(productId), actualQty);
+                    LocalStore.updateCartBadges();
                 }
             } else {
                 showToast(data.message || 'تعذر التحديث', 'error');
+                updateQuantityButtons(productId, currentQty, 999);
             }
         } catch (err) {
-            console.error(err);
-            showToast('حدث خطأ', 'error');
+            console.error('Quantity update error:', err);
+            showToast('حدث خطأ أثناء تحديث الكمية', 'error');
+            if (qtySpan) qtySpan.textContent = currentQty;
+            updateQuantityButtons(productId, currentQty, 999);
         }
     }
 
-    function updateTotals() {
-        let newTotal = 0;
-        document.querySelectorAll('.item-subtotal').forEach(span => {
-            const text = span.textContent.replace(/[^\d.-]/g, '');
-            const value = parseFloat(text);
-            if (!isNaN(value)) newTotal += value;
-        });
-        document.getElementById('totalPrice').textContent = `${newTotal.toLocaleString('en-US')} ل.س`;
-        const grand = hasDelivery ? newTotal + deliveryFee : newTotal;
-        document.getElementById('grandTotal').textContent = `${grand.toLocaleString('en-US')} ل.س`;
-    }
-
+    // ربط أزرار الكمية
     document.querySelectorAll('.quantity-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const productId = this.dataset.productId;
             const action = this.dataset.action;
             const qtySpan = document.querySelector(`.quantity-value[data-product-id="${productId}"]`);
-            let currentQty = parseInt(qtySpan.textContent);
+            if (!qtySpan) return;
+
+            const currentQty = parseInt(qtySpan.textContent) || 1;
+            const stock = parseInt(this.dataset.stock) || 999;
             let newQty = action === 'increase' ? currentQty + 1 : currentQty - 1;
-            if (newQty >= 1) {
-                updateQuantity(productId, newQty);
-            }
+
+            if (newQty < 1 || newQty > stock) return;
+            updateQuantity(productId, newQty);
         });
     });
 
+    // ===== U5: تفعيل زر التأكيد عند إقرار التعهد =====
+    const commitCheck = document.getElementById('strictCommit');
+    const confirmBtn = document.getElementById('confirmOrderBtn');
+    if (commitCheck && confirmBtn) {
+        commitCheck.addEventListener('change', function() {
+            confirmBtn.disabled = !this.checked;
+        });
+    }
+
+    // ===== U3 + U7: الخريطة (تلقائي فقط + صورة المستخدم) =====
+    let userLat = null;
+    let userLng = null;
+    let locationReady = false;
+
+    function setLocationStatus(type, message, icon) {
+        const el = document.getElementById('locationStatus');
+        if (!el) return;
+        el.className = 'location-status ' + type;
+        el.innerHTML = `<i class="bi ${icon}"></i> <span>${message}</span>`;
+    }
+
+    function updateConfirmAvailability() {
+        if (!confirmBtn) return;
+        const committed = commitCheck ? commitCheck.checked : false;
+        const locationOK = !hasDelivery || locationReady;
+        confirmBtn.disabled = !(committed && locationOK);
+    }
+
     {% if store.has_delivery %}
-    const map = L.map('checkoutMap').setView([35.0, 36.5], 13);
+    const userAvatarUrl = "{{ (current_user.avatar | get_image_url) if current_user and current_user.avatar else '' }}";
+    const map = L.map('checkoutMap', {
+        zoomControl: true,
+        attributionControl: true,
+        dragging: true,
+        touchZoom: true,
+        scrollWheelZoom: false
+    }).setView([33.4183, 36.3494], 13);
+
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
     }).addTo(map);
 
+    // علامات المتاجر
     {% for s in all_stores %}
         {% if s.latitude and s.longitude %}
         L.marker([{{ s.latitude }}, {{ s.longitude }}], {
@@ -330,70 +485,117 @@ document.addEventListener('DOMContentLoaded', function() {
         {% endif %}
     {% endfor %}
 
-    let marker = null;
-
-    function setMarker(lat, lng) {
-        document.getElementById('latInput').value = lat;
-        document.getElementById('lngInput').value = lng;
-        if (marker) {
-            marker.setLatLng([lat, lng]);
-        } else {
-            marker = L.marker([lat, lng]).addTo(map);
-        }
-        map.setView([lat, lng], 15);
-    }
-
-    map.on('click', function(e) {
-        setMarker(e.latlng.lat, e.latlng.lng);
+    // U7: علامة المستخدم بصورة دائرية
+    const userIconHtml = userAvatarUrl
+        ? `<div class="user-marker-icon"><img src="${userAvatarUrl}" alt="موقعك"></div>`
+        : `<div class="user-marker-icon"><i class="bi bi-person-fill"></i></div>`;
+    const userIcon = L.divIcon({
+        className: '',
+        html: userIconHtml,
+        iconSize: [44, 44],
+        iconAnchor: [22, 22],
+        popupAnchor: [0, -22]
     });
 
-    if (navigator.geolocation) {
+    let userMarker = null;
+
+    function setUserMarker(lat, lng, center = true) {
+        document.getElementById('latInput').value = lat;
+        document.getElementById('lngInput').value = lng;
+        if (userMarker) {
+            userMarker.setLatLng([lat, lng]);
+        } else {
+            userMarker = L.marker([lat, lng], {
+                icon: userIcon,
+                interactive: false,
+                keyboard: false
+            }).addTo(map);
+        }
+        if (center) {
+            map.setView([lat, lng], 16);
+        }
+    }
+
+    // U3: منع التحديد اليدوي على الخريطة
+    // (تم إزالة map.on('click') — لن يعمل أي نقر لتغيير الموقع)
+
+    function requestLocation() {
+        if (!navigator.geolocation) {
+            setLocationStatus('error',
+                'متصفحك لا يدعم تحديد الموقع. لا يمكن إتمام الطلب مع خدمة التوصيل.',
+                'bi-x-octagon-fill');
+            locationReady = false;
+            updateConfirmAvailability();
+            return;
+        }
+
+        setLocationStatus('pending', 'جارٍ تحديد موقعك تلقائياً...', 'bi-hourglass-split');
+
         navigator.geolocation.getCurrentPosition(
             (pos) => {
-                setMarker(pos.coords.latitude, pos.coords.longitude);
+                userLat = pos.coords.latitude;
+                userLng = pos.coords.longitude;
+                setUserMarker(userLat, userLng, true);
+                locationReady = true;
+                const accuracy = Math.round(pos.coords.accuracy || 0);
+                setLocationStatus('success',
+                    `تم تحديد موقعك بدقة ${accuracy} م. سيتم التوصيل إلى هذا الموقع.`,
+                    'bi-check-circle-fill');
+                updateConfirmAvailability();
             },
             (err) => {
-                {% if store.latitude and store.longitude %}
-                setMarker({{ store.latitude }}, {{ store.longitude }});
-                {% endif %}
-                showToast('تعذر تحديد موقعك تلقائيًا، يمكنك النقر على الخريطة لتحديد الموقع', 'warning');
-            }
+                locationReady = false;
+                let msg = 'تعذر تحديد موقعك.';
+                if (err.code === 1) msg = 'تم رفض إذن الموقع. لتأكيد الطلب، يجب السماح بالوصول لموقعك من إعدادات المتصفح.';
+                else if (err.code === 2) msg = 'الموقع غير متاح حالياً. تحقق من تشغيل GPS/الإنترنت.';
+                else if (err.code === 3) msg = 'انتهت مهلة تحديد الموقع. حاول مرة أخرى.';
+                setLocationStatus('error', msg, 'bi-exclamation-octagon-fill');
+                updateConfirmAvailability();
+                showToast(msg, 'error');
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
         );
-    } else {
-        {% if store.latitude and store.longitude %}
-        setMarker({{ store.latitude }}, {{ store.longitude }});
-        {% endif %}
-        showToast('متصفحك لا يدعم تحديد الموقع', 'error');
+    }
+
+    // نطلب الموقع تلقائياً عند التحميل (H3)
+    requestLocation();
+    {% else %}
+    // بدون توصيل: زر التأكيد يعتمد على التعهد فقط
+    if (commitCheck && confirmBtn) {
+        commitCheck.addEventListener('change', function() {
+            confirmBtn.disabled = !this.checked;
+        });
     }
     {% endif %}
 
-    const confirmBtn = document.getElementById('confirmOrderBtn');
+    // ===== U5: مودال التأكيد النهائي =====
+    const finalModalEl = document.getElementById('finalConfirmModal');
+    const finalModal = finalModalEl ? new bootstrap.Modal(finalModalEl) : null;
     const agreeBtn = document.getElementById('agreeBtn');
-    const modal = document.getElementById('deliveryFeeModal') ? new bootstrap.Modal(document.getElementById('deliveryFeeModal')) : null;
 
-    confirmBtn.addEventListener('click', function() {
-        const form = document.getElementById('checkoutForm');
-        if (form.checkValidity()) {
-            if (hasDelivery && modal) {
-                modal.show();
-            } else {
-                // بدون توصيل - إرسال مباشر
-                if (navigator.onLine) {
-                    form.submit();
-                } else {
-                    saveOrderOffline();
-                }
+    if (confirmBtn && finalModal) {
+        confirmBtn.addEventListener('click', function() {
+            if (hasDelivery && !locationReady) {
+                showToast('يجب تحديد موقعك قبل تأكيد الطلب', 'error');
+                return;
             }
-        } else {
-            form.reportValidity();
-        }
-    });
+            if (commitCheck && !commitCheck.checked) {
+                showToast('يرجى قراءة التعهد والموافقة عليه', 'error');
+                return;
+            }
+            finalModal.show();
+        });
+    }
 
-    if (agreeBtn && modal) {
+    if (agreeBtn) {
         agreeBtn.addEventListener('click', function() {
-            modal.hide();
+            finalModal.hide();
+            const form = document.getElementById('checkoutForm');
             if (navigator.onLine) {
-                document.getElementById('checkoutForm').submit();
+                // تعطيل الزر لمنع النقر المزدوج
+                agreeBtn.disabled = true;
+                agreeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>جارٍ الإرسال...';
+                form.submit();
             } else {
                 saveOrderOffline();
             }
@@ -404,13 +606,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const storeId = {{ store.id }};
         const items = [];
         document.querySelectorAll('.quantity-card').forEach(card => {
-            const productId = card.querySelector('.quantity-value').dataset.productId;
-            const quantity = parseInt(card.querySelector('.quantity-value').textContent);
+            const qtyEl = card.querySelector('.quantity-value');
+            if (!qtyEl) return;
+            const productId = qtyEl.dataset.productId;
+            const quantity = parseInt(qtyEl.textContent);
             if (productId && quantity > 0) {
                 items.push({ product_id: parseInt(productId), quantity: quantity });
             }
         });
-        const deliveryAddress = document.querySelector('input[name="delivery_address"]') ? document.querySelector('input[name="delivery_address"]').value.trim() : '';
+        const deliveryAddressEl = document.getElementById('deliveryAddressInput');
+        const deliveryAddress = deliveryAddressEl ? deliveryAddressEl.value.trim() : '';
         const latitude = document.getElementById('latInput') ? parseFloat(document.getElementById('latInput').value) : null;
         const longitude = document.getElementById('lngInput') ? parseFloat(document.getElementById('lngInput').value) : null;
 
@@ -430,9 +635,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     LocalStore.setCart({});
                     LocalStore.updateCartBadges();
                 }
-                setTimeout(() => {
-                    window.location.href = '/cart';
-                }, 1500);
+                setTimeout(() => { window.location.href = '/cart'; }, 1500);
             }).catch(err => {
                 console.error(err);
                 showToast('حدث خطأ في حفظ الطلب محلياً', 'error');

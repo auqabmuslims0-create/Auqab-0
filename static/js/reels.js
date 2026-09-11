@@ -1,84 +1,128 @@
 // ========== منطق الفيديو الموحد لجميع الصفحات ==========
-document.addEventListener('DOMContentLoaded', function() {
-    const videos = document.querySelectorAll('[data-reel-video], [data-store-reel-video], [data-owner-reel-video], [data-product-reel-video]');
+(function() {
+    'use strict';
+
+    // مجموعة لتتبع الفيديوهات التي تم تسجيل مشاهدتها في هذه الجلسة (لمنع التكرار)
+    const viewedReels = new Set();
 
     function getVideoContainer(video) {
-        // نبحث عن أقرب حاوية تحتوي على video (قد يكون reel-slide أو product-reel-slide أو أي شيء)
         return video.closest('.reel-slide, .product-reel-slide') || video.parentElement;
     }
 
+    function getOverlay(container, attr) {
+        return container ? container.querySelector(`[${attr}]`) : null;
+    }
+
     function pauseAllVideos(exceptVideo) {
-        videos.forEach(video => {
-            if (video !== exceptVideo) {
+        document.querySelectorAll('video').forEach(video => {
+            if (video !== exceptVideo && !video.paused) {
                 video.pause();
                 const container = getVideoContainer(video);
-                const overlay = container?.querySelector('[data-play-overlay]');
-                if (overlay) overlay.classList.remove('hidden');
-                const playBtn = container?.querySelector('[data-play-btn]');
-                if (playBtn) playBtn.classList.remove('hidden');
+                if (container) {
+                    const overlay = getOverlay(container, 'data-play-overlay');
+                    if (overlay) overlay.classList.remove('hidden');
+                }
             }
         });
     }
 
     function showSpinner(video) {
-        const container = getVideoContainer(video);
-        const spinner = container?.querySelector('[data-video-spinner]');
+        const spinner = getOverlay(getVideoContainer(video), 'data-video-spinner');
         if (spinner) spinner.classList.add('show');
     }
 
     function hideSpinner(video) {
-        const container = getVideoContainer(video);
-        const spinner = container?.querySelector('[data-video-spinner]');
+        const spinner = getOverlay(getVideoContainer(video), 'data-video-spinner');
         if (spinner) spinner.classList.remove('show');
     }
 
-    function showPlayBtn(video) {
-        const container = getVideoContainer(video);
-        const playBtn = container?.querySelector('[data-play-btn]');
-        if (playBtn) playBtn.classList.remove('hidden');
-        const overlay = container?.querySelector('[data-play-overlay]');
+    function showPlayOverlay(video) {
+        const overlay = getOverlay(getVideoContainer(video), 'data-play-overlay');
         if (overlay) overlay.classList.remove('hidden');
     }
 
-    function hidePlayBtn(video) {
-        const container = getVideoContainer(video);
-        const playBtn = container?.querySelector('[data-play-btn]');
-        if (playBtn) playBtn.classList.add('hidden');
-        const overlay = container?.querySelector('[data-play-overlay]');
+    function hidePlayOverlay(video) {
+        const overlay = getOverlay(getVideoContainer(video), 'data-play-overlay');
         if (overlay) overlay.classList.add('hidden');
+    }
+
+    // ===== U12: زر الإيقاف المؤقت =====
+    function showPauseButton(video) {
+        const container = getVideoContainer(video);
+        const overlay = getOverlay(container, 'data-pause-overlay');
+        if (!overlay) return;
+        overlay.classList.remove('hidden');
+        overlay.classList.add('visible');
+        // إخفاء تلقائي بعد 1.2 ثانية
+        clearTimeout(overlay._hideTimer);
+        overlay._hideTimer = setTimeout(() => {
+            overlay.classList.remove('visible');
+        }, 1200);
+    }
+
+    function hidePauseButton(video) {
+        const overlay = getOverlay(getVideoContainer(video), 'data-pause-overlay');
+        if (!overlay) return;
+        clearTimeout(overlay._hideTimer);
+        overlay.classList.remove('visible');
+        overlay.classList.add('hidden');
+    }
+
+    // ===== S2: تسجيل المشاهدة =====
+    function recordView(video) {
+        const reelId = video.getAttribute('data-reel-id');
+        if (!reelId || viewedReels.has(reelId)) return;
+        // نسجل فقط فيديوهات الريلز (وليس فيديوهات المنتجات في لوحة صاحب المتجر)
+        if (!video.hasAttribute('data-reel-video')) return;
+        viewedReels.add(reelId);
+        fetch(`/api/reels/${reelId}/view`, {
+            method: 'POST',
+            headers: { 'Accept': 'application/json' }
+        }).catch(() => { /* تجاهل الأخطاء بصمت */ });
     }
 
     function playVideo(video) {
         if (!video) return;
         pauseAllVideos(video);
-        hidePlayBtn(video);
-        // عرض مؤشر التحميل إذا لم تكن البيانات جاهزة
-        if (video.readyState < 3) {
-            showSpinner(video);
-        }
+        hidePlayOverlay(video);
+        if (video.readyState < 3) showSpinner(video);
         video.muted = false;
-        video.play().then(() => {
-            hideSpinner(video);
-        }).catch((error) => {
-            console.warn('تعذر تشغيل الفيديو:', error);
-            hideSpinner(video);
-            showPlayBtn(video);
-        });
+        const playPromise = video.play();
+        if (playPromise && playPromise.then) {
+            playPromise.then(() => {
+                hideSpinner(video);
+                showPauseButton(video);
+                // بدء مؤقّت تسجيل المشاهدة
+                clearTimeout(video._viewTimer);
+                video._viewTimer = setTimeout(() => recordView(video), 2000);
+            }).catch((error) => {
+                console.warn('تعذر تشغيل الفيديو:', error);
+                hideSpinner(video);
+                showPlayOverlay(video);
+            });
+        }
     }
 
     function pauseVideo(video) {
         if (!video) return;
         video.pause();
-        showPlayBtn(video);
+        showPlayOverlay(video);
+        hidePauseButton(video);
         hideSpinner(video);
+        clearTimeout(video._viewTimer);
     }
 
-    // ربط الأحداث بجميع الفيديوهات
-    videos.forEach(video => {
+    function toggleVideo(video) {
+        if (video.paused) playVideo(video);
+        else pauseVideo(video);
+    }
+
+    function attachVideo(video) {
         const container = getVideoContainer(video);
         if (!container) return;
 
-        const playBtn = container.querySelector('[data-play-btn]');
+        // زر التشغيل (يظهر عند الإيقاف)
+        const playBtn = getOverlay(container, 'data-play-btn');
         if (playBtn) {
             playBtn.addEventListener('click', function(e) {
                 e.stopPropagation();
@@ -86,63 +130,77 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
 
-        video.addEventListener('click', function() {
-            if (video.paused) {
-                playVideo(video);
-            } else {
+        // U12: زر الإيقاف المؤقت (يظهر عند التشغيل)
+        const pauseBtn = getOverlay(container, 'data-pause-btn');
+        if (pauseBtn) {
+            pauseBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
                 pauseVideo(video);
-            }
+            });
+        }
+
+        // النقر على الفيديو يبدّل
+        video.addEventListener('click', function() {
+            toggleVideo(video);
         });
 
-        video.addEventListener('waiting', function() {
-            showSpinner(video);
-        });
-        video.addEventListener('playing', function() {
+        // أحداث الحالة
+        video.addEventListener('waiting', () => showSpinner(video));
+        video.addEventListener('playing', () => {
             hideSpinner(video);
-            hidePlayBtn(video);
+            hidePlayOverlay(video);
+            showPauseButton(video);
         });
-        video.addEventListener('canplaythrough', function() {
-            hideSpinner(video);
-        });
-        video.addEventListener('pause', function() {
-            showPlayBtn(video);
-            hideSpinner(video);
-        });
-        video.addEventListener('ended', function() {
-            showPlayBtn(video);
+        video.addEventListener('canplaythrough', () => hideSpinner(video));
+        video.addEventListener('pause', () => {
+            showPlayOverlay(video);
+            hidePauseButton(video);
             hideSpinner(video);
         });
-    });
+        video.addEventListener('ended', () => {
+            showPlayOverlay(video);
+            hidePauseButton(video);
+            hideSpinner(video);
+        });
 
-    // مراقب التمرير لتشغيل الفيديو المرئي (فقط للريلز العمودية)
-    if ('IntersectionObserver' in window) {
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                const video = entry.target;
-                if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
-                    if (video.paused) {
-                        playVideo(video);
+        // S2: فيديوهات صاحب المتجر — لا تشغيل تلقائي
+        if (video.hasAttribute('data-owner-reel-video')) {
+            video.pause();
+            video.autoplay = false;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const videos = document.querySelectorAll(
+            '[data-reel-video], [data-store-reel-video], [data-owner-reel-video], [data-product-reel-video]'
+        );
+        videos.forEach(attachVideo);
+
+        // مراقب التمرير: تشغيل تلقائي فقط لريلز الزبون (data-reel-video)
+        if ('IntersectionObserver' in window) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    const video = entry.target;
+                    if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+                        if (video.paused) playVideo(video);
+                    } else {
+                        if (!video.paused) pauseVideo(video);
                     }
-                } else {
-                    if (!video.paused) {
-                        pauseVideo(video);
-                    }
+                });
+            }, { threshold: 0.6 });
+
+            videos.forEach(video => {
+                if (video.hasAttribute('data-reel-video')) {
+                    observer.observe(video);
                 }
             });
-        }, { threshold: 0.6 });
-
-        videos.forEach(video => {
-            // نطبق المراقب فقط على فيديوهات الريلز (التي لها data-reel-video)
-            if (video.hasAttribute('data-reel-video')) {
-                observer.observe(video);
-            }
-        });
-    }
-});
+        }
+    });
+})();
 
 // ========== دوال عامة للتفاعل والمشاركة ==========
 function toggleReelReaction(reelId, reactionType, button) {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || window.csrfToken || '';
     fetch(`/api/reels/${reelId}/reaction`, {
         method: 'POST',
         headers: {
@@ -155,7 +213,7 @@ function toggleReelReaction(reelId, reactionType, button) {
         if (!response.ok) throw new Error('Network response was not ok');
         return response.json();
     })
-    .then(data => {
+    .then(() => {
         button.classList.toggle('active');
         const icon = button.querySelector('i');
         if (icon) {

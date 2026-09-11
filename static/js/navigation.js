@@ -1,5 +1,7 @@
 /**
  * Navigation Module - تحسين سلوك التنقل ومعالجة مشكلة زر الرجوع
+ * v1: تم إصلاح MutationObserver لتجنب الحلقات اللانهائية
+ * (كان يقرأ .badge.bg-warning العام ويجد شارات الطلبات).
  */
 (function() {
     'use strict';
@@ -70,7 +72,7 @@
         }
     });
 
-    // ========== تحديث حالة الأزرار النشطة تلقائيًا ==========
+    // ========== تحديث حالة الأزرار النشطة ==========
     function setActiveNavItems() {
         const currentPath = window.location.pathname;
         const currentHash = window.location.hash;
@@ -95,43 +97,71 @@
         });
     }
 
-    // ========== تحسين شارة الإشعارات في الشريط العلوي ==========
+    // ========== شارة الإشعارات ==========
+    // v1: نستهدف فقط شارة الإشعارات داخل السايدبار (وليس أي .badge.bg-warning في الصفحة).
+    let _navDotUpdating = false;
+
     function updateNotificationDot(count) {
         const dot = document.getElementById('navNotificationDot');
-        if (dot) {
-            if (count > 0) {
-                dot.style.display = 'flex';
-                dot.textContent = count > 9 ? '9+' : count;
-                dot.style.fontSize = '0.6rem';
-                dot.style.alignItems = 'center';
-                dot.style.justifyContent = 'center';
-                dot.style.width = '16px';
-                dot.style.height = '16px';
-                dot.style.borderRadius = '50%';
-            } else {
-                dot.style.display = 'none';
+        if (!dot) return;
+        if (count > 0) {
+            dot.style.display = 'flex';
+            dot.textContent = count > 9 ? '9+' : String(count);
+            dot.style.fontSize = '0.6rem';
+            dot.style.alignItems = 'center';
+            dot.style.justifyContent = 'center';
+            dot.style.width = '16px';
+            dot.style.height = '16px';
+            dot.style.borderRadius = '50%';
+        } else {
+            dot.style.display = 'none';
+            if (dot.textContent !== '') {
                 dot.textContent = '';
-                dot.style.width = '10px';
-                dot.style.height = '10px';
-                dot.style.borderRadius = '50%';
             }
+            dot.style.width = '10px';
+            dot.style.height = '10px';
+            dot.style.borderRadius = '50%';
         }
     }
 
-    // تحديث النقطة عند تغيير العداد
-    const observer = new MutationObserver(() => {
-        const badge = document.querySelector('.badge.bg-warning');
-        if (badge) {
-            updateNotificationDot(parseInt(badge.textContent) || 0);
+    function syncNotificationDotFromSidebar() {
+        // v1: محدود جداً — يقرأ فقط شارة الإشعارات في السايدبار
+        if (_navDotUpdating) return;
+        const badge = document.querySelector('.sidebar-menu-item .badge.bg-warning');
+        if (!badge) return;
+
+        const count = parseInt(badge.textContent, 10);
+        if (isNaN(count)) return;
+
+        _navDotUpdating = true;
+        try {
+            updateNotificationDot(count);
+        } finally {
+            // نحرر القفل بعد إطارين لتفادي الحلقات المتسلسلة
+            setTimeout(() => { _navDotUpdating = false; }, 100);
         }
+    }
+
+    // v1: نراقب فقط العقد المُضافة/المُحذوفة، مع throttle عبر setTimeout
+    let observerThrottle = null;
+    const observer = new MutationObserver(() => {
+        if (observerThrottle) return;
+        observerThrottle = setTimeout(() => {
+            observerThrottle = null;
+            syncNotificationDotFromSidebar();
+        }, 200);
     });
-    observer.observe(document.body, { childList: true, subtree: true });
 
     document.addEventListener('DOMContentLoaded', function() {
         setActiveNavItems();
+        syncNotificationDotFromSidebar();
 
-        // لا نضيف مستمع لـ topbarThemeToggle هنا لأن base.html يتكفل به
-        // فقط نتأكد من تحديث الأيقونة عند تغيير الثيم من مكان آخر
+        // نبدأ المراقبة فقط بعد التحميل الكامل
+        const target = document.getElementById('sidebarMenu');
+        if (target) {
+            observer.observe(target, { childList: true, subtree: true });
+        }
+
         if (typeof LocalStore !== 'undefined') {
             const updateTopThemeBtn = function() {
                 const topThemeBtn = document.getElementById('topbarThemeToggle');
@@ -148,9 +178,7 @@
                     }
                 }
             };
-            // تحديث عند التحميل
             updateTopThemeBtn();
-            // الاستماع لتغيير الثيم (يمكن استبدال هذا إذا كانت LocalStore تطبق آلية أفضل)
             window.addEventListener('themeChanged', updateTopThemeBtn);
         }
     });

@@ -220,3 +220,47 @@
         font-size: 4rem;
     }
 }
+
+/* ============================================================
+   زر الإيقاف المؤقت — بدون دائرة (نفس نمط زر التشغيل)
+   ============================================================ */
+.reel-pause-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 3;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+.reel-pause-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+.reel-pause-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+.reel-pause-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 5rem;
+    line-height: 1;
+    cursor: pointer;
+    pointer-events: auto;
+    text-shadow: 0 0 12px rgba(0,0,0,0.8);
+    transition: color 0.2s, text-shadow 0.2s, transform 0.2s;
+    padding: 0;
+}
+.reel-pause-btn:hover {
+    color: #ffd700;
+    transform: scale(1.1);
+}
+@media (max-width: 576px) {
+    .reel-pause-btn {
+        font-size: 4rem;
+    }
+}

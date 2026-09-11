@@ -297,20 +297,34 @@
         padding: 5px 15px;
         font-size: 0.8rem;
     }
+    /* Accordion لعنوان الطلب */
+    .order-toggle-btn {
+        background: transparent;
+        border: none;
+        width: 100%;
+        text-align: right;
+        padding: 0;
+        color: inherit;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .order-toggle-btn:hover {
+        color: var(--primary);
+    }
+    .order-toggle-icon {
+        transition: transform 0.3s;
+        font-size: 0.9rem;
+        color: #999;
+    }
+    .order-toggle-btn[aria-expanded="true"] .order-toggle-icon {
+        transform: rotate(180deg);
+    }
     /* تحسينات لوضع عدم الاتصال */
     #offlineCartContainer {
         display: none;
-    }
-    .offline-cart-item {
-        border: 1px solid #e0e0e0;
-        border-radius: 15px;
-        overflow: hidden;
-        background: #fff;
-        margin-bottom: 10px;
-    }
-    body.dark-mode .offline-cart-item {
-        background: #1e1e1e;
-        border-color: #333;
     }
 </style>
 {% endblock %}
@@ -322,9 +336,19 @@
     <!-- المحتوى العادي (عند الاتصال) -->
     <div id="onlineCartContent">
         {% if grouped %}
+            {% if grouped|length > 1 %}
+            <div class="alert alert-info d-flex align-items-center gap-2 mb-3" role="alert">
+                <i class="bi bi-info-circle-fill"></i>
+                <div>
+                    <strong>لديك منتجات من {{ grouped|length }} متاجر مختلفة.</strong>
+                    يتم إتمام الطلب من كل متجر على حدة، ولكل متجر رسم توصيل خاص به.
+                </div>
+            </div>
+            {% endif %}
+
             {% for store_id, group in grouped.items() %}
-            <div class="card mb-4 shadow-sm server-cart">
-                <div class="store-card-header d-flex justify-content-between align-items-center">
+            <div class="card mb-4 shadow-sm server-cart" data-store-id="{{ store_id }}">
+                <div class="store-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <div>
                         {% if group.store and group.store.logo_url %}
                             <img src="{{ group.store.logo_url | get_image_url }}" class="rounded-circle me-2" style="width:35px;height:35px;object-fit:cover;" alt="{{ group.store.name }}">
@@ -342,7 +366,7 @@
                 <div class="card-body p-0">
                     <div class="row g-2 p-2">
                         {% for item in group.cart_items %}
-                        <div class="col-6 col-md-4 col-lg-3">
+                        <div class="col-6 col-md-4 col-lg-3" data-product-col="{{ item.product.id }}">
                             <div class="cart-item-card">
                                 <a href="{{ url_for('stores.product_public', product_id=item.product.id) }}">
                                     {% if item.product.images %}
@@ -354,14 +378,22 @@
                                 </a>
                                 <div class="cart-item-body">
                                     <div class="cart-item-name">{{ item.product.name }}</div>
-                                    <div class="cart-item-price">{{ item.product.price|format_price }} ل.س</div>
+                                    <div class="cart-item-price">
+                                        {{ item.product.effective_price|format_price }} ل.س
+                                        {% if item.product.is_offer and item.product.original_price and item.product.original_price > item.product.effective_price %}
+                                        <small class="text-muted text-decoration-line-through ms-1">{{ item.product.original_price|format_price }}</small>
+                                        {% endif %}
+                                    </div>
                                     <div class="cart-item-actions">
-                                        {% if group.store.has_delivery %}
+                                        {% if group.store.has_delivery and not item.product.hide_price %}
                                             <a href="{{ url_for('cart.buy_product', product_id=item.product.id) }}" class="btn-buy-now">شراء الآن</a>
                                         {% else %}
                                             <div class="pickup-only-note"><i class="bi bi-shop"></i> حصرا من المتجر</div>
                                         {% endif %}
-                                        <button class="btn btn-outline-danger btn-remove btn-sm" data-product-id="{{ item.product.id }}" title="إزالة"><i class="bi bi-trash"></i></button>
+                                        <button class="btn btn-outline-danger btn-remove btn-sm"
+                                                data-product-id="{{ item.product.id }}"
+                                                data-store-id="{{ store_id }}"
+                                                title="إزالة"><i class="bi bi-trash"></i></button>
                                     </div>
                                 </div>
                             </div>
@@ -387,85 +419,111 @@
     <!-- الطلبات الحديثة -->
     {% if orders %}
     <h5 class="fw-bold mt-5 mb-3"><i class="bi bi-clock-history"></i> طلباتك الحديثة (آخر 24 ساعة)</h5>
-    <div class="list-group">
+    <div class="orders-list">
         {% for order in orders %}
-        <div class="order-card-new mb-3 shadow-sm">
+        <div class="order-card-new mb-3 shadow-sm" data-order-id="{{ order.id }}">
             <div class="order-card-header">
-                <div>
-                    <strong>طلب #{{ order.id }}</strong>
-                    <span class="badge bg-secondary ms-2">{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
-                </div>
-                {{ macros.render_order_status(order.status) }}
-            </div>
-            <div class="order-card-body">
-                <div class="mb-2">
-                    <i class="bi bi-shop me-1"></i> <span>{{ order.store.name }}</span>
-                </div>
-                <div class="mb-2">
-                    {% for item in order.items %}
-                        <span class="badge bg-light text-dark me-1 mb-1">{{ item.product.name }} × {{ item.quantity }}</span>
-                    {% endfor %}
-                </div>
-
-                {% if order.status != 'cancelled' %}
-                <div class="order-progress-simple">
-                    {% set stages = ['new', 'confirmed', 'preparing', 'ready', 'delivering', 'delivered'] %}
-                    {% set labels = ['جديد', 'مؤكد', 'تجهيز', 'جاهز', 'توصيل', 'تم'] %}
-                    {% set current_idx = stages.index(order.status) if order.status in stages else 0 %}
-                    {% for stage in stages %}
-                        <div class="progress-step-simple {% if loop.index0 <= current_idx %}active{% endif %}">
-                            <div class="dot-simple"></div>
-                            <span class="label-simple">{{ labels[loop.index0] }}</span>
-                        </div>
-                        {% if not loop.last %}
-                            <div class="line-simple {% if loop.index0 < current_idx %}active{% endif %}"></div>
-                        {% endif %}
-                    {% endfor %}
-                </div>
-                {% endif %}
-
-                {% if order.delivery_code and order.status not in ['cancelled', 'delivered'] %}
-                <div class="delivery-code-row mt-3">
+                <button class="order-toggle-btn" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#cartOrderDetails{{ order.id }}"
+                        aria-expanded="false" aria-controls="cartOrderDetails{{ order.id }}">
                     <div>
-                        <span class="fw-bold"><i class="bi bi-shield-check"></i> رمز التسليم:</span>
-                        <span class="delivery-code-display fw-bold fs-5 ms-2">{{ order.delivery_code }}</span>
+                        <strong>
+                            {% set items_count = order.items|length %}
+                            {% if items_count == 1 and order.items[0].product %}
+                                طلب: {{ order.items[0].product.name }}
+                            {% elif items_count > 1 %}
+                                طلب: منتجات متعددة ({{ items_count }})
+                            {% else %}
+                                طلب #{{ order.id }}
+                            {% endif %}
+                        </strong>
+                        <span class="badge bg-secondary ms-2">{{ order.created_at.strftime('%m-%d %H:%M') }}</span>
                     </div>
-                    <div class="qr-container" id="qr-container-{{ order.id }}"></div>
-                </div>
-                {% endif %}
-
-                {% if order.delivery_person %}
-                <div class="delivery-person-row">
-                    <i class="bi bi-person-badge"></i>
-                    <span class="fw-bold">المندوب:</span>
-                    <span>{{ order.delivery_person.username }}</span>
-                    {% if order.delivery_person.phone %}
-                        <a href="tel:{{ order.delivery_person.phone }}" class="ms-2"><i class="bi bi-telephone"></i> {{ order.delivery_person.phone }}</a>
-                    {% endif %}
-                    <div class="delivery-note">
-                        <i class="bi bi-exclamation-triangle-fill"></i>
-                        <span>سيصلك مندوبنا خلال ساعة أو أقل</span>
+                    <div class="d-flex align-items-center gap-2">
+                        {{ macros.render_order_status(order.status) }}
+                        <i class="bi bi-chevron-down order-toggle-icon"></i>
                     </div>
-                </div>
-                {% endif %}
+                </button>
+            </div>
+            <div class="collapse" id="cartOrderDetails{{ order.id }}">
+                <div class="order-card-body">
+                    <div class="mb-2">
+                        <i class="bi bi-shop me-1"></i> <span>{{ order.store.name }}</span>
+                    </div>
+                    <div class="mb-2">
+                        {% for item in order.items %}
+                            <span class="badge bg-light text-dark me-1 mb-1">{{ item.product.name if item.product else 'محذوف' }} × {{ item.quantity }}</span>
+                        {% endfor %}
+                    </div>
+                    <div class="mb-2">
+                        <strong>الإجمالي:</strong> {{ order.total|format_price }} ل.س
+                        {% if order.delivery_fee > 0 %}
+                            <span class="text-danger ms-2">(منها {{ order.delivery_fee|format_price }} ل.س رسوم توصيل)</span>
+                        {% endif %}
+                    </div>
 
-                <div class="mt-3 d-flex flex-wrap gap-2">
-                    {% if order.status == 'new' %}
-                    <form method="POST" action="{{ url_for('cart.cancel_order', order_id=order.id) }}" class="d-inline">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                        <button type="submit" class="btn btn-sm btn-outline-danger">إلغاء الطلب</button>
-                    </form>
+                    {% if order.status != 'cancelled' %}
+                    <div class="order-progress-simple">
+                        {% set stages = ['new', 'confirmed', 'preparing', 'ready', 'delivering', 'delivered'] %}
+                        {% set labels = ['جديد', 'مؤكد', 'تجهيز', 'جاهز', 'توصيل', 'تم'] %}
+                        {% set current_idx = stages.index(order.status) if order.status in stages else 0 %}
+                        {% for stage in stages %}
+                            <div class="progress-step-simple {% if loop.index0 <= current_idx %}active{% endif %}">
+                                <div class="dot-simple"></div>
+                                <span class="label-simple">{{ labels[loop.index0] }}</span>
+                            </div>
+                            {% if not loop.last %}
+                                <div class="line-simple {% if loop.index0 < current_idx %}active{% endif %}"></div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
                     {% endif %}
 
-                    {% if order.status in ['delivered', 'cancelled'] %}
-                    <form method="POST" action="{{ url_for('cart.delete_order', order_id=order.id) }}" class="d-inline"
-                          onsubmit="return confirm('هل تريد حذف هذا الطلب نهائيًا؟')">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                        <button type="submit" class="btn btn-sm btn-outline-danger btn-delete-order">
-                            <i class="bi bi-trash"></i> حذف الطلب
-                        </button>
-                    </form>
+                    {% if order.delivery_code and order.status not in ['cancelled', 'delivered'] %}
+                    <div class="delivery-code-row mt-3">
+                        <div>
+                            <span class="fw-bold"><i class="bi bi-shield-check"></i> رمز التسليم:</span>
+                            <span class="delivery-code-display fw-bold fs-5 ms-2">{{ order.delivery_code }}</span>
+                        </div>
+                        <div class="qr-container" id="qr-container-{{ order.id }}"></div>
+                    </div>
                     {% endif %}
+
+                    {% if order.delivery_person %}
+                    <div class="delivery-person-row">
+                        <i class="bi bi-person-badge"></i>
+                        <span class="fw-bold">المندوب:</span>
+                        <span>{{ order.delivery_person.username }}</span>
+                        {% if order.delivery_person.phone %}
+                            <a href="tel:{{ order.delivery_person.phone }}" class="ms-2"><i class="bi bi-telephone"></i> {{ order.delivery_person.phone }}</a>
+                        {% endif %}
+                        {% if order.status == 'delivering' %}
+                        <div class="delivery-note">
+                            <i class="bi bi-exclamation-triangle-fill"></i>
+                            <span>سيصلك مندوبنا خلال ساعة أو أقل</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <div class="mt-3 d-flex flex-wrap gap-2">
+                        {% if order.status == 'new' %}
+                        <form method="POST" action="{{ url_for('cart.cancel_order', order_id=order.id) }}" class="d-inline">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">إلغاء الطلب</button>
+                        </form>
+                        {% endif %}
+
+                        {% if order.status in ['delivered', 'cancelled'] %}
+                        <form method="POST" action="{{ url_for('cart.delete_order', order_id=order.id) }}" class="d-inline"
+                              onsubmit="return confirm('هل تريد حذف هذا الطلب نهائيًا؟')">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger btn-delete-order">
+                                <i class="bi bi-trash"></i> حذف الطلب
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
@@ -479,19 +537,27 @@
 <script src="{{ url_for('static', filename='vendor/qrcodejs/qrcode.min.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // تهيئة أكواد QR
     document.querySelectorAll('.qr-container').forEach(container => {
         const orderId = container.id.replace('qr-container-', '');
-        const code = container.closest('.order-card-new').querySelector('.delivery-code-display').textContent.trim();
+        const card = container.closest('.order-card-new');
+        const codeEl = card ? card.querySelector('.delivery-code-display') : null;
+        if (!codeEl) return;
+        const code = codeEl.textContent.trim();
         if (code && typeof QRCode !== 'undefined') {
             new QRCode(container, { text: code, width: 80, height: 80, correctLevel: QRCode.CorrectLevel.M });
         }
     });
 
-    // معالجة حذف المنتج من السلة
+    // ===== U1: حذف منتج بدون إعادة تحميل الصفحة =====
     document.querySelectorAll('.btn-remove').forEach(btn => {
         btn.addEventListener('click', async function() {
             const productId = this.dataset.productId;
+            const storeId = this.dataset.storeId;
             if (!confirm('هل تريد إزالة هذا المنتج من السلة؟')) return;
+
+            const removeBtn = this;
+            removeBtn.disabled = true;
 
             try {
                 const formData = new FormData();
@@ -506,32 +572,95 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 const data = await response.json();
                 if (data.status === 'success') {
-                    // تحديث التخزين المحلي
+                    // إزالة من LocalStore
                     if (typeof LocalStore !== 'undefined') {
                         LocalStore.removeFromCart(parseInt(productId));
                         LocalStore.updateCartBadges();
                     }
+
+                    // إزالة بطاقة المنتج من DOM
+                    const col = document.querySelector(`[data-product-col="${productId}"]`);
+                    if (col) col.remove();
+
+                    // التحقق من فراغ مجموعة المتجر
+                    const storeCard = document.querySelector(`.server-cart[data-store-id="${storeId}"]`);
+                    if (storeCard && !storeCard.querySelector('.cart-item-card')) {
+                        storeCard.remove();
+                    }
+
+                    // التحقق من فراغ السلة بالكامل
+                    const remaining = document.querySelectorAll('.server-cart');
+                    if (remaining.length === 0) {
+                        const onlineContent = document.getElementById('onlineCartContent');
+                        if (onlineContent) {
+                            onlineContent.innerHTML = `
+                                <div class="text-center py-5 empty-state">
+                                    <i class="bi bi-cart display-1 text-muted"></i>
+                                    <p class="mt-3">سلتك فارغة</p>
+                                    <a href="{{ url_for('market.market') }}" class="btn btn-custom">تسوق الآن</a>
+                                </div>`;
+                        }
+                    }
+
                     showToast('تمت إزالة المنتج من السلة', 'success');
-                    // إعادة تحميل الصفحة بعد فترة قصيرة
-                    setTimeout(() => location.reload(), 500);
                 } else {
+                    removeBtn.disabled = false;
                     showToast(data.message || 'تعذر الحذف', 'error');
                 }
             } catch (err) {
                 console.error('Error removing from cart:', err);
+                removeBtn.disabled = false;
                 showToast('حدث خطأ أثناء الإزالة', 'error');
             }
         });
     });
 
-    window.clearLocalStoreCart = function(storeId, productIds) {
-        const cart = LocalStore.getCart();
-        productIds.forEach(pid => { delete cart[String(pid)]; });
-        LocalStore.setCart(cart);
-        LocalStore.updateCartBadges();
-        location.reload();
+    // مسح كل منتجات متجر (يستخدم DOM أيضاً)
+    window.clearLocalStoreCart = async function(storeId, productIds) {
+        if (!confirm('هل تريد مسح جميع منتجات هذا المتجر من السلة؟')) return;
+
+        // إزالة من LocalStore
+        if (typeof LocalStore !== 'undefined') {
+            const cart = LocalStore.getCart();
+            productIds.forEach(pid => { delete cart[String(pid)]; });
+            LocalStore.setCart(cart);
+            LocalStore.updateCartBadges();
+        }
+
+        // إرسال طلب لكل منتج (أو استخدام endpoint جديد)
+        try {
+            const formData = new FormData();
+            formData.append('_csrf_token', window.csrfToken);
+            await fetch(`/cart/clear/${storeId}`, {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-CSRF-Token': window.csrfToken }
+            });
+        } catch (err) {
+            console.warn('Clear store cart server sync failed:', err);
+        }
+
+        // إزالة بطاقة المتجر من DOM
+        const storeCard = document.querySelector(`.server-cart[data-store-id="${storeId}"]`);
+        if (storeCard) storeCard.remove();
+
+        // التحقق من فراغ السلة
+        if (document.querySelectorAll('.server-cart').length === 0) {
+            const onlineContent = document.getElementById('onlineCartContent');
+            if (onlineContent) {
+                onlineContent.innerHTML = `
+                    <div class="text-center py-5 empty-state">
+                        <i class="bi bi-cart display-1 text-muted"></i>
+                        <p class="mt-3">سلتك فارغة</p>
+                        <a href="{{ url_for('market.market') }}" class="btn btn-custom">تسوق الآن</a>
+                    </div>`;
+            }
+        }
+
+        showToast('تم مسح منتجات هذا المتجر', 'success');
     };
 
+    // ===== الأوفلاين =====
     const onlineCartContent = document.getElementById('onlineCartContent');
     const offlineCartContainer = document.getElementById('offlineCartContainer');
     const offlineCartItems = document.getElementById('offlineCartItems');

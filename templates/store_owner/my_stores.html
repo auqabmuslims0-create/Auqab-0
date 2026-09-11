@@ -16,58 +16,208 @@
     .store-owner-avatar { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; border: 3px solid #fff; background: #6c757d; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 28px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
     body.dark-mode .store-owner-avatar { border-color: #222; }
     .btn-manage { border-radius: 25px; padding: 5px 15px; font-size: 0.8rem; }
-    .tabs-scroll { display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
-    .tabs-scroll::-webkit-scrollbar { height: 4px; }
-    .tabs-scroll::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
-    .tabs-scroll .nav-item { flex: 0 0 auto; white-space: nowrap; }
-    .tabs-scroll .nav-link { border: none; font-size: 0.85rem; padding: 0.5rem 0.9rem; color: #6c757d; }
-    .tabs-scroll .nav-link.active { color: var(--primary); border-bottom: 2px solid var(--primary); background: transparent; }
-    body.dark-mode .tabs-scroll .nav-link { color: #adb5bd; }
-    body.dark-mode .tabs-scroll .nav-link.active { color: var(--accent); border-bottom-color: var(--accent); }
-    .product-image-wrapper { aspect-ratio: 1 / 1; overflow: hidden; background: #f8f9fa; border-radius: 10px; }
-    .product-image { width: 100%; height: 100%; object-fit: cover; display: block; }
-    body.dark-mode .product-image-wrapper { background: #2d2d2d; }
-    .mini-store-map { height: 180px; border-radius: 12px; overflow: hidden; }
-
-    .reels-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
-    .reel-slide { position: relative; width: 100%; border-radius: 20px; overflow: hidden; background: #000; box-shadow: 0 8px 20px rgba(0,0,0,0.2); line-height: 0; }
-    .reel-video-wrapper { position: relative; width: 100%; line-height: 0; }
-    .reel-video { width: 100%; height: auto; display: block; cursor: pointer; background: #000; }
-    .reel-content { position: absolute; bottom: 0; left: 0; right: 0; z-index: 2; display: flex; justify-content: space-between; align-items: flex-end; padding: 15px; gap: 10px; pointer-events: none; line-height: 1.6; }
-    .reel-info-bottom { flex: 1; min-width: 0; pointer-events: auto; }
-    .reel-store-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; margin-bottom: 8px; pointer-events: auto; cursor: pointer; }
-    .reel-store-avatar, .reel-store-avatar-placeholder { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; background: #333; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.2rem; flex-shrink: 0; pointer-events: auto; }
-    .reel-store-name { font-weight: 600; font-size: 0.9rem; text-shadow: 0 1px 3px rgba(0,0,0,0.5); pointer-events: none; }
-    .reel-product-link { text-decoration: none; color: #fff; display: block; pointer-events: auto; cursor: pointer; }
-    .reel-product-name { margin: 0; font-size: 1.1rem; font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
-    .reel-product-price { font-size: 1rem; font-weight: 600; color: #ffd700; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
-    .reel-actions-column { display: flex; flex-direction: column; gap: 12px; align-items: center; pointer-events: auto; }
-    .reel-action-btn { background: rgba(255,255,255,0.2); border: none; color: #fff; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; transition: background 0.2s, transform 0.2s; backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
-    .reel-action-btn:hover { background: rgba(255,255,255,0.35); transform: scale(1.05); }
-    .reel-action-btn:disabled { opacity: 0.5; pointer-events: none; }
-    .reel-play-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 3; pointer-events: none; transition: opacity 0.3s ease; }
-    .reel-play-btn { background: transparent; border: none; color: #fff; font-size: 5rem; line-height: 1; cursor: pointer; pointer-events: auto; text-shadow: 0 0 12px rgba(0,0,0,0.8); transition: color 0.2s, transform 0.2s; padding: 0; }
-    .reel-play-btn:hover { color: #ffd700; transform: scale(1.1); }
-    .reel-play-overlay.hidden { opacity: 0; pointer-events: none; }
-    .video-loading-spinner { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 4; display: none; width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
-    .video-loading-spinner.show { display: block; }
-    @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
 
     /* شارة الأيام المتبقية */
-    .days-badge {
-        display: inline-block;
-        border-radius: 20px;
-        padding: 3px 10px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        border: none;
-    }
+    .days-badge { display: inline-block; border-radius: 20px; padding: 3px 10px; font-size: 0.75rem; font-weight: 600; border: none; }
     .days-badge.urgent { background: #f8d7da; color: #842029; }
     .days-badge.warn   { background: #fff3cd; color: #664d03; }
     .days-badge.safe   { background: #d1e7dd; color: #0f5132; }
     body.dark-mode .days-badge.urgent { background: #3e1a1d; color: #ff8a95; }
     body.dark-mode .days-badge.warn   { background: #3a2f1a; color: #ffd666; }
     body.dark-mode .days-badge.safe   { background: #102e1a; color: #6edfa0; }
+
+    /* ===== S1: الأقسام القابلة للطي ===== */
+    .store-sections {
+        display: flex;
+        flex-direction: column;
+    }
+    .store-section {
+        border-top: 1px solid #f0f0f0;
+    }
+    .store-section:first-child {
+        border-top: none;
+    }
+    body.dark-mode .store-section {
+        border-top-color: #333;
+    }
+    .store-section-header {
+        width: 100%;
+        background: transparent;
+        border: none;
+        padding: 14px 18px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: background 0.15s;
+        color: #333;
+        text-align: right;
+    }
+    .store-section-header:hover {
+        background: rgba(46,93,52,0.04);
+    }
+    body.dark-mode .store-section-header {
+        color: #fff;
+    }
+    body.dark-mode .store-section-header:hover {
+        background: rgba(201,162,39,0.08);
+    }
+    .store-section-header .section-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .store-section-header .section-title > i:first-child {
+        color: var(--primary);
+        font-size: 1.15rem;
+        width: 22px;
+        text-align: center;
+    }
+    body.dark-mode .store-section-header .section-title > i:first-child {
+        color: var(--accent);
+    }
+    .store-section-header .count-badge {
+        background: rgba(46,93,52,0.12);
+        color: var(--primary);
+        border-radius: 12px;
+        padding: 2px 8px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        min-width: 22px;
+        text-align: center;
+    }
+    body.dark-mode .store-section-header .count-badge {
+        background: rgba(201,162,39,0.15);
+        color: var(--accent);
+    }
+    .section-chevron {
+        transition: transform 0.3s ease;
+        color: #999;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+    }
+    .store-section-header[aria-expanded="true"] .section-chevron {
+        transform: rotate(180deg);
+        color: var(--primary);
+    }
+    body.dark-mode .store-section-header[aria-expanded="true"] .section-chevron {
+        color: var(--accent);
+    }
+    .store-section-body {
+        padding: 16px 18px;
+        background: #fafafa;
+        border-top: 1px solid #f0f0f0;
+    }
+    body.dark-mode .store-section-body {
+        background: #252525;
+        border-top-color: #333;
+    }
+    .store-section-body .empty-text {
+        text-align: center;
+        color: #888;
+        padding: 20px 10px;
+        margin: 0;
+        font-size: 0.9rem;
+    }
+
+    /* ===== المنتجات ===== */
+    .product-image-wrapper { aspect-ratio: 1 / 1; overflow: hidden; background: #f8f9fa; border-radius: 10px; }
+    .product-image { width: 100%; height: 100%; object-fit: cover; display: block; }
+    body.dark-mode .product-image-wrapper { background: #2d2d2d; }
+
+    /* ===== الفيديوهات (تصميم ديناميكي — بطاقات تحت بعضها) ===== */
+    .owner-reels-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        align-items: center;
+    }
+    .owner-reel-tile {
+        position: relative;
+        border-radius: 16px;
+        overflow: hidden;
+        background: #000;
+        width: 100%;
+        max-width: 420px;
+        box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+        line-height: 0;
+    }
+    .owner-reel-tile video {
+        width: 100%;
+        height: auto;
+        display: block;
+        cursor: pointer;
+        background: #000;
+    }
+    .owner-reel-tile .play-btn {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,0.25);
+        pointer-events: none;
+    }
+    .owner-reel-tile .play-btn i {
+        color: #fff;
+        font-size: 3.5rem;
+        padding-right: 4px;
+        line-height: 1;
+        filter: drop-shadow(0 3px 8px rgba(0,0,0,0.75));
+    }
+    .owner-reel-tile.playing .play-btn { display: none; }
+    .owner-reel-tile .tile-info {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 40px 14px 10px;
+        background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
+        color: #fff;
+        font-size: 0.85rem;
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        pointer-events: none;
+        line-height: 1.4;
+    }
+    .owner-reel-tile .tile-info i { opacity: 0.9; }
+
+    /* ===== التصنيفات ===== */
+    .cat-row-mini {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: 10px;
+        background: #fff;
+        margin-bottom: 6px;
+        font-size: 0.88rem;
+    }
+    .cat-row-mini.parent { border-right: 3px solid var(--primary); font-weight: 700; }
+    body.dark-mode .cat-row-mini.parent { border-right-color: var(--accent); }
+    .cat-row-mini.child { padding-right: 28px; font-weight: 500; }
+    body.dark-mode .cat-row-mini { background: #1e1e1e; color: #fff; }
+    .cat-row-mini .cat-count {
+        margin-right: auto;
+        background: rgba(46,93,52,0.1);
+        color: var(--primary);
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
+    body.dark-mode .cat-row-mini .cat-count {
+        background: rgba(201,162,39,0.15);
+        color: var(--accent);
+    }
+
+    /* ===== الخريطة ===== */
+    .mini-store-map { height: 180px; border-radius: 12px; overflow: hidden; background: #f0f0f0; }
 </style>
 {% endblock %}
 
@@ -79,19 +229,30 @@
     </div>
 
     {% if stores %}
-        {% set has_map = [] %}
         <div class="row">
             {% for store in stores %}
             <div class="col-12 mb-4">
                 <div class="card store-card">
+                    <!-- غلاف المتجر -->
                     <div class="store-cover position-relative">
-                        {% if store.logo_url %}<img src="{{ store.logo_url | get_image_url }}" alt="{{ store.name }}" class="store-cover-img" loading="lazy">{% else %}<div class="store-cover-placeholder"><i class="bi bi-shop display-1"></i></div>{% endif %}
-                        <a href="{{ url_for('store.store_manage', store_id=store.id) }}" class="btn btn-light btn-sm position-absolute top-0 end-0 m-2 btn-manage"><i class="bi bi-gear"></i> إدارة</a>
+                        {% if store.logo_url %}
+                            <img src="{{ store.logo_url | get_image_url }}" alt="{{ store.name }}" class="store-cover-img" loading="lazy">
+                        {% else %}
+                            <div class="store-cover-placeholder"><i class="bi bi-shop display-1"></i></div>
+                        {% endif %}
+                        <a href="{{ url_for('store.store_manage', store_id=store.id) }}" class="btn btn-light btn-sm position-absolute top-0 end-0 m-2 btn-manage">
+                            <i class="bi bi-gear"></i> إدارة
+                        </a>
                         <a href="{{ url_for('auth.account') }}" class="position-absolute bottom-0 start-0 translate-middle-y ms-4 store-owner-avatar">
-                            {% if store.owner and store.owner.avatar %}<img src="{{ store.owner.avatar | get_image_url }}" alt="{{ store.owner.username }}" class="store-owner-avatar">{% else %}<i class="bi bi-person"></i>{% endif %}
+                            {% if store.owner and store.owner.avatar %}
+                                <img src="{{ store.owner.avatar | get_image_url }}" alt="{{ store.owner.username }}" class="store-owner-avatar">
+                            {% else %}
+                                <i class="bi bi-person"></i>
+                            {% endif %}
                         </a>
                     </div>
 
+                    <!-- معلومات أساسية -->
                     <div class="p-3 border-bottom">
                         <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
                             <h3 class="mb-0">{{ store.name }}</h3>
@@ -108,134 +269,284 @@
                         <p class="text-muted mb-0">{{ store.description or '' }}</p>
                     </div>
 
-                    <ul class="nav nav-tabs tabs-scroll px-3 pt-3" id="storeTabs{{ store.id }}" role="tablist">
-                        <li class="nav-item" role="presentation"><button class="nav-link active" id="products-tab-btn{{ store.id }}" data-bs-toggle="tab" data-bs-target="#products-tab{{ store.id }}" type="button" role="tab">المنتجات</button></li>
-                        <li class="nav-item" role="presentation"><button class="nav-link" id="videos-tab-btn{{ store.id }}" data-bs-toggle="tab" data-bs-target="#videos-tab{{ store.id }}" type="button" role="tab">فيديوهات</button></li>
-                        <li class="nav-item" role="presentation"><button class="nav-link" id="categories-tab-btn{{ store.id }}" data-bs-toggle="tab" data-bs-target="#categories-tab{{ store.id }}" type="button" role="tab">التصنيفات</button></li>
-                        <li class="nav-item" role="presentation"><button class="nav-link" id="about-tab-btn{{ store.id }}" data-bs-toggle="tab" data-bs-target="#about-tab{{ store.id }}" type="button" role="tab">حول المتجر</button></li>
-                    </ul>
+                    <!-- ===== S1: الأقسام القابلة للطي ===== -->
+                    <div class="store-sections">
 
-                    <div class="tab-content p-3">
-                        <div class="tab-pane fade show active" id="products-tab{{ store.id }}" role="tabpanel">
-                            {% set products = store.products[:8] %}
-                            {% if products %}
-                                <div class="row g-3">
-                                    {% for product in products %}
-                                        <div class="col-6 col-md-4 col-lg-3">
-                                            <div class="card h-100 border-0 shadow-sm product-card">
-                                                <div class="product-image-wrapper">
-                                                    <a href="{{ url_for('stores.product_public', product_id=product.id) }}">
-                                                        {% if product.main_image %}{% set first_image = product.main_image.strip() %}<img src="{{ first_image | get_image_url }}" alt="{{ product.name }}" class="product-image" loading="lazy">{% else %}<div class="d-flex align-items-center justify-content-center h-100 text-muted"><i class="bi bi-image" style="font-size: 2rem;"></i></div>{% endif %}
-                                                    </a>
-                                                </div>
-                                                <div class="card-body p-2"><h6 class="card-title mb-1 text-truncate">{{ product.name }}</h6><p class="fw-bold text-success mb-0 price">{{ product.price|format_price }} ل.س</p></div>
-                                            </div>
-                                        </div>
-                                    {% endfor %}
-                                </div>
-                                {% if store.products|length > 8 %}<div class="text-center mt-3"><a href="{{ url_for('store.store_products', store_id=store.id) }}" class="btn btn-sm btn-outline-primary">عرض الكل ({{ store.products|length }})</a></div>{% endif %}
-                            {% else %}<p class="text-muted text-center">لا توجد منتجات بعد.</p>{% endif %}
-                        </div>
-
-                        <div class="tab-pane fade" id="videos-tab{{ store.id }}" role="tabpanel">
-                            {% set videos = store.products | selectattr('video') | list %}
-                            {% if videos %}
-                                <div class="reels-grid">
-                                    {% for product in videos %}
-                                        <div class="reel-slide" id="owner-reel-{{ store.id }}-{{ product.id }}">
-                                            <div class="reel-video-wrapper">
-                                                <video class="reel-video" loop playsinline preload="auto"
-                                                       src="{{ product.video | get_image_url }}"
-                                                       poster="{{ product.main_image.strip() | get_image_url if product.main_image else '' }}"
-                                                       data-owner-reel-video></video>
-                                                <div class="video-loading-spinner" data-video-spinner></div>
-                                                <div class="reel-play-overlay" data-play-overlay>
-                                                    <button type="button" class="reel-play-btn" data-play-btn aria-label="تشغيل الفيديو">
-                                                        <i class="bi bi-play-fill"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            <div class="reel-content">
-                                                <div class="reel-info-bottom">
-                                                    <a href="{{ url_for('stores.store_public', store_id=store.id) }}" class="reel-store-link">
-                                                        {% if store.logo_url %}<img src="{{ store.logo_url | get_image_url }}" class="reel-store-avatar" alt="{{ store.name }}">{% else %}<div class="reel-store-avatar-placeholder"><i class="bi bi-shop"></i></div>{% endif %}
-                                                    </a>
-                                                    <a href="{{ url_for('stores.product_public', product_id=product.id) }}" class="reel-product-link">
-                                                        <h5 class="reel-product-name">{{ product.name }}</h5>
-                                                        <div class="reel-product-price">{{ product.price|format_price }} ل.س</div>
-                                                    </a>
-                                                </div>
-                                                <div class="reel-actions-column">
-                                                    <button class="reel-action-btn" onclick="shareProduct({{ product.id }}, '{{ product.name }}')" title="مشاركة"><i class="bi bi-share"></i></button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    {% endfor %}
-                                </div>
-                            {% else %}<p class="text-muted text-center">لا توجد فيديوهات.</p>{% endif %}
-                        </div>
-
-                        <div class="tab-pane fade" id="categories-tab{{ store.id }}" role="tabpanel">
-                            {% set categories = store.categories %}
-                            {% if categories %}
-                                {% for category in categories %}
-                                    <h6 class="fw-bold mt-3"><i class="bi bi-tag"></i> {{ category.name }}</h6>
-                                    {% set category_products = category.products %}
-                                    {% if category_products %}
+                        <!-- 1) المنتجات (مفتوح افتراضياً) -->
+                        <div class="store-section">
+                            <button class="store-section-header" type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#store-{{ store.id }}-products"
+                                    aria-expanded="true"
+                                    aria-controls="store-{{ store.id }}-products">
+                                <span class="section-title">
+                                    <i class="bi bi-box-seam"></i>
+                                    المنتجات
+                                    <span class="count-badge">{{ store.products|length }}</span>
+                                </span>
+                                <i class="bi bi-chevron-down section-chevron"></i>
+                            </button>
+                            <div class="collapse show" id="store-{{ store.id }}-products">
+                                <div class="store-section-body">
+                                    {% set products = store.products[:8] %}
+                                    {% if products %}
                                         <div class="row g-3">
-                                            {% for product in category_products[:4] %}
+                                            {% for product in products %}
                                                 <div class="col-6 col-md-4 col-lg-3">
-                                                    <div class="card h-100 border-0 shadow-sm">
-                                                        <div class="product-image-wrapper"><a href="{{ url_for('stores.product_public', product_id=product.id) }}">{% if product.main_image %}{% set first_image = product.main_image.strip() %}<img src="{{ first_image | get_image_url }}" alt="{{ product.name }}" class="product-image" loading="lazy">{% else %}<div class="d-flex align-items-center justify-content-center h-100 text-muted"><i class="bi bi-image" style="font-size: 2rem;"></i></div>{% endif %}</a></div>
-                                                        <div class="card-body p-2"><h6 class="card-title mb-1 text-truncate">{{ product.name }}</h6><p class="fw-bold text-success mb-0 price">{{ product.price|format_price }} ل.س</p></div>
+                                                    <div class="card h-100 border-0 shadow-sm product-card">
+                                                        <div class="product-image-wrapper">
+                                                            <a href="{{ url_for('stores.product_public', product_id=product.id) }}">
+                                                                {% if product.main_image %}
+                                                                    {% set first_image = product.main_image.strip() %}
+                                                                    <img src="{{ first_image | get_image_url }}" alt="{{ product.name }}" class="product-image" loading="lazy">
+                                                                {% else %}
+                                                                    <div class="d-flex align-items-center justify-content-center h-100 text-muted">
+                                                                        <i class="bi bi-image" style="font-size: 2rem;"></i>
+                                                                    </div>
+                                                                {% endif %}
+                                                            </a>
+                                                        </div>
+                                                        <div class="card-body p-2">
+                                                            <h6 class="card-title mb-1 text-truncate">{{ product.name }}</h6>
+                                                            {% if product.hide_price %}
+                                                                <p class="mb-0 small"><span class="badge bg-warning text-dark">حصراً من المتجر</span></p>
+                                                            {% else %}
+                                                                <p class="fw-bold text-success mb-0 price">{{ product.effective_price|format_price }} ل.س</p>
+                                                            {% endif %}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             {% endfor %}
                                         </div>
-                                    {% else %}<p class="text-muted small">لا توجد منتجات في هذا التصنيف.</p>{% endif %}
-                                {% endfor %}
-                            {% else %}<p class="text-muted text-center">لا توجد تصنيفات.</p>{% endif %}
-                        </div>
-
-                        <div class="tab-pane fade" id="about-tab{{ store.id }}" role="tabpanel">
-                            <div class="row">
-                                <div class="col-md-6 mb-2"><p><strong><i class="bi bi-telephone"></i> الهاتف:</strong> {{ store.phone or 'غير محدد' }}</p></div>
-                                <div class="col-md-6 mb-2"><p><strong><i class="bi bi-geo-alt"></i> العنوان:</strong> {{ store.address or 'غير محدد' }}</p></div>
-                                <div class="col-md-6 mb-2"><p><strong><i class="bi bi-clock"></i> ساعات العمل:</strong> {{ store.working_hours or 'غير محدد' }}</p></div>
-                                <div class="col-md-6 mb-2"><p><strong><i class="bi bi-truck"></i> خدمة التوصيل:</strong> {% if store.has_delivery %}متوفرة{% else %}غير متوفرة{% endif %}</p></div>
-                                <div class="col-md-6 mb-2"><p><strong><i class="bi bi-credit-card"></i> حالة الاشتراك:</strong> {% if store.subscription_status == 'active' %}<span class="badge bg-success">نشط</span>{% elif store.subscription_status == 'pending' %}<span class="badge bg-warning text-dark">قيد الانتظار</span>{% else %}<span class="badge bg-secondary">غير نشط</span>{% endif %}</p></div>
-                                {% if store.latitude and store.longitude %}{% set _ = has_map.append(1) %}<div class="col-12 mb-3"><p><strong><i class="bi bi-map"></i> الموقع على الخريطة:</strong></p><div class="mini-store-map" id="storeMap{{ store.id }}" data-lat="{{ store.latitude }}" data-lng="{{ store.longitude }}"></div></div>{% endif %}
-                                <div class="col-12"><p><strong>الوصف:</strong></p><p>{{ store.description or 'لا يوجد وصف.' }}</p></div>
+                                        {% if store.products|length > 8 %}
+                                            <div class="text-center mt-3">
+                                                <a href="{{ url_for('store.store_products', store_id=store.id) }}" class="btn btn-sm btn-outline-primary">
+                                                    عرض الكل ({{ store.products|length }})
+                                                </a>
+                                            </div>
+                                        {% endif %}
+                                    {% else %}
+                                        <p class="empty-text">لا توجد منتجات بعد.</p>
+                                    {% endif %}
+                                </div>
                             </div>
                         </div>
+
+                        <!-- 2) الفيديوهات -->
+                        {% set videos = store.products | selectattr('video') | list %}
+                        <div class="store-section">
+                            <button class="store-section-header collapsed" type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#store-{{ store.id }}-videos"
+                                    aria-expanded="false"
+                                    aria-controls="store-{{ store.id }}-videos">
+                                <span class="section-title">
+                                    <i class="bi bi-film"></i>
+                                    الفيديوهات
+                                    <span class="count-badge">{{ videos|length }}</span>
+                                </span>
+                                <i class="bi bi-chevron-down section-chevron"></i>
+                            </button>
+                            <div class="collapse" id="store-{{ store.id }}-videos">
+                                <div class="store-section-body">
+                                    {% if videos %}
+                                        <div class="owner-reels-list">
+                                            {% for product in videos %}
+                                                <div class="owner-reel-tile" data-tile-id="tile-{{ store.id }}-{{ product.id }}">
+                                                    <video preload="none" playsinline loop
+                                                           src="{{ product.video | get_image_url }}"
+                                                           poster="{{ product.main_image.strip() | get_image_url if product.main_image else '' }}"
+                                                           data-owner-tile-video></video>
+                                                    <div class="play-btn"><i class="bi bi-play-fill"></i></div>
+                                                    <div class="tile-info">
+                                                        <span class="text-truncate">{{ product.name }}</span>
+                                                    </div>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <p class="empty-text">لا توجد فيديوهات.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3) التصنيفات -->
+                        {% set categories = store.categories %}
+                        <div class="store-section">
+                            <button class="store-section-header collapsed" type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#store-{{ store.id }}-categories"
+                                    aria-expanded="false"
+                                    aria-controls="store-{{ store.id }}-categories">
+                                <span class="section-title">
+                                    <i class="bi bi-diagram-3"></i>
+                                    التصنيفات
+                                    <span class="count-badge">{{ categories|length }}</span>
+                                </span>
+                                <i class="bi bi-chevron-down section-chevron"></i>
+                            </button>
+                            <div class="collapse" id="store-{{ store.id }}-categories">
+                                <div class="store-section-body">
+                                    {% if categories %}
+                                        {% for category in categories %}
+                                            {% if not category.parent %}
+                                                <div class="cat-row-mini parent">
+                                                    <i class="bi bi-folder2-open text-primary"></i>
+                                                    <span>{{ category.name }}</span>
+                                                    <span class="cat-count">{{ category.products|length }} منتج</span>
+                                                </div>
+                                                {% for child in categories %}
+                                                    {% if child.parent_id == category.id %}
+                                                        <div class="cat-row-mini child">
+                                                            <i class="bi bi-arrow-return-left text-muted"></i>
+                                                            <span>{{ child.name }}</span>
+                                                            <span class="cat-count">{{ child.products|length }} منتج</span>
+                                                        </div>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        <p class="empty-text">لا توجد تصنيفات.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4) حول المتجر -->
+                        <div class="store-section">
+                            <button class="store-section-header collapsed" type="button"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#store-{{ store.id }}-about"
+                                    aria-expanded="false"
+                                    aria-controls="store-{{ store.id }}-about">
+                                <span class="section-title">
+                                    <i class="bi bi-info-circle"></i>
+                                    حول المتجر
+                                </span>
+                                <i class="bi bi-chevron-down section-chevron"></i>
+                            </button>
+                            <div class="collapse" id="store-{{ store.id }}-about">
+                                <div class="store-section-body">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-2"><p><strong><i class="bi bi-telephone"></i> الهاتف:</strong> {{ store.phone or 'غير محدد' }}</p></div>
+                                        <div class="col-md-6 mb-2"><p><strong><i class="bi bi-geo-alt"></i> العنوان:</strong> {{ store.address or 'غير محدد' }}</p></div>
+                                        <div class="col-md-6 mb-2"><p><strong><i class="bi bi-clock"></i> ساعات العمل:</strong> {{ store.working_hours or 'غير محدد' }}</p></div>
+                                        <div class="col-md-6 mb-2"><p><strong><i class="bi bi-truck"></i> خدمة التوصيل:</strong> {% if store.has_delivery %}متوفرة{% else %}غير متوفرة{% endif %}</p></div>
+                                        <div class="col-md-6 mb-2">
+                                            <p><strong><i class="bi bi-credit-card"></i> حالة الاشتراك:</strong>
+                                                {% if store.subscription_status == 'active' %}<span class="badge bg-success">نشط</span>
+                                                {% elif store.subscription_status == 'pending' %}<span class="badge bg-warning text-dark">قيد الانتظار</span>
+                                                {% else %}<span class="badge bg-secondary">غير نشط</span>{% endif %}
+                                            </p>
+                                        </div>
+                                        {% if store.latitude and store.longitude %}
+                                            <div class="col-12 mb-3">
+                                                <p><strong><i class="bi bi-map"></i> الموقع على الخريطة:</strong></p>
+                                                <div class="mini-store-map"
+                                                     id="storeMap{{ store.id }}"
+                                                     data-lat="{{ store.latitude }}"
+                                                     data-lng="{{ store.longitude }}"></div>
+                                            </div>
+                                        {% endif %}
+                                        <div class="col-12">
+                                            <p><strong>الوصف:</strong></p>
+                                            <p>{{ store.description or 'لا يوجد وصف.' }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
             {% endfor %}
         </div>
     {% else %}
-        <div class="text-center py-5 empty-state"><i class="bi bi-shop" style="font-size:4rem; color:#ccc;"></i><p class="mt-3">لا توجد متاجر بعد.</p></div>
+        <div class="text-center py-5 empty-state">
+            <i class="bi bi-shop" style="font-size:4rem; color:#ccc;"></i>
+            <p class="mt-3">لا توجد متاجر بعد.</p>
+        </div>
     {% endif %}
 </div>
 {% endblock %}
 
 {% block scripts %}
-{% if has_map %}
+{% if stores %}
 <link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css') }}">
 <script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.mini-store-map').forEach(function(el) {
+    // تهيئة الخريطة عند فتح قسم "حول المتجر" لأول مرة
+    function initStoreMap(el) {
+        if (!el || el._leaflet_id) return;
         var lat = parseFloat(el.getAttribute('data-lat'));
         var lng = parseFloat(el.getAttribute('data-lng'));
-        if (!isNaN(lat) && !isNaN(lng)) {
-            var map = L.map(el.id).setView([lat, lng], 15);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors' }).addTo(map);
-            L.marker([lat, lng]).addTo(map);
-        }
+        if (isNaN(lat) || isNaN(lng)) return;
+        var map = L.map(el.id, { scrollWheelZoom: false }).setView([lat, lng], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+        L.marker([lat, lng]).addTo(map);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('[id^="store-"][id$="-about"]').forEach(function(el) {
+            el.addEventListener('shown.bs.collapse', function() {
+                this.querySelectorAll('.mini-store-map').forEach(initStoreMap);
+            });
+        });
     });
-});
 </script>
 {% endif %}
-<script src="{{ url_for('static', filename='js/reels.js') }}"></script>
+
+<script>
+    // ===== S1: فيديوهات مصغرة داخل قسم "الفيديوهات" =====
+    (function() {
+        'use strict';
+
+        function setupTile(tile) {
+            var video = tile.querySelector('[data-owner-tile-video]');
+            if (!video) return;
+
+            function toggle() {
+                if (video.paused) {
+                    document.querySelectorAll('[data-owner-tile-video]').forEach(function(v) {
+                        if (v !== video && !v.paused) {
+                            v.pause();
+                            var t = v.closest('.owner-reel-tile');
+                            if (t) t.classList.remove('playing');
+                        }
+                    });
+                    video.play().catch(function(err) { console.warn('فشل التشغيل:', err); });
+                } else {
+                    video.pause();
+                }
+            }
+
+            video.addEventListener('click', toggle);
+
+            video.addEventListener('play', function() {
+                tile.classList.add('playing');
+            });
+            video.addEventListener('pause', function() {
+                tile.classList.remove('playing');
+            });
+            video.addEventListener('ended', function() {
+                tile.classList.remove('playing');
+            });
+        }
+
+        function init() {
+            document.querySelectorAll('.owner-reel-tile').forEach(setupTile);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', init);
+        } else {
+            init();
+        }
+    })();
+</script>
 {% endblock %}

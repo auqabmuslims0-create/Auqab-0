@@ -1,0 +1,472 @@
+{% extends 'base.html' %}
+
+{% block title %}إدارة منتجات "{{ category.name }}" - {{ store.name }}{% endblock %}
+
+{% block head %}
+<style>
+    .form-card {
+        border-radius: 20px;
+        border: none;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        background: #fff;
+        padding-bottom: 90px; /* مساحة لشريط الأزرار الثابت */
+    }
+    body.dark-mode .form-card {
+        background: #1e1e1e;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+
+    /* ===== شريط البحث ===== */
+    .search-bar-modern {
+        border-radius: 25px;
+        overflow: hidden;
+        background: rgba(255,255,255,0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.4);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        transition: box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    .search-bar-modern:focus-within {
+        border-color: var(--primary);
+        box-shadow: 0 4px 16px rgba(46,93,52,0.2);
+    }
+    .search-icon {
+        background: transparent;
+        border: none;
+        color: var(--primary);
+        padding-right: 12px;
+    }
+    .search-input-modern {
+        border: none;
+        background: transparent;
+        padding: 10px 12px;
+        font-size: 0.95rem;
+        outline: none;
+        box-shadow: none;
+    }
+    .search-input-modern:focus { box-shadow: none; }
+    body.dark-mode .search-bar-modern {
+        background: rgba(30,30,30,0.7);
+        border-color: rgba(255,255,255,0.1);
+    }
+
+    /* ===== بطاقة منتج للتحديد ===== */
+    .pick-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        border-radius: 14px;
+        border: 2px solid #e9ecef;
+        background: #fff;
+        margin-bottom: 10px;
+        cursor: pointer;
+        transition: all 0.15s;
+        position: relative;
+    }
+    .pick-card:hover {
+        border-color: var(--primary);
+        background: rgba(46,93,52,0.02);
+        transform: translateY(-1px);
+    }
+    .pick-card.selected {
+        border-color: var(--primary);
+        background: rgba(46,93,52,0.06);
+        box-shadow: 0 0 0 3px rgba(46,93,52,0.1);
+    }
+    body.dark-mode .pick-card {
+        background: #1e1e1e;
+        border-color: #333;
+        color: #fff;
+    }
+    body.dark-mode .pick-card:hover {
+        background: rgba(201,162,39,0.05);
+        border-color: var(--accent);
+    }
+    body.dark-mode .pick-card.selected {
+        border-color: var(--accent);
+        background: rgba(201,162,39,0.1);
+        box-shadow: 0 0 0 3px rgba(201,162,39,0.15);
+    }
+
+    .pick-checkbox {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        border: 2px solid #ccc;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+    }
+    .pick-card.selected .pick-checkbox {
+        border-color: var(--primary);
+        background: var(--primary);
+    }
+    .pick-card.selected .pick-checkbox::after {
+        content: '';
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #fff;
+    }
+    body.dark-mode .pick-card.selected .pick-checkbox {
+        border-color: var(--accent);
+        background: var(--accent);
+    }
+    body.dark-mode .pick-card.selected .pick-checkbox::after { background: #000; }
+
+    .pick-thumb {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        object-fit: cover;
+        flex-shrink: 0;
+        background: #e9ecef;
+    }
+    .pick-thumb-placeholder {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        background: #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #adb5bd;
+        flex-shrink: 0;
+    }
+    body.dark-mode .pick-thumb-placeholder { background: #3a3a3a; color: #666; }
+
+    .pick-info { flex: 1; min-width: 0; }
+    .pick-name {
+        font-weight: 700;
+        font-size: 0.95rem;
+        margin-bottom: 3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .pick-meta {
+        font-size: 0.78rem;
+        color: #888;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .pick-price {
+        font-weight: 700;
+        color: var(--primary);
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+    body.dark-mode .pick-price { color: var(--accent); }
+
+    /* ===== شريط الأزرار الثابت ===== */
+    .sticky-actions {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(255,255,255,0.95);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-top: 1px solid #e0e0e0;
+        padding: 12px 16px;
+        z-index: 1000;
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.08);
+    }
+    body.dark-mode .sticky-actions {
+        background: rgba(30,30,30,0.95);
+        border-top-color: #333;
+    }
+    .sticky-actions .container {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        max-width: 1200px;
+    }
+
+    .selected-count-badge {
+        background: var(--primary);
+        color: #fff;
+        border-radius: 20px;
+        padding: 6px 14px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+    body.dark-mode .selected-count-badge {
+        background: var(--accent);
+        color: #000;
+    }
+
+    .btn-custom {
+        border-radius: 25px;
+        font-weight: 600;
+        padding: 10px 20px;
+        transition: all 0.15s;
+    }
+    .btn-custom:hover {
+        transform: translateY(-1px);
+    }
+
+    .empty-products {
+        text-align: center;
+        padding: 50px 20px;
+        color: #888;
+    }
+    .empty-products i {
+        font-size: 4rem;
+        color: #ccc;
+        display: block;
+        margin-bottom: 16px;
+    }
+
+    .hidden-product { display: none !important; }
+
+    .search-hint {
+        font-size: 0.8rem;
+        color: #888;
+        margin-bottom: 8px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-3 text-center">
+        <i class="bi bi-folder-check"></i> إدارة منتجات التصنيف
+    </h1>
+    <p class="text-center text-muted mb-4">
+        <span class="badge bg-primary-subtle text-primary border border-primary-subtle p-2">
+            <i class="bi bi-folder-fill"></i> {{ category.name }}
+        </span>
+    </p>
+
+    <div class="card form-card p-4">
+        {% if all_products %}
+            <!-- شريط البحث -->
+            <div class="mb-3">
+                <div class="input-group search-bar-modern">
+                    <span class="input-group-text search-icon"><i class="bi bi-search"></i></span>
+                    <input type="text" id="productSearchInput" class="form-control search-input-modern"
+                           placeholder="ابحث باسم المنتج..." autocomplete="off">
+                </div>
+                <p class="search-hint mt-2 mb-0" id="searchHint">
+                    اضغط على المنتج لتحديده وإضافته لهذا التصنيف
+                </p>
+            </div>
+
+            <!-- قائمة المنتجات -->
+            <div id="productsList">
+                {% for product in all_products %}
+                <label class="pick-card {% if product.id in selected_ids %}selected{% endif %}"
+                       data-product-id="{{ product.id }}"
+                       data-search-name="{{ product.name|lower }}">
+                    <input type="checkbox" name="product_ids" value="{{ product.id }}"
+                           class="d-none product-checkbox"
+                           {% if product.id in selected_ids %}checked{% endif %}>
+                    <div class="pick-checkbox"></div>
+
+                    {% if product.main_image %}
+                        <img src="{{ product.main_image | get_image_url }}"
+                             class="pick-thumb" alt="{{ product.name }}" loading="lazy">
+                    {% else %}
+                        <div class="pick-thumb-placeholder"><i class="bi bi-image"></i></div>
+                    {% endif %}
+
+                    <div class="pick-info">
+                        <div class="pick-name">{{ product.name }}</div>
+                        <div class="pick-meta">
+                            <span><i class="bi bi-boxes"></i> {{ product.stock_quantity }}</span>
+                            {% if product.category %}
+                                <span><i class="bi bi-folder"></i> {{ product.category.name }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if product.hide_price %}
+                        <span class="badge bg-warning text-dark" style="font-size:0.7rem;">حصراً من المتجر</span>
+                    {% else %}
+                        <span class="pick-price">{{ product.effective_price|format_price }} ل.س</span>
+                    {% endif %}
+                </label>
+                {% endfor %}
+            </div>
+
+            <div id="noSearchResults" class="empty-products" style="display:none;">
+                <i class="bi bi-search"></i>
+                <h6>لا توجد منتجات مطابقة للبحث</h6>
+            </div>
+        {% else %}
+            <div class="empty-products">
+                <i class="bi bi-box"></i>
+                <h5>لا توجد منتجات في متجرك</h5>
+                <p>أضف منتجات أولاً لتتمكن من إضافتها إلى تصنيفات</p>
+                <a href="{{ url_for('store.new_product', store_id=store.id) }}" class="btn btn-custom mt-2">
+                    <i class="bi bi-plus-circle"></i> إضافة منتج جديد
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="text-center mt-3">
+        <a href="{{ url_for('store.store_categories', store_id=store.id) }}"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-right"></i> عودة للتصنيفات
+        </a>
+    </div>
+</div>
+
+{% if all_products %}
+<!-- ===== شريط الأزرار الثابت ===== -->
+<form method="POST" id="manageForm"
+      action="{{ url_for('store.manage_category_products', store_id=store.id, category_id=category.id) }}">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <!-- حقول product_ids ستُضاف هنا ديناميكياً -->
+
+    <div class="sticky-actions">
+        <div class="container">
+            <span class="selected-count-badge">
+                <i class="bi bi-check2-circle"></i>
+                <span id="selectedCount">{{ selected_ids|length }}</span> محدد
+            </span>
+            <div class="ms-auto d-flex gap-2 flex-wrap">
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="selectAllBtn">
+                    <i class="bi bi-check-square"></i> تحديد الكل
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-sm" id="clearAllBtn">
+                    <i class="bi bi-x-square"></i> إلغاء الكل
+                </button>
+                <button type="submit" class="btn btn-custom">
+                    <i class="bi bi-check-circle"></i> تأكيد وإضافة
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    'use strict';
+
+    const searchInput = document.getElementById('productSearchInput');
+    const cards = document.querySelectorAll('.pick-card');
+    const selectedCountEl = document.getElementById('selectedCount');
+    const manageForm = document.getElementById('manageForm');
+    const noResults = document.getElementById('noSearchResults');
+    const selectAllBtn = document.getElementById('selectAllBtn');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+    const searchHint = document.getElementById('searchHint');
+
+    function updateCount() {
+        if (!selectedCountEl) return;
+        const count = document.querySelectorAll('.product-checkbox:checked').length;
+        selectedCountEl.textContent = count;
+    }
+
+    // ===== تبديل التحديد عند النقر على البطاقة =====
+    cards.forEach(card => {
+        card.addEventListener('click', function(e) {
+            // لا نمنع السلوك الافتراضي للـ label
+            const cb = card.querySelector('.product-checkbox');
+            if (!cb) return;
+            // نترك المتصفح يبدل الحالة تلقائياً عند النقر على label
+            // لكن نضيف تأخير صغير لتحديث CSS بعد التبديل
+            setTimeout(() => {
+                card.classList.toggle('selected', cb.checked);
+                updateCount();
+            }, 0);
+        });
+
+        // مسك تغيير الـ checkbox مباشرة أيضاً
+        const cb = card.querySelector('.product-checkbox');
+        if (cb) {
+            cb.addEventListener('change', () => {
+                card.classList.toggle('selected', cb.checked);
+                updateCount();
+            });
+        }
+    });
+
+    // ===== البحث الفوري =====
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const q = this.value.trim().toLowerCase();
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const name = card.dataset.searchName || '';
+                const match = !q || name.includes(q);
+                card.classList.toggle('hidden-product', !match);
+                if (match) visibleCount++;
+            });
+
+            if (noResults) {
+                noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+            }
+            if (searchHint) {
+                searchHint.textContent = q
+                    ? `عرض ${visibleCount} من ${cards.length} منتج`
+                    : 'اضغط على المنتج لتحديده وإضافته لهذا التصنيف';
+            }
+        });
+    }
+
+    // ===== تحديد / إلغاء الكل (على المرئي فقط إن كان هناك بحث) =====
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('click', function() {
+            cards.forEach(card => {
+                if (card.classList.contains('hidden-product')) return;
+                const cb = card.querySelector('.product-checkbox');
+                if (cb && !cb.checked) {
+                    cb.checked = true;
+                    card.classList.add('selected');
+                }
+            });
+            updateCount();
+        });
+    }
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', function() {
+            cards.forEach(card => {
+                if (card.classList.contains('hidden-product')) return;
+                const cb = card.querySelector('.product-checkbox');
+                if (cb && cb.checked) {
+                    cb.checked = false;
+                    card.classList.remove('selected');
+                }
+            });
+            updateCount();
+        });
+    }
+
+    // ===== عند الإرسال: أبني حقول product_ids المحددة فقط =====
+    if (manageForm) {
+        manageForm.addEventListener('submit', function(e) {
+            // احذف أي حقول قديمة
+            manageForm.querySelectorAll('input[name="product_ids"]').forEach(el => el.remove());
+
+            // أضف حقول مخفية للمنتجات المحددة فقط (لتفادي إرسال كل شيء)
+            document.querySelectorAll('.product-checkbox:checked').forEach(cb => {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'product_ids';
+                hidden.value = cb.value;
+                manageForm.appendChild(hidden);
+            });
+            // ملاحظة: checkboxes داخل form الـ main تكون خارج هذا الـ form
+            // لذا نعتمد على الحقول المخفية فقط
+        });
+    }
+
+    // ===== تحديث العدّاد الأولي =====
+    updateCount();
+})();
+</script>
+{% endblock %}

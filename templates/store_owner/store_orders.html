@@ -5,219 +5,339 @@
 
 {% block head %}
 <style>
+    /* ===== رأس الصفحة ===== */
     .page-header {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-between;
-        align-items: center;
-        gap: 10px;
-        margin-bottom: 20px;
+        display: flex; flex-wrap: wrap; justify-content: space-between;
+        align-items: center; gap: 10px; margin-bottom: 20px;
     }
-    .page-header h1 {
-        font-size: 1.6rem;
-        font-weight: 800;
-        margin: 0;
-    }
+    .page-header h1 { font-size: 1.5rem; font-weight: 800; margin: 0; }
     .filter-form {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        align-items: center;
+        display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
     }
-    .filter-form select,
-    .filter-form button {
-        border-radius: 25px;
-        padding: 8px 16px;
-        border: 1px solid #ced4da;
-        background: #fff;
+    .filter-form select, .filter-form button {
+        border-radius: 25px; padding: 8px 16px;
+        border: 1px solid #ced4da; background: #fff;
         transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .filter-form select:focus {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 0.2rem rgba(46,93,52,0.15);
+    body.dark-mode .filter-form select, body.dark-mode .filter-form button {
+        background: #2d2d2d; border-color: #444; color: #fff;
     }
-    body.dark-mode .filter-form select,
-    body.dark-mode .filter-form button {
-        background: #2d2d2d;
-        border-color: #444;
-        color: #fff;
-    }
+
+    /* ===== بطاقة الطلب ===== */
     .order-card {
-        border: none;
-        border-radius: 20px;
-        overflow: hidden;
+        background: #fff; border-radius: 20px; overflow: hidden;
         box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-        background: #fff;
-        transition: transform 0.2s, box-shadow 0.2s;
-        margin-bottom: 20px;
+        margin-bottom: 16px; transition: box-shadow 0.2s;
     }
-    .order-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 20px rgba(0,0,0,0.12);
-    }
+    .order-card:hover { box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
     body.dark-mode .order-card {
-        background: #1e1e1e;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-        color: #fff;
+        background: #1e1e1e; box-shadow: 0 4px 12px rgba(0,0,0,0.3); color: #fff;
     }
-    .order-card-header {
-        padding: 15px 20px;
-        border-bottom: 1px solid rgba(0,0,0,0.05);
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-between;
-        align-items: center;
-        gap: 10px;
+    .order-header {
+        width: 100%; background: transparent; border: none;
+        padding: 14px 18px; text-align: right;
+        display: flex; flex-wrap: wrap; justify-content: space-between;
+        align-items: center; gap: 10px; cursor: pointer;
+        transition: background 0.2s;
     }
-    body.dark-mode .order-card-header {
-        border-bottom-color: #333;
+    .order-header:hover { background: rgba(46,93,52,0.04); }
+    body.dark-mode .order-header:hover { background: rgba(201,162,39,0.06); }
+    .order-header-title {
+        font-weight: 700; font-size: 1rem; color: var(--primary);
+        display: flex; align-items: center; gap: 8px;
     }
-    .order-number {
-        font-weight: 700;
-        font-size: 1.1rem;
+    body.dark-mode .order-header-title { color: var(--accent); }
+    .order-header-meta {
+        display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
     }
-    .order-date {
-        font-size: 0.85rem;
-        color: #6c757d;
+    .order-date-badge {
+        font-size: 0.75rem; padding: 4px 10px;
+        background: #f0f0f0; color: #666; border-radius: 12px;
     }
-    body.dark-mode .order-date {
-        color: #adb5bd;
+    body.dark-mode .order-date-badge {
+        background: #2d2d2d; color: #ccc;
     }
-    .order-status-badge {
-        font-size: 0.8rem;
-        padding: 0.4rem 0.8rem;
-        border-radius: 20px;
-        font-weight: 600;
-        white-space: nowrap;
+    .order-chevron {
+        transition: transform 0.3s; color: #999; font-size: 0.9rem;
     }
-    .order-summary {
-        padding: 15px 20px;
+    .order-header[aria-expanded="true"] .order-chevron {
+        transform: rotate(180deg);
+    }
+
+    /* ===== جسم البطاقة ===== */
+    .order-body {
+        border-top: 1px solid #f0f0f0; padding: 16px 18px;
+        background: #fafafa;
+    }
+    body.dark-mode .order-body { background: #252525; border-top-color: #333; }
+
+    /* ===== شبكة معلومات الزبون ===== */
+    .info-row {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 10px;
+        gap: 10px; margin-bottom: 16px;
+    }
+    .info-item {
+        display: flex; align-items: center; gap: 8px;
         font-size: 0.9rem;
     }
-    .summary-item {
-        display: flex;
-        align-items: center;
-        gap: 6px;
+    .info-item i { color: var(--primary); width: 18px; text-align: center; }
+    body.dark-mode .info-item i { color: var(--accent); }
+
+    /* ===== ملاحظة الزبون (E4) ===== */
+    .customer-note-box {
+        background: #fff8e1; border: 1px solid #ffe69c;
+        border-right: 4px solid #f0ad4e;
+        border-radius: 12px; padding: 12px 14px;
+        margin-bottom: 16px;
+        display: flex; gap: 10px; align-items: flex-start;
     }
-    .summary-item i {
-        color: var(--primary);
-        width: 18px;
-        text-align: center;
+    body.dark-mode .customer-note-box {
+        background: #3a2f1a; border-color: #5c4a2a; border-right-color: #ffd666;
     }
-    body.dark-mode .summary-item i {
-        color: var(--accent);
+    .customer-note-box i {
+        color: #f0ad4e; font-size: 1.2rem; flex-shrink: 0;
     }
-    .order-actions {
-        padding: 0 20px 15px;
-        display: flex;
-        justify-content: flex-end;
+    body.dark-mode .customer-note-box i { color: #ffd666; }
+    .customer-note-label {
+        font-weight: 700; font-size: 0.85rem; margin-bottom: 4px;
+        color: #856404;
     }
-    .btn-details {
-        border-radius: 20px;
-        padding: 6px 16px;
-        font-size: 0.85rem;
+    body.dark-mode .customer-note-label { color: #ffd666; }
+    .customer-note-text {
+        color: #664d03; font-size: 0.9rem; line-height: 1.6;
     }
-    .order-details-collapse {
-        border-top: 1px solid rgba(0,0,0,0.05);
-        padding: 15px 20px;
+    body.dark-mode .customer-note-text { color: #ffe69c; }
+
+    /* ===== كروت المنتجات (S10) ===== */
+    .section-title {
+        font-weight: 700; font-size: 0.95rem;
+        margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
     }
-    body.dark-mode .order-details-collapse {
-        border-top-color: #333;
-    }
-    .products-table {
-        background: #f8f9fa;
-        border-radius: 12px;
-        overflow: hidden;
-    }
-    body.dark-mode .products-table {
-        background: #2d2d2d;
-    }
-    .management-section {
-        margin-top: 20px;
-    }
-    .delivery-person-grid {
+    .products-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        gap: 10px;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 12px; margin-bottom: 18px;
+    }
+    .product-mini-card {
+        background: #fff; border-radius: 14px; overflow: hidden;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        display: flex; flex-direction: column;
+        transition: transform 0.15s;
+    }
+    .product-mini-card:hover { transform: translateY(-2px); }
+    body.dark-mode .product-mini-card {
+        background: #1e1e1e; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    .product-mini-image {
+        width: 100%; aspect-ratio: 1 / 1; object-fit: cover;
+        background: #f0f0f0;
+    }
+    body.dark-mode .product-mini-image { background: #2d2d2d; }
+    .product-mini-body { padding: 8px 10px; flex: 1; display: flex; flex-direction: column; }
+    .product-mini-name {
+        font-weight: 600; font-size: 0.85rem; line-height: 1.3;
+        margin-bottom: 4px; min-height: 2.6em;
+        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+        overflow: hidden; word-break: break-word;
+    }
+    .product-mini-qty {
+        font-size: 0.8rem; color: #666; margin-bottom: 6px;
+    }
+    body.dark-mode .product-mini-qty { color: #aaa; }
+    .product-mini-subtotal {
+        margin-top: auto; font-weight: 700; font-size: 0.85rem;
+        color: var(--primary); text-align: center; padding-top: 4px;
+        border-top: 1px solid #f0f0f0;
+    }
+    body.dark-mode .product-mini-subtotal { color: var(--accent); border-top-color: #333; }
+
+    /* ===== ملخص الإجمالي ===== */
+    .order-total-box {
+        background: #fff; border-radius: 12px; padding: 12px 16px;
+        display: flex; justify-content: space-between; align-items: center;
+        margin-bottom: 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+    body.dark-mode .order-total-box {
+        background: #1e1e1e; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    .order-total-box .label { font-weight: 600; }
+    .order-total-box .value {
+        font-weight: 800; font-size: 1.15rem; color: #198754;
+    }
+
+    /* ===== زر تحديث الحالة ===== */
+    .btn-status-update {
+        width: 100%; padding: 12px; border-radius: 14px;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: #fff; border: none; font-weight: 600; font-size: 0.95rem;
+        display: flex; align-items: center; justify-content: center; gap: 8px;
+        cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+        box-shadow: 0 4px 12px rgba(46,93,52,0.25);
+        margin-bottom: 12px;
+    }
+    .btn-status-update:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(46,93,52,0.35);
+    }
+    body.dark-mode .btn-status-update {
+        background: linear-gradient(135deg, var(--accent), #b08c1e);
+        color: #000; box-shadow: 0 4px 12px rgba(201,162,39,0.3);
+    }
+
+    /* ===== قسم المندوبين (S12) ===== */
+    .delivery-section {
+        margin-top: 8px; padding: 14px;
+        background: #fff; border-radius: 14px;
+        border: 2px dashed #e0e0e0;
+    }
+    body.dark-mode .delivery-section {
+        background: #1e1e1e; border-color: #444;
+    }
+    .delivery-persons-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 10px; margin-top: 10px;
     }
     .delivery-person-card {
-        border: 1px solid #e0e0e0;
-        border-radius: 12px;
-        padding: 10px;
+        border: 2px solid #e0e0e0; border-radius: 12px;
+        padding: 10px; cursor: pointer; transition: all 0.2s;
+        display: flex; align-items: center; gap: 10px;
         background: #fff;
-        transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 10px;
     }
     .delivery-person-card:hover {
         border-color: var(--primary);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
-    .delivery-person-card.selected {
-        border-color: var(--primary);
-        background: rgba(46,93,52,0.05);
-        box-shadow: 0 0 0 2px rgba(46,93,52,0.15);
+        box-shadow: 0 4px 12px rgba(46,93,52,0.15);
+        transform: translateY(-2px);
     }
     body.dark-mode .delivery-person-card {
-        background: #252525;
-        border-color: #444;
+        background: #2d2d2d; border-color: #444;
     }
-    body.dark-mode .delivery-person-card.selected {
+    body.dark-mode .delivery-person-card:hover {
         border-color: var(--accent);
-        background: rgba(201,162,39,0.1);
-        box-shadow: 0 0 0 2px rgba(201,162,39,0.2);
     }
     .person-avatar {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        object-fit: cover;
-        flex-shrink: 0;
+        width: 42px; height: 42px; border-radius: 50%;
+        object-fit: cover; flex-shrink: 0;
+        background: #6c757d; color: #fff;
+        display: flex; align-items: center; justify-content: center;
     }
-    .person-avatar-placeholder {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: #6c757d;
-        color: #fff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-    .person-info {
-        flex: 1;
-        min-width: 0;
-    }
+    .person-info { flex: 1; min-width: 0; }
     .person-name {
-        font-weight: 600;
-        font-size: 0.9rem;
-        margin-bottom: 2px;
+        font-weight: 700; font-size: 0.9rem;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    .person-meta {
-        font-size: 0.75rem;
-        color: #6c757d;
+    .person-meta { font-size: 0.75rem; color: #666; margin-top: 2px; }
+    body.dark-mode .person-meta { color: #aaa; }
+
+    /* ===== المندوب المعيّن (S12) ===== */
+    .assigned-person-box {
+        background: #e7f5ec; border: 2px solid #198754;
+        border-radius: 14px; padding: 14px; margin-bottom: 12px;
+        display: flex; gap: 12px; align-items: center;
     }
-    body.dark-mode .person-meta {
-        color: #adb5bd;
+    body.dark-mode .assigned-person-box {
+        background: #102e1a; border-color: #198754;
     }
-    .select-person-btn {
-        border-radius: 20px;
-        padding: 4px 12px;
-        font-size: 0.75rem;
+    .assigned-person-box .person-avatar {
+        width: 50px; height: 50px;
+        background: #198754;
     }
-    .alert-warning {
-        border-radius: 12px;
+    .assigned-person-info { flex: 1; }
+    .assigned-person-label {
+        font-size: 0.75rem; color: #0f5132; font-weight: 600;
+        display: flex; align-items: center; gap: 4px;
     }
-    .btn-update {
-        width: 100%;
-        border-radius: 25px;
-        margin-top: 15px;
+    body.dark-mode .assigned-person-label { color: #6edfa0; }
+    .assigned-person-name {
+        font-weight: 700; font-size: 1rem; color: #0f5132;
+    }
+    body.dark-mode .assigned-person-name { color: #6edfa0; }
+
+    /* ===== كود الاستلام (S13) ===== */
+    .pickup-code-box {
+        background: linear-gradient(135deg, #e7f5ec, #d1e7dd);
+        border-radius: 14px; padding: 14px;
+        text-align: center; margin-bottom: 12px;
+        border: 1px solid #a3cfbb;
+    }
+    body.dark-mode .pickup-code-box {
+        background: linear-gradient(135deg, #102e1a, #1e5c36);
+        border-color: #1e5c36;
+    }
+    .pickup-code-label {
+        font-size: 0.8rem; color: #0f5132;
+        font-weight: 600; margin-bottom: 6px;
+        display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    body.dark-mode .pickup-code-label { color: #6edfa0; }
+    .pickup-code-value {
+        font-family: 'Courier New', monospace;
+        font-size: 1.8rem; font-weight: 800;
+        letter-spacing: 6px; color: #0f5132;
+        direction: ltr; padding: 6px 0;
+    }
+    body.dark-mode .pickup-code-value { color: #6edfa0; }
+    .pickup-code-hint {
+        font-size: 0.75rem; color: #0f5132; opacity: 0.8;
+    }
+    body.dark-mode .pickup-code-hint { color: #6edfa0; }
+
+    /* ===== التنبيهات ===== */
+    .alert-info-box {
+        padding: 14px; border-radius: 12px;
+        background: #e7f3ff; color: #055160; border: 1px solid #b6d4fe;
+        text-align: center; font-size: 0.9rem;
+    }
+    body.dark-mode .alert-info-box {
+        background: #1a2e42; color: #6ea8fe; border-color: #1e5c8a;
+    }
+    .alert-success-box {
+        padding: 14px; border-radius: 12px;
+        background: #d1e7dd; color: #0f5132; border: 1px solid #a3cfbb;
+        text-align: center; font-size: 0.9rem;
+    }
+    body.dark-mode .alert-success-box {
+        background: #102e1a; color: #6edfa0; border-color: #1e5c36;
+    }
+    .alert-danger-box {
+        padding: 14px; border-radius: 12px;
+        background: #f8d7da; color: #842029; border: 1px solid #f1aeb5;
+        text-align: center; font-size: 0.9rem;
+    }
+    body.dark-mode .alert-danger-box {
+        background: #3e1a1d; color: #ff8a95; border-color: #6b2a30;
+    }
+
+    /* ===== المودالات ===== */
+    .status-choice-btn {
+        width: 100%; padding: 14px; border-radius: 12px;
+        border: 2px solid #e0e0e0; background: #fff;
+        display: flex; align-items: center; gap: 12px;
+        font-weight: 600; font-size: 0.95rem;
+        cursor: pointer; transition: all 0.15s;
+        margin-bottom: 8px; text-align: right;
+    }
+    .status-choice-btn:hover {
+        border-color: var(--primary); background: #f0f7f0;
+        transform: translateY(-2px);
+    }
+    body.dark-mode .status-choice-btn {
+        background: #2d2d2d; border-color: #444; color: #fff;
+    }
+    body.dark-mode .status-choice-btn:hover {
+        border-color: var(--accent); background: #3a3a3a;
+    }
+    .status-choice-btn.danger:hover {
+        border-color: #dc3545; background: #fff5f5;
+    }
+    body.dark-mode .status-choice-btn.danger:hover {
+        background: #3e1a1d;
+    }
+    .status-choice-icon {
+        width: 40px; height: 40px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.2rem; flex-shrink: 0;
     }
 </style>
 {% endblock %}
@@ -231,13 +351,7 @@
                 <option value="">جميع الحالات</option>
                 {% for status in allowed_statuses %}
                 <option value="{{ status }}" {% if status_filter == status %}selected{% endif %}>
-                    {% if status == 'new' %}جديد
-                    {% elif status == 'confirmed' %}مؤكد
-                    {% elif status == 'preparing' %}قيد التجهيز
-                    {% elif status == 'ready' %}جاهز للتسليم
-                    {% elif status == 'delivering' %}قيد التسليم
-                    {% elif status == 'delivered' %}تم التسليم
-                    {% elif status == 'cancelled' %}ملغي{% endif %}
+                    {{ status_labels.get(status, status) }}
                 </option>
                 {% endfor %}
             </select>
@@ -247,140 +361,246 @@
 
     {% if orders %}
         {% for order in orders %}
-        <div class="card order-card">
-            <div class="order-card-header">
-                <div>
-                    <span class="order-number">طلب #{{ order.id }}</span>
-                    <span class="order-date ms-2">{{ order.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+        <div class="order-card" data-order-id="{{ order.id }}">
+            <!-- رأس البطاقة (قابل للطي) -->
+            <button class="order-header" type="button"
+                    data-bs-toggle="collapse" data-bs-target="#orderBody{{ order.id }}"
+                    aria-expanded="false" aria-controls="orderBody{{ order.id }}">
+                <div class="order-header-title">
+                    <i class="bi bi-receipt-cutoff"></i>
+                    طلب من {{ order.customer.username if order.customer else 'زبون محذوف' }}
                 </div>
-                {{ macros.render_order_status(order.status) }}
-            </div>
+                <div class="order-header-meta">
+                    <span class="order-date-badge">
+                        <i class="bi bi-clock"></i>
+                        {{ order.created_at.strftime('%m-%d %H:%M') }}
+                    </span>
+                    {{ macros.render_order_status(order.status) }}
+                    <i class="bi bi-chevron-down order-chevron"></i>
+                </div>
+            </button>
 
-            <div class="order-summary">
-                <div class="summary-item">
-                    <i class="bi bi-person"></i>
-                    <span><strong>الزبون:</strong> {{ order.customer.username if order.customer else 'غير متوفر' }}</span>
-                </div>
-                <div class="summary-item">
-                    <i class="bi bi-telephone"></i>
-                    <span><strong>الهاتف:</strong> {{ order.customer.phone if order.customer else 'غير متوفر' }}</span>
-                </div>
-                <div class="summary-item">
-                    <i class="bi bi-geo-alt"></i>
-                    <span><strong>العنوان:</strong> {{ order.delivery_address or 'استلام من المتجر' }}</span>
-                </div>
-                <div class="summary-item">
-                    <i class="bi bi-cash"></i>
-                    <span><strong>الإجمالي:</strong> {{ order.total|format_price }} ل.س</span>
-                </div>
-                {% if order.delivery_person %}
-                <div class="summary-item">
-                    <i class="bi bi-truck"></i>
-                    <span><strong>المندوب:</strong> {{ order.delivery_person.username }}</span>
-                </div>
-                {% endif %}
-            </div>
-
-            <div class="order-actions">
-                <button class="btn btn-outline-primary btn-details" type="button"
-                        data-bs-toggle="collapse" data-bs-target="#orderDetails{{ order.id }}"
-                        aria-expanded="false" aria-controls="orderDetails{{ order.id }}">
-                    <i class="bi bi-eye"></i> التفاصيل والإدارة
-                </button>
-            </div>
-
-            <div class="collapse order-details-collapse" id="orderDetails{{ order.id }}">
-                <h6 class="fw-bold mb-3"><i class="bi bi-box-seam"></i> المنتجات</h6>
-                <div class="table-responsive products-table">
-                    <table class="table table-sm table-bordered mb-0">
-                        <thead>
-                            <tr><th>المنتج</th><th>الكمية</th><th>السعر</th><th>الخيارات</th></tr>
-                        </thead>
-                        <tbody>
-                            {% for item in order.items %}
-                            <tr>
-                                <td>{{ item.product.name if item.product else 'منتج محذوف' }}</td>
-                                <td>{{ item.quantity }}</td>
-                                <td>{{ item.price|format_price }} ل.س</td>
-                                <td>{{ item.options_selected or '-' }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-
-                {% if order.status != 'cancelled' and order.status != 'delivered' %}
-                <div class="management-section">
-                    <h6 class="fw-bold mb-3"><i class="bi bi-gear"></i> إدارة الطلب</h6>
-                    <form action="{{ url_for('store.update_order_status', store_id=store.id, order_id=order.id) }}"
-                          method="post" id="orderForm{{ order.id }}">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                        <input type="hidden" name="delivery_person_id" id="selectedPersonId{{ order.id }}"
-                               value="{{ order.delivery_person_id if order.delivery_person_id else '' }}">
-
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">حالة الطلب</label>
-                            <select name="status" class="form-select form-select-sm">
-                                <option value="new" {% if order.status == 'new' %}selected{% endif %}>جديد</option>
-                                <option value="confirmed" {% if order.status == 'confirmed' %}selected{% endif %}>مؤكد</option>
-                                <option value="preparing" {% if order.status == 'preparing' %}selected{% endif %}>قيد التجهيز</option>
-                                <option value="ready" {% if order.status == 'ready' %}selected{% endif %}>جاهز للتسليم</option>
-                                <option value="delivering" {% if order.status == 'delivering' %}selected{% endif %}>قيد التسليم</option>
-                                <option value="cancelled" {% if order.status == 'cancelled' %}selected{% endif %}>ملغي</option>
-                            </select>
+            <!-- جسم البطاقة -->
+            <div class="collapse" id="orderBody{{ order.id }}">
+                <div class="order-body">
+                    <!-- معلومات الزبون -->
+                    <div class="info-row">
+                        <div class="info-item">
+                            <i class="bi bi-person-fill"></i>
+                            <span><strong>الزبون:</strong> {{ order.customer.username if order.customer else 'محذوف' }}</span>
                         </div>
-
-                        <label class="form-label small fw-bold">اختر مندوبًا للتوصيل</label>
-                        {% if delivery_persons %}
-                        <div class="delivery-person-grid">
-                            {% for person in delivery_persons %}
-                                {% set stats = delivery_person_stats[person.id] %}
-                                <div class="delivery-person-card {% if order.delivery_person_id == person.id %}selected{% endif %}"
-                                     data-person-id="{{ person.id }}"
-                                     data-order-id="{{ order.id }}">
-                                    {% if person.avatar %}
-                                        <img src="{{ person.avatar | get_image_url }}"
-                                             alt="{{ person.username }}"
-                                             class="person-avatar">
-                                    {% else %}
-                                        <div class="person-avatar-placeholder">
-                                            <i class="bi bi-person"></i>
-                                        </div>
-                                    {% endif %}
-                                    <div class="person-info">
-                                        <div class="person-name">{{ person.username }}</div>
-                                        <div class="person-meta">
-                                            <i class="bi bi-clock"></i>
-                                            {{ person.shift_start_time.strftime('%H:%M') if person.shift_start_time else '--:--' }} -
-                                            {{ person.shift_end_time.strftime('%H:%M') if person.shift_end_time else '--:--' }}
-                                            · طلبات نشطة: {{ stats.active_orders }}
-                                        </div>
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-outline-success select-person-btn"
-                                            data-person-id="{{ person.id }}"
-                                            data-order-id="{{ order.id }}">
-                                        {% if order.delivery_person_id == person.id %}مُختار{% else %}اختيار{% endif %}
-                                    </button>
-                                </div>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        <div class="alert alert-warning">
-                            <i class="bi bi-exclamation-triangle"></i> لا يوجد مناديب متاحون حاليًا لهذه الوردية.
+                        {% if order.customer and order.customer.phone %}
+                        <div class="info-item">
+                            <i class="bi bi-telephone-fill"></i>
+                            <a href="tel:{{ order.customer.phone }}" class="text-decoration-none">
+                                {{ order.customer.phone }}
+                            </a>
                         </div>
                         {% endif %}
+                        <div class="info-item">
+                            <i class="bi bi-geo-alt-fill"></i>
+                            <span>
+                                {% if order.delivery_address %}
+                                    {{ order.delivery_address }}
+                                {% else %}
+                                    استلام من المتجر
+                                {% endif %}
+                            </span>
+                        </div>
+                        {% if order.payment_method %}
+                        <div class="info-item">
+                            <i class="bi bi-cash-coin"></i>
+                            <span>{{ 'نقداً عند التسليم' if order.payment_method == 'cash' else order.payment_method }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
 
-                        <input type="hidden" name="notify_delivery" value="yes">
-                        <button type="submit" class="btn btn-custom btn-update">تحديث الحالة والإسناد</button>
-                    </form>
+                    <!-- ملاحظة الزبون (E4) -->
+                    {% if order.customer_note %}
+                    <div class="customer-note-box">
+                        <i class="bi bi-chat-left-quote-fill"></i>
+                        <div>
+                            <div class="customer-note-label">ملاحظة الزبون:</div>
+                            <div class="customer-note-text">{{ order.customer_note }}</div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- المنتجات (S10: كروت أنيقة) -->
+                    <div class="section-title">
+                        <i class="bi bi-box-seam"></i> المنتجات ({{ order.items|length }})
+                    </div>
+                    <div class="products-grid">
+                        {% for item in order.items %}
+                        <div class="product-mini-card">
+                            {% if item.product and item.product.main_image %}
+                                <img src="{{ item.product.main_image | get_image_url }}"
+                                     class="product-mini-image" alt="{{ item.product.name }}"
+                                     loading="lazy">
+                            {% else %}
+                                <div class="product-mini-image d-flex align-items-center justify-content-center">
+                                    <i class="bi bi-image" style="font-size:2rem;color:#aaa;"></i>
+                                </div>
+                            {% endif %}
+                            <div class="product-mini-body">
+                                <div class="product-mini-name">
+                                    {{ item.product.name if item.product else 'منتج محذوف' }}
+                                </div>
+                                <div class="product-mini-qty">
+                                    الكمية: {{ item.quantity }}
+                                </div>
+                                <div class="product-mini-subtotal">
+                                    {{ (item.price * item.quantity)|format_price }} ل.س
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- الإجمالي -->
+                    <div class="order-total-box">
+                        <span class="label">الإجمالي الكلي</span>
+                        <span class="value">{{ order.total|format_price }} ل.س</span>
+                    </div>
+
+                    <!-- ============ إدارة الطلب ============ -->
+                    {% if order.status not in ['delivered', 'cancelled'] %}
+
+                        <!-- S11: زر تحديث الحالة -->
+                        <button class="btn-status-update"
+                                type="button"
+                                data-bs-toggle="modal" data-bs-target="#statusUpdateModal"
+                                data-order-id="{{ order.id }}"
+                                data-current-status="{{ order.status }}">
+                            <i class="bi bi-arrow-repeat"></i>
+                            تحديث حالة الطلب
+                        </button>
+
+                        <!-- S12: قسم المندوب — يظهر فقط عند "جاهز للتسليم" -->
+                        {% if order.status == 'ready' %}
+
+                            {% if not order.delivery_person_id %}
+                            <div class="delivery-section">
+                                <div class="section-title mb-2">
+                                    <i class="bi bi-truck"></i> اختر مندوباً للتوصيل
+                                </div>
+                                {% if delivery_persons %}
+                                    {% set available_persons = delivery_persons | selectattr('id', 'in', delivery_person_stats.keys() | list) | list %}
+                                    {% set any_available = namespace(value=false) %}
+                                    {% for p in delivery_persons %}{% if delivery_person_stats[p.id].is_available %}{% set any_available.value = true %}{% endif %}{% endfor %}
+
+                                    {% if any_available.value %}
+                                    <div class="delivery-persons-grid">
+                                        {% for person in delivery_persons %}
+                                            {% if delivery_person_stats[person.id].is_available %}
+                                            <button type="button"
+                                                    class="delivery-person-card"
+                                                    data-bs-toggle="modal" data-bs-target="#assignModal"
+                                                    data-person-id="{{ person.id }}"
+                                                    data-person-name="{{ person.username }}"
+                                                    data-person-avatar="{{ person.avatar | get_image_url if person.avatar else '' }}"
+                                                    data-person-phone="{{ person.phone or '' }}"
+                                                    data-shift-start="{{ delivery_person_stats[person.id].shift_start or '' }}"
+                                                    data-shift-end="{{ delivery_person_stats[person.id].shift_end or '' }}"
+                                                    data-active-orders="{{ delivery_person_stats[person.id].active_orders }}"
+                                                    data-order-id="{{ order.id }}">
+                                                {% if person.avatar %}
+                                                    <img src="{{ person.avatar | get_image_url }}"
+                                                         class="person-avatar" alt="{{ person.username }}">
+                                                {% else %}
+                                                    <div class="person-avatar">
+                                                        <i class="bi bi-person-fill"></i>
+                                                    </div>
+                                                {% endif %}
+                                                <div class="person-info">
+                                                    <div class="person-name">{{ person.username }}</div>
+                                                    <div class="person-meta">
+                                                        <i class="bi bi-clock"></i>
+                                                        {% if delivery_person_stats[person.id].shift_start %}
+                                                            {{ delivery_person_stats[person.id].shift_start }} - {{ delivery_person_stats[person.id].shift_end }}
+                                                        {% else %}
+                                                            وردية غير محددة
+                                                        {% endif %}
+                                                    </div>
+                                                </div>
+                                                <i class="bi bi-chevron-left text-muted"></i>
+                                            </button>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                    {% else %}
+                                    <div class="alert-info-box mt-2">
+                                        <i class="bi bi-info-circle"></i>
+                                        لا يوجد مناديب متاحون حالياً. حاول لاحقاً.
+                                    </div>
+                                    {% endif %}
+                                {% else %}
+                                <div class="alert-info-box">
+                                    <i class="bi bi-info-circle"></i>
+                                    لم يُضف أي مندوب للنظام بعد.
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                                <!-- S12: المندوب المعيّن (readonly) -->
+                                <div class="assigned-person-box">
+                                    {% if order.delivery_person.avatar %}
+                                        <img src="{{ order.delivery_person.avatar | get_image_url }}"
+                                             class="person-avatar" alt="{{ order.delivery_person.username }}">
+                                    {% else %}
+                                        <div class="person-avatar"><i class="bi bi-person-fill"></i></div>
+                                    {% endif %}
+                                    <div class="assigned-person-info">
+                                        <div class="assigned-person-label">
+                                            <i class="bi bi-check-circle-fill"></i>
+                                            المندوب المُعيَّن
+                                        </div>
+                                        <div class="assigned-person-name">
+                                            {{ order.delivery_person.username }}
+                                        </div>
+                                        {% if order.delivery_person.phone %}
+                                        <div class="person-meta">
+                                            <i class="bi bi-telephone"></i>
+                                            <a href="tel:{{ order.delivery_person.phone }}" class="text-decoration-none">
+                                                {{ order.delivery_person.phone }}
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <!-- S13: كود الاستلام من المتجر -->
+                                {% if order.pickup_code %}
+                                <div class="pickup-code-box">
+                                    <div class="pickup-code-label">
+                                        <i class="bi bi-shield-lock-fill"></i>
+                                        كود استلام الطلب من المتجر
+                                    </div>
+                                    <div class="pickup-code-value">{{ order.pickup_code }}</div>
+                                    <div class="pickup-code-hint">
+                                        يقدمه المندوب عند الوصول للمتجر لبدء التوصيل
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <div class="alert-info-box">
+                                    <i class="bi bi-lock-fill"></i>
+                                    لا يمكن تغيير المندوب بعد إسناد الطلب
+                                </div>
+                            {% endif %}
+
+                        {% endif %}
+
+                    {% elif order.status == 'delivered' %}
+                        <div class="alert-success-box">
+                            <i class="bi bi-check-circle-fill"></i> تم تسليم هذا الطلب بنجاح
+                        </div>
+                    {% else %}
+                        <div class="alert-danger-box">
+                            <i class="bi bi-x-circle-fill"></i> هذا الطلب ملغي
+                        </div>
+                    {% endif %}
                 </div>
-                {% elif order.status == 'delivered' %}
-                <div class="alert alert-success mt-3">
-                    <i class="bi bi-check-circle"></i> تم تسليم هذا الطلب بنجاح.
-                </div>
-                {% else %}
-                <div class="alert alert-info mt-3">هذا الطلب ملغي.</div>
-                {% endif %}
             </div>
         </div>
         {% endfor %}
@@ -400,34 +620,202 @@
         </a>
     </div>
 </div>
+
+<!-- ========== مودال تحديث الحالة ========== -->
+<div class="modal fade" id="statusUpdateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:20px;border:none;">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="bi bi-arrow-repeat text-primary"></i>
+                    تحديث حالة الطلب
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small mb-3">اختر الحالة الجديدة للطلب:</p>
+                <div id="statusChoicesContainer"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== مودال إسناد المندوب ========== -->
+<div class="modal fade" id="assignModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius:20px;border:none;">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="bi bi-truck text-primary"></i>
+                    تأكيد إسناد الطلب
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex gap-3 align-items-center mb-3">
+                    <div id="assignPersonAvatar" class="person-avatar" style="width:60px;height:60px;background:#198754;"></div>
+                    <div>
+                        <div class="fw-bold" id="assignPersonName">—</div>
+                        <div class="text-muted small" id="assignPersonPhone">—</div>
+                    </div>
+                </div>
+                <div class="info-row" style="grid-template-columns:1fr 1fr;">
+                    <div class="info-item">
+                        <i class="bi bi-clock-fill"></i>
+                        <div>
+                            <div class="small text-muted">الوردية</div>
+                            <div class="fw-bold" id="assignPersonShift">—</div>
+                        </div>
+                    </div>
+                    <div class="info-item">
+                        <i class="bi bi-box-seam-fill"></i>
+                        <div>
+                            <div class="small text-muted">الطلبات النشطة</div>
+                            <div class="fw-bold" id="assignPersonActive">0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="alert-info-box mt-3">
+                    <i class="bi bi-info-circle"></i>
+                    بعد الإسناد، لا يمكن تغيير المندوب. تأكد من اختيارك.
+                </div>
+            </div>
+            <div class="modal-footer border-0 d-flex gap-2">
+                <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle"></i> إلغاء
+                </button>
+                <button type="button" class="btn btn-success flex-fill" id="confirmAssignBtn">
+                    <i class="bi bi-check-circle-fill"></i> تأكيد وإسناد
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- نموذج الإسناد (مخفي) -->
+<form method="POST" id="assignForm" style="display:none;">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="delivery_person_id" id="assignPersonIdInput">
+</form>
+
+<!-- نموذج تغيير الحالة (مخفي) -->
+<form method="POST" id="statusForm" style="display:none;">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="status" id="statusInput">
+</form>
 {% endblock %}
 
 {% block scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.select-person-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const personId = this.getAttribute('data-person-id');
-            const orderId = this.getAttribute('data-order-id');
-            const hiddenInput = document.getElementById('selectedPersonId' + orderId);
+(function() {
+    'use strict';
 
-            if (hiddenInput) {
-                hiddenInput.value = personId;
+    // البيانات من الخادم
+    const ALLOWED_TRANSITIONS = {{ allowed_transitions | tojson }};
+    const STORE_ALLOWED = {{ store_allowed_statuses | tojson }};
+    const STATUS_LABELS = {{ status_labels | tojson }};
+    const STORE_ID = {{ store.id }};
+
+    // أيقونات وألوان لكل حالة
+    const STATUS_META = {
+        'confirmed': { icon: 'bi-check-circle-fill', color: '#0d6efd', bg: 'rgba(13,110,253,0.1)' },
+        'preparing': { icon: 'bi-box-seam-fill', color: '#ff9800', bg: 'rgba(255,152,0,0.1)' },
+        'ready': { icon: 'bi-gift-fill', color: '#198754', bg: 'rgba(25,135,84,0.1)' },
+        'cancelled': { icon: 'bi-x-circle-fill', color: '#dc3545', bg: 'rgba(220,53,69,0.1)' }
+    };
+
+    // ========== مودال تحديث الحالة ==========
+    const statusModal = document.getElementById('statusUpdateModal');
+    if (statusModal) {
+        statusModal.addEventListener('show.bs.modal', function(event) {
+            const btn = event.relatedTarget;
+            if (!btn) return;
+            const orderId = btn.dataset.orderId;
+            const currentStatus = btn.dataset.currentStatus;
+            const container = document.getElementById('statusChoicesContainer');
+            container.innerHTML = '';
+
+            const allowed = (ALLOWED_TRANSITIONS[currentStatus] || []).filter(s => STORE_ALLOWED.includes(s));
+
+            if (allowed.length === 0) {
+                container.innerHTML = '<div class="alert-info-box">لا توجد إجراءات متاحة لهذا الطلب</div>';
+                return;
             }
-            const orderForm = document.getElementById('orderForm' + orderId);
-            const allCards = orderForm.querySelectorAll('.delivery-person-card');
-            allCards.forEach(card => {
-                card.classList.remove('selected');
-                const innerBtn = card.querySelector('.select-person-btn');
-                if (innerBtn) innerBtn.textContent = 'اختيار';
+
+            allowed.forEach(status => {
+                const meta = STATUS_META[status] || { icon: 'bi-circle', color: '#666', bg: '#f0f0f0' };
+                const choice = document.createElement('button');
+                choice.type = 'button';
+                choice.className = 'status-choice-btn' + (status === 'cancelled' ? ' danger' : '');
+                choice.innerHTML = `
+                    <div class="status-choice-icon" style="background:${meta.bg};color:${meta.color};">
+                        <i class="bi ${meta.icon}"></i>
+                    </div>
+                    <div>
+                        <div>${STATUS_LABELS[status] || status}</div>
+                    </div>
+                `;
+                choice.addEventListener('click', function() {
+                    submitStatusChange(orderId, status);
+                });
+                container.appendChild(choice);
             });
-            const parentCard = this.closest('.delivery-person-card');
-            if (parentCard) {
-                parentCard.classList.add('selected');
-                this.textContent = 'مُختار';
+        });
+    }
+
+    function submitStatusChange(orderId, status) {
+        const form = document.getElementById('statusForm');
+        form.action = `/store/${STORE_ID}/orders/${orderId}/status`;
+        document.getElementById('statusInput').value = status;
+        form.submit();
+    }
+
+    // ========== مودال إسناد المندوب ==========
+    const assignModal = document.getElementById('assignModal');
+    let pendingAssign = { orderId: null, personId: null };
+
+    if (assignModal) {
+        assignModal.addEventListener('show.bs.modal', function(event) {
+            const btn = event.relatedTarget;
+            if (!btn) return;
+            pendingAssign.orderId = btn.dataset.orderId;
+            pendingAssign.personId = btn.dataset.personId;
+
+            const name = btn.dataset.personName || '—';
+            const phone = btn.dataset.personPhone || '';
+            const avatar = btn.dataset.personAvatar || '';
+            const shiftStart = btn.dataset.shiftStart || '';
+            const shiftEnd = btn.dataset.shiftEnd || '';
+            const active = btn.dataset.activeOrders || '0';
+
+            document.getElementById('assignPersonName').textContent = name;
+            document.getElementById('assignPersonPhone').textContent = phone || 'رقم الهاتف غير متوفر';
+            document.getElementById('assignPersonShift').textContent =
+                (shiftStart && shiftEnd) ? `${shiftStart} - ${shiftEnd}` : 'وردية غير محددة';
+            document.getElementById('assignPersonActive').textContent = active;
+
+            const avatarEl = document.getElementById('assignPersonAvatar');
+            if (avatar) {
+                avatarEl.innerHTML = `<img src="${avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">`;
+            } else {
+                avatarEl.innerHTML = '<i class="bi bi-person-fill"></i>';
             }
         });
-    });
-});
+    }
+
+    const confirmAssignBtn = document.getElementById('confirmAssignBtn');
+    if (confirmAssignBtn) {
+        confirmAssignBtn.addEventListener('click', function() {
+            if (!pendingAssign.orderId || !pendingAssign.personId) return;
+            const form = document.getElementById('assignForm');
+            form.action = `/store/${STORE_ID}/orders/${pendingAssign.orderId}/assign-delivery`;
+            document.getElementById('assignPersonIdInput').value = pendingAssign.personId;
+
+            confirmAssignBtn.disabled = true;
+            confirmAssignBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>جارٍ الإسناد...';
+            form.submit();
+        });
+    }
+})();
 </script>
 {% endblock %}

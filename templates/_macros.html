@@ -87,6 +87,13 @@
         {% if product.is_offer %}
             <span class="offer-badge"><span class="badge bg-danger">عرض</span></span>
         {% endif %}
+        {% if product.hide_price %}
+            <span class="offer-badge" style="top:auto;bottom:8px;left:8px;right:auto;">
+                <span class="badge bg-warning text-dark">
+                    <i class="bi bi-shop"></i> حصراً من المتجر
+                </span>
+            </span>
+        {% endif %}
         <a href="{{ url_for('stores.product_public', product_id=product.id) }}">
             {{ render_image(product.main_image if product.main_image else '', product.name, 'product-image') }}
         </a>
@@ -106,19 +113,31 @@
                     {% endif %}
                     <span class="text-truncate">{{ product.store.name if product.store else 'غير معروف' }}</span>
                 </div>
-                {{ render_price(product.price, product.original_price, product.is_offer) }}
+                {% if product.hide_price %}
+                    <div class="product-card-price">
+                        <span class="badge bg-warning text-dark" style="font-size:0.8rem;">
+                            <i class="bi bi-info-circle"></i> السعر عند التواصل
+                        </span>
+                    </div>
+                {% else %}
+                    {{ render_price(product.price, product.original_price, product.is_offer) }}
+                {% endif %}
                 {% if product.views > 0 %}
                     <div class="small text-muted mt-1"><i class="bi bi-eye"></i> {{ product.views }}</div>
                 {% endif %}
             </div>
             {% if session.get('user_id') %}
             <div class="product-card-actions-vertical">
-                {% if show_add_to_cart and product.stock_quantity > 0 %}
-                    <button class="action-icon-btn cart-icon-btn" onclick="addToCart({{ product.id }}, 1, (d) => showToast('تمت الإضافة', 'success'))" title="أضف إلى السلة" aria-label="أضف إلى السلة">
+                {% if show_add_to_cart and product.stock_quantity > 0 and not product.hide_price %}
+                    <button class="action-icon-btn cart-icon-btn"
+                            onclick="addToCart({{ product.id }}, 1)"
+                            title="أضف إلى السلة" aria-label="أضف إلى السلة">
                         <i class="bi bi-cart-plus"></i>
                     </button>
                 {% endif %}
-                <button class="action-icon-btn favorite-icon-btn" onclick="toggleFavoriteProduct({{ product.id }}, this)" title="إضافة إلى المفضلة" aria-label="إضافة إلى المفضلة">
+                <button class="action-icon-btn favorite-icon-btn"
+                        onclick="toggleFavoriteProduct({{ product.id }}, this)"
+                        title="إضافة إلى المفضلة" aria-label="إضافة إلى المفضلة">
                     <i class="bi {% if is_favorite %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
                 </button>
             </div>
@@ -136,7 +155,7 @@
         </a>
     </div>
     <div class="store-card-body text-center">
-        <div class="store-card-name">{{ store.name }}</div>
+        <div class="store-card-name" title="{{ store.name }}">{{ store.name }}</div>
         <div class="mb-2">{{ render_store_status(store, open_status) }}</div>
         {% if store.description %}
             <p class="small text-muted mb-2" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">{{ store.description }}</p>
@@ -167,7 +186,7 @@
                 {% if item.icon %}<i class="bi {{ item.icon }} ms-1"></i>{% endif %}
                 {{ item.label }}
                 {% if item.badge is defined and item.badge > 0 %}
-                    <span class="badge bg-warning text-dark ms-1">{{ item.badge }}</span>
+                    <span class="badge bg-warning text-dark ms-1 nav-badge-notifications" data-notif-badge>{{ item.badge }}</span>
                 {% endif %}
             </a>
         </li>

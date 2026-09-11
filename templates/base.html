@@ -88,6 +88,63 @@
     body.dark-mode .toast-modern .toast-body .toast-image { border-color:rgba(255,255,255,0.2); }
     .toast-icon { font-size:1.2rem; flex-shrink:0; }
     .notification-dot { position:absolute; top:8px; right:8px; width:10px; height:10px; background-color:#dc3545; border-radius:50%; border:2px solid #fff; display:none; }
+
+    /* U10: التفاف اسم المتجر تلقائياً (يُستخدم عالمياً عبر render_store_card) */
+    .store-card-name {
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin-bottom: 4px;
+        line-height: 1.3;
+        min-height: 2.6em;
+        white-space: normal !important;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-align: center;
+    }
+
+    /* U8: مودال تأكيد موحّد */
+    .confirm-modal-content {
+        border-radius: 20px;
+        border: none;
+        overflow: hidden;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+    }
+    body.dark-mode .confirm-modal-content {
+        background: #1e1e1e;
+        color: #fff;
+    }
+    .confirm-icon-wrapper {
+        width: 80px; height: 80px; border-radius: 50%;
+        background: rgba(220,53,69,0.1);
+        display: flex; align-items: center; justify-content: center;
+        margin: 25px auto 0;
+    }
+    body.dark-mode .confirm-icon-wrapper {
+        background: rgba(220,53,69,0.2);
+    }
+    .confirm-icon-wrapper i {
+        font-size: 2.4rem;
+        color: #dc3545;
+    }
+    .confirm-modal-content .modal-body {
+        padding: 20px 25px 10px;
+        text-align: center;
+    }
+    .confirm-modal-content .modal-footer {
+        border: none;
+        padding: 10px 25px 25px;
+        gap: 10px;
+    }
+    .confirm-modal-content .modal-footer .btn {
+        flex: 1;
+        border-radius: 25px;
+        padding: 10px;
+        font-weight: 600;
+    }
   </style>
   {% block head %}{% endblock %}
 </head>
@@ -164,11 +221,11 @@
               <li><a href="{{ url_for('market.market') }}" class="sidebar-menu-item"><i class="bi bi-shop ms-1"></i> السوق</a></li>
               <li><a href="{{ url_for('cart.cart') }}" class="sidebar-menu-item"><i class="bi bi-cart ms-1"></i> سلة المشتريات</a></li>
               <li><a href="{{ url_for('account.favorites') }}" class="sidebar-menu-item"><i class="bi bi-heart ms-1"></i> المفضلة</a></li>
-              <li><a href="{{ url_for('notifications.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1">{{ unread_notifications }}</span>{% endif %}</a></li>
+              <li><a href="{{ url_for('notifications.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1 nav-badge-notifications" data-notif-badge>{{ unread_notifications }}</span>>{% endif %}</a></li>
               <li><a href="{{ url_for('auth.account') }}" class="sidebar-menu-item"><i class="bi bi-gear ms-1"></i> الإعدادات</a></li>
             {% else %}
               <li><a href="{{ url_for('auth.account') }}" class="sidebar-menu-item"><i class="bi bi-gear ms-1"></i> الإعدادات</a></li>
-              <li><a href="{{ url_for('notifications.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1">{{ unread_notifications }}</span>{% endif %}</a></li>
+              <li><a href="{{ url_for('notifications.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1 nav-badge-notifications" data-notif-badge>{{ unread_notifications }}</span>>{% endif %}</a></li>
             {% endif %}
           {% else %}
             <li><a href="{{ url_for('auth.login') }}" class="sidebar-menu-item"><i class="bi bi-box-arrow-in-right ms-1"></i> تسجيل الدخول</a></li>
@@ -222,7 +279,7 @@
     <div class="cart-dock">
       <a href="{{ url_for('cart.cart') }}" class="cart-circle">
         <i class="bi bi-basket3-fill">
-          {% set cart_count = session.get('cart', {})|length %}
+          {% set cart_count = session.get('cart', {}).values()|sum %}
           <span class="badge bg-danger rounded-circle cart-badge {% if cart_count > 0 %}cart-badge-pulse{% else %}d-none{% endif %}">{{ cart_count }}</span>
         </i>
       </a>
@@ -242,22 +299,41 @@
     window.csrfToken = csrfToken;
     window.isAuthenticated = {{ 'true' if current_user else 'false' }};
 
+    // U9: توست موحّد — يستبدل أي توست سابق بدل تكديسه
     function showToast(message, type = 'info', image = null) {
       if (type === 'danger') type = 'error';
       const container = document.getElementById('toastContainerTop');
       if (!container) return;
+
+      // إزالة كل التوستات السابقة (لمنع التكديس أو التوست المزدوج)
+      container.querySelectorAll('.toast').forEach(t => {
+        const inst = bootstrap.Toast.getInstance(t);
+        if (inst) inst.hide();
+        t.remove();
+      });
+
       const toast = document.createElement('div');
       toast.className = 'toast align-items-center toast-modern border-0';
       toast.setAttribute('role', 'alert');
-      toast.setAttribute('data-bs-delay', '4000');
+      toast.setAttribute('data-bs-delay', '3500');
       toast.setAttribute('data-bs-autohide', 'true');
       let imageHtml = '';
       if (image) {
         imageHtml = `<img src="${image}" class="toast-image" alt="">`;
       }
-      toast.innerHTML = `<div class="d-flex"><div class="toast-body">${imageHtml}<span class="toast-message">${message}</span></div></div>`;
-      container.prepend(toast);
-      const bsToast = new bootstrap.Toast(toast, { delay: 4000, autohide: true });
+      let iconHtml = '';
+      if (type === 'success') {
+        iconHtml = '<i class="bi bi-check-circle-fill text-success toast-icon"></i>';
+      } else if (type === 'error') {
+        iconHtml = '<i class="bi bi-exclamation-circle-fill text-danger toast-icon"></i>';
+      } else if (type === 'warning') {
+        iconHtml = '<i class="bi bi-exclamation-triangle-fill text-warning toast-icon"></i>';
+      } else {
+        iconHtml = '<i class="bi bi-info-circle-fill text-info toast-icon"></i>';
+      }
+      toast.innerHTML = `<div class="d-flex"><div class="toast-body">${imageHtml}${iconHtml}<span class="toast-message">${message}</span></div></div>`;
+      container.appendChild(toast);
+      const bsToast = new bootstrap.Toast(toast, { delay: 3500, autohide: true });
       bsToast.show();
       toast.addEventListener('hidden.bs.toast', () => toast.remove());
     }
@@ -269,28 +345,27 @@
     async function addToCart(productId, quantity = 1, callback = null) {
         LocalStore.addToCart(productId, quantity);
         LocalStore.updateCartBadges();
-        showToast('تمت الإضافة', 'success');
 
         try {
             const formData = new FormData();
             formData.append('quantity', quantity);
             const response = await fetch(`/cart/add/${productId}`, {
                 method: 'POST',
-                headers: {
-                    'X-CSRF-Token': csrfToken
-                },
+                headers: { 'X-CSRF-Token': csrfToken },
                 body: formData
             });
             const data = await response.json();
             if (data.status === 'success') {
                 if (callback) callback(data);
+                else showToast('تمت الإضافة إلى السلة', 'success');
             } else {
-                console.warn('server add failed:', data.message);
                 if (callback) callback({ cart_count: Object.values(LocalStore.getCart()).reduce((a,b)=>a+b,0) });
+                else showToast(data.message || 'تعذر الإضافة', 'error');
             }
         } catch (err) {
             console.error('server add error:', err);
             if (callback) callback({ cart_count: Object.values(LocalStore.getCart()).reduce((a,b)=>a+b,0) });
+            else showToast('تعذر الاتصال بالخادم', 'error');
         }
 
         return { status: 'success' };
@@ -322,7 +397,6 @@
                 icon.classList.add('bi-heart');
             }
         }
-        showToast('تم تحديث المفضلة', 'success');
 
         try {
             const response = await fetch('/favorite/toggle', {
@@ -376,7 +450,6 @@
         }
     }
 
-    // دالة إضافة/إزالة متجر من المفضلة بدون إعادة تحميل
     async function toggleFavoriteStore(storeId, btnElement) {
         try {
             const response = await fetch(`/favorite/toggle/store/${storeId}`, {
@@ -484,23 +557,19 @@
       });
     };
 
-    // دالة موحدة لطلب الأذونات (الإشعارات والموقع اختياري)
     window.requestPermissions = async function() {
       try {
-        // طلب إذن الإشعارات إذا كان غير محدد
         if ('Notification' in window && Notification.permission === 'default') {
           await Notification.requestPermission();
           if (Notification.permission === 'granted') {
             showToast('تم تفعيل الإشعارات', 'success');
           }
         }
-        // ملاحظة: لا نطلب إذن الموقع تلقائيًا؛ يُطلب عند الحاجة (مثلاً في صفحة إتمام الطلب)
       } catch (err) {
         console.error('Permission request failed:', err);
       }
     };
 
-    // طلب إذن الإشعارات تلقائيًا عند تسجيل الدخول
     if (window.isAuthenticated && 'Notification' in window && Notification.permission === 'default') {
       window.requestPermissions();
     }
@@ -566,7 +635,8 @@
       .then(res => res.json())
       .then(data => {
         const unreadCount = data.unread_notifications || 0;
-        const unreadBadge = document.querySelector('.badge.bg-warning');
+        // v1: selector محدد — لا يلتقط badge حالة الطلب
+        const unreadBadge = document.querySelector('.nav-badge-notifications[data-notif-badge]');
         const dot = document.getElementById('navNotificationDot');
         if (unreadCount > 0) {
           if (unreadBadge) {
@@ -657,18 +727,19 @@
     };
   </script>
 
+  <!-- U8: مودال تأكيد موحّد -->
   <div class="modal fade" id="confirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="confirmModalTitle">تأكيد</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+      <div class="modal-content confirm-modal-content">
+        <div class="confirm-icon-wrapper">
+          <i class="bi bi-question-circle-fill" id="confirmModalIcon"></i>
         </div>
         <div class="modal-body">
-          <p id="confirmModalMessage">هل أنت متأكد؟</p>
+          <h5 class="modal-title mb-2" id="confirmModalTitle">تأكيد</h5>
+          <p class="text-muted mb-0" id="confirmModalMessage">هل أنت متأكد؟</p>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إلغاء</button>
           <button type="button" class="btn btn-danger" id="confirmModalBtn">تأكيد</button>
         </div>
       </div>
@@ -704,16 +775,29 @@
         }
         document.getElementById('confirmModalMessage').textContent = message;
         const btn = document.getElementById('confirmModalBtn');
+        const cancelBtn = modalEl.querySelector('[data-bs-dismiss="modal"]');
+        let resolved = false;
+
         btn.onclick = function() {
+          if (resolved) return;
+          resolved = true;
           bootstrap.Modal.getInstance(modalEl).hide();
           resolve(true);
         };
-        const cancelBtn = modalEl.querySelector('[data-bs-dismiss="modal"]');
         if (cancelBtn) {
           cancelBtn.onclick = function() {
+            if (resolved) return;
+            resolved = true;
             resolve(false);
           };
         }
+        modalEl.addEventListener('hidden.bs.modal', function handler() {
+          modalEl.removeEventListener('hidden.bs.modal', handler);
+          if (!resolved) {
+            resolved = true;
+            resolve(false);
+          }
+        });
         bootstrap.Modal.getOrCreateInstance(modalEl).show();
       });
     }

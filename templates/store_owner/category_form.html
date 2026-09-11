@@ -71,6 +71,24 @@
     .btn-outline-secondary {
         border-radius: 25px;
     }
+    .next-hint {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: #e7f3ff;
+        color: #055160;
+        font-size: 0.85rem;
+        margin-bottom: 16px;
+        border: 1px solid #b6d4fe;
+    }
+    .next-hint i { flex-shrink: 0; }
+    body.dark-mode .next-hint {
+        background: #1a2e42;
+        color: #6ea8fe;
+        border-color: #1e5c8a;
+    }
 </style>
 {% endblock %}
 
@@ -82,14 +100,27 @@
     </h1>
 
     <div class="card form-card p-4 shadow-sm mx-auto" style="max-width: 500px;">
-        <form method="post" action="{% if category %}{{ url_for('store.edit_category', store_id=store.id, category_id=category.id) }}{% else %}{{ url_for('store.new_category', store_id=store.id) }}{% endif %}">
+
+        {% if next_url %}
+        <div class="next-hint">
+            <i class="bi bi-info-circle-fill"></i>
+            <span>بعد الحفظ، ستعود تلقائياً لصفحة المنتج مع تحديد هذا التصنيف.</span>
+        </div>
+        {% endif %}
+
+        <form method="post" action="{% if category %}{{ url_for('store.edit_category', store_id=store.id, category_id=category.id) }}{% else %}{{ url_for('store.new_category', store_id=store.id) }}{% endif %}{% if next_url %}?next={{ next_url | urlencode }}{% endif %}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            {% if next_url %}
+            <input type="hidden" name="next" value="{{ next_url }}">
+            {% endif %}
 
             <div class="mb-3">
                 <label class="form-label fw-bold">اسم التصنيف</label>
                 <div class="custom-input-wrap">
                     <i class="bi bi-tag custom-input-icon"></i>
-                    <input type="text" name="name" class="form-control" value="{{ category.name if category else '' }}" required placeholder="مثال: قهوة">
+                    <input type="text" name="name" class="form-control"
+                           value="{{ category.name if category else '' }}"
+                           required placeholder="مثال: قهوة">
                 </div>
             </div>
 
@@ -114,7 +145,8 @@
                 <button type="submit" class="btn btn-custom flex-fill">
                     <i class="bi bi-check-circle"></i> حفظ
                 </button>
-                <a href="{{ url_for('store.store_categories', store_id=store.id) }}" class="btn btn-outline-secondary">
+                <a href="{% if next_url %}{{ next_url }}{% else %}{{ url_for('store.store_categories', store_id=store.id) }}{% endif %}"
+                   class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-right"></i> عودة
                 </a>
             </div>

@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% import '_macros.html' as macros %}
 
 {% block title %}تصنيفات {{ store.name }}{% endblock %}
 
@@ -24,15 +25,9 @@
         gap: 10px;
         transition: background 0.2s;
     }
-    .category-row:hover {
-        background: rgba(46,93,52,0.03);
-    }
-    body.dark-mode .category-row {
-        border-bottom-color: #333;
-    }
-    body.dark-mode .category-row:hover {
-        background: rgba(201,162,39,0.05);
-    }
+    .category-row:hover { background: rgba(46,93,52,0.03); }
+    body.dark-mode .category-row { border-bottom-color: #333; }
+    body.dark-mode .category-row:hover { background: rgba(201,162,39,0.05); }
     .category-row.parent {
         background: #f8f9fa;
         border-right: 4px solid var(--primary);
@@ -64,22 +59,12 @@
         background: #ddd;
     }
     body.dark-mode .category-row.child::before,
-    body.dark-mode .category-row.child::after {
-        background: #555;
-    }
+    body.dark-mode .category-row.child::after { background: #555; }
     .tree-indicator {
         width: 20px;
         text-align: center;
         color: #adb5bd;
         flex-shrink: 0;
-    }
-    .category-icon {
-        font-size: 1.4rem;
-        color: var(--primary);
-        flex-shrink: 0;
-    }
-    body.dark-mode .category-icon {
-        color: var(--accent);
     }
     .category-info {
         flex: 1;
@@ -93,14 +78,39 @@
         font-weight: 500;
         font-size: 0.95rem;
     }
-    .product-count {
+
+    /* ===== S8: زر عدد المنتجات ===== */
+    .category-count-btn {
+        background: linear-gradient(135deg, rgba(46,93,52,0.08), rgba(46,93,52,0.15));
+        border: 1px solid rgba(46,93,52,0.2);
+        color: var(--primary);
+        border-radius: 20px;
+        padding: 5px 12px;
         font-size: 0.8rem;
-        color: #6c757d;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        cursor: pointer;
+        transition: all 0.15s;
         white-space: nowrap;
     }
-    body.dark-mode .product-count {
-        color: #adb5bd;
+    .category-count-btn:hover {
+        background: var(--primary);
+        color: #fff;
+        border-color: var(--primary);
+        transform: translateY(-1px);
     }
+    body.dark-mode .category-count-btn {
+        background: linear-gradient(135deg, rgba(201,162,39,0.12), rgba(201,162,39,0.2));
+        border-color: rgba(201,162,39,0.3);
+        color: var(--accent);
+    }
+    body.dark-mode .category-count-btn:hover {
+        background: var(--accent);
+        color: #000;
+    }
+
     .btn-action {
         border-radius: 20px;
         font-size: 0.8rem;
@@ -110,6 +120,114 @@
     .empty-tree {
         text-align: center;
         padding: 50px 20px;
+    }
+
+    /* ===== S8: modal منتجات التصنيف ===== */
+    .cat-product-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px;
+        border-radius: 12px;
+        background: #f8f9fa;
+        margin-bottom: 8px;
+        transition: background 0.15s;
+    }
+    .cat-product-item:hover { background: #f0f0f0; }
+    body.dark-mode .cat-product-item { background: #2d2d2d; }
+    body.dark-mode .cat-product-item:hover { background: #353535; }
+    .cat-product-thumb {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        object-fit: cover;
+        flex-shrink: 0;
+        background: #e9ecef;
+    }
+    .cat-product-thumb-placeholder {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        background: #e9ecef;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #adb5bd;
+        flex-shrink: 0;
+    }
+    body.dark-mode .cat-product-thumb-placeholder { background: #3a3a3a; color: #666; }
+    .cat-product-info { flex: 1; min-width: 0; }
+    .cat-product-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .cat-product-meta {
+        font-size: 0.78rem;
+        color: #888;
+    }
+    .cat-product-price {
+        font-weight: 700;
+        color: var(--primary);
+        font-size: 0.85rem;
+        white-space: nowrap;
+    }
+    body.dark-mode .cat-product-price { color: var(--accent); }
+
+    .cat-modal-btn {
+        border-radius: 22px !important;
+        padding: 10px 14px !important;
+        font-weight: 600 !important;
+        font-size: 0.85rem !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        border-width: 2px !important;
+        border-style: solid !important;
+        transition: all 0.15s !important;
+    }
+    .cat-modal-btn-primary {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark)) !important;
+        border-color: transparent !important;
+        color: #fff !important;
+    }
+    .cat-modal-btn-primary:hover { box-shadow: 0 6px 16px rgba(46,93,52,0.3); }
+    .cat-modal-btn-outline {
+        background: transparent !important;
+        border-color: var(--primary) !important;
+        color: var(--primary) !important;
+    }
+    .cat-modal-btn-outline:hover {
+        background: var(--primary) !important;
+        color: #fff !important;
+    }
+    body.dark-mode .cat-modal-btn-outline {
+        border-color: var(--accent) !important;
+        color: var(--accent) !important;
+    }
+    body.dark-mode .cat-modal-btn-outline:hover {
+        background: var(--accent) !important;
+        color: #000 !important;
+    }
+    body.dark-mode .cat-modal-btn-primary {
+        background: linear-gradient(135deg, var(--accent), #b08c1e) !important;
+        color: #000 !important;
+    }
+
+    .cat-modal-empty {
+        text-align: center;
+        padding: 40px 20px;
+        color: #888;
+    }
+    .cat-modal-empty i {
+        font-size: 2.5rem;
+        color: #ccc;
+        margin-bottom: 12px;
+        display: block;
     }
 </style>
 {% endblock %}
@@ -130,28 +248,38 @@
             <h5 class="mb-0"><i class="bi bi-diagram-2"></i> الشجرة التصنيفية</h5>
         </div>
         <div class="card-body p-0">
-            {# عرض التصنيفات الرئيسية أولاً ثم الفرعية #}
             {% for category in categories %}
                 {% if not category.parent %}
-                    <!-- صف التصنيف الرئيسي -->
                     <div class="category-row parent">
                         <span class="tree-indicator"><i class="bi bi-folder2-open"></i></span>
                         <div class="category-info">
                             <span class="category-name">{{ category.name }}</span>
                         </div>
-                        <span class="product-count">{{ category.products|length }} منتج</span>
-                        <a href="{{ url_for('store.edit_category', store_id=store.id, category_id=category.id) }}" class="btn btn-sm btn-outline-secondary btn-action">
+
+                        <button type="button"
+                                class="category-count-btn"
+                                data-bs-toggle="modal" data-bs-target="#catProductsModal"
+                                data-category-id="{{ category.id }}"
+                                data-category-name="{{ category.name }}">
+                            <i class="bi bi-box-seam"></i>
+                            {{ category_counts.get(category.id, 0) }} منتج
+                        </button>
+
+                        <a href="{{ url_for('store.edit_category', store_id=store.id, category_id=category.id) }}"
+                           class="btn btn-sm btn-outline-secondary btn-action">
                             <i class="bi bi-pencil"></i> تعديل
                         </a>
-                        <form method="post" action="{{ url_for('store.delete_category', store_id=store.id, category_id=category.id) }}" class="d-inline">
+                        <form method="post"
+                              action="{{ url_for('store.delete_category', store_id=store.id, category_id=category.id) }}"
+                              class="d-inline">
                             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                            <button type="submit" class="btn btn-sm btn-outline-danger btn-action" onclick="return confirm('هل أنت متأكد من حذف هذا التصنيف؟')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger btn-action"
+                                    onclick="return confirm('هل أنت متأكد من حذف هذا التصنيف؟')">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </form>
                     </div>
 
-                    {# عرض التصنيفات الفرعية التابعة لهذا التصنيف #}
                     {% for child in categories %}
                         {% if child.parent_id == category.id %}
                             <div class="category-row child">
@@ -159,13 +287,26 @@
                                 <div class="category-info">
                                     <span class="category-name">{{ child.name }}</span>
                                 </div>
-                                <span class="product-count">{{ child.products|length }} منتج</span>
-                                <a href="{{ url_for('store.edit_category', store_id=store.id, category_id=child.id) }}" class="btn btn-sm btn-outline-secondary btn-action">
+
+                                <button type="button"
+                                        class="category-count-btn"
+                                        data-bs-toggle="modal" data-bs-target="#catProductsModal"
+                                        data-category-id="{{ child.id }}"
+                                        data-category-name="{{ child.name }}">
+                                    <i class="bi bi-box-seam"></i>
+                                    {{ category_counts.get(child.id, 0) }} منتج
+                                </button>
+
+                                <a href="{{ url_for('store.edit_category', store_id=store.id, category_id=child.id) }}"
+                                   class="btn btn-sm btn-outline-secondary btn-action">
                                     <i class="bi bi-pencil"></i> تعديل
                                 </a>
-                                <form method="post" action="{{ url_for('store.delete_category', store_id=store.id, category_id=child.id) }}" class="d-inline">
+                                <form method="post"
+                                      action="{{ url_for('store.delete_category', store_id=store.id, category_id=child.id) }}"
+                                      class="d-inline">
                                     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger btn-action" onclick="return confirm('هل أنت متأكد من حذف هذا التصنيف؟')">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger btn-action"
+                                            onclick="return confirm('هل أنت متأكد من حذف هذا التصنيف؟')">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
@@ -194,4 +335,135 @@
         </a>
     </div>
 </div>
+
+<!-- ===== S8: Modal منتجات التصنيف ===== -->
+<div class="modal fade" id="catProductsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius:20px;border:none;">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="bi bi-folder-fill text-primary"></i>
+                    منتجات "<span id="catModalName">—</span>"
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="catModalLoading" class="cat-modal-empty">
+                    <div class="spinner-border text-primary" role="status"></div>
+                    <p class="mt-2 mb-0">جارٍ التحميل...</p>
+                </div>
+
+                <div id="catModalEmpty" class="cat-modal-empty" style="display:none;">
+                    <i class="bi bi-inbox"></i>
+                    <h6>لا توجد منتجات في هذا التصنيف</h6>
+                    <p class="small">أضف منتجات ليظهر هذا التصنيف في السوق</p>
+                </div>
+
+                <div id="catModalList"></div>
+            </div>
+            <div class="modal-footer border-0 d-flex flex-wrap gap-2">
+                <a id="catModalManageBtn" href="#"
+                   class="btn cat-modal-btn cat-modal-btn-primary flex-fill">
+                    <i class="bi bi-plus-circle"></i> إضافة منتجات لهذا الصنف
+                </a>
+                <button type="button" class="btn cat-modal-btn cat-modal-btn-outline flex-fill"
+                        data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg"></i> إغلاق
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    'use strict';
+
+    const modalEl = document.getElementById('catProductsModal');
+    if (!modalEl) return;
+
+    const storeId = {{ store.id }};
+    const nameEl = document.getElementById('catModalName');
+    const loadingEl = document.getElementById('catModalLoading');
+    const emptyEl = document.getElementById('catModalEmpty');
+    const listEl = document.getElementById('catModalList');
+    const manageBtn = document.getElementById('catModalManageBtn');
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        const d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
+    function formatPrice(num) {
+        const n = Number(num) || 0;
+        return n.toLocaleString('en-US');
+    }
+
+    function renderProduct(p) {
+        const imgHtml = p.main_image
+            ? `<img src="/static/${p.main_image.startsWith('uploads/') ? p.main_image : 'uploads/' + p.main_image}"
+                    class="cat-product-thumb" alt="${escapeHtml(p.name)}"
+                    onerror="this.outerHTML='<div class=&quot;cat-product-thumb-placeholder&quot;><i class=&quot;bi bi-image&quot;></i></div>'">`
+            : `<div class="cat-product-thumb-placeholder"><i class="bi bi-image"></i></div>`;
+
+        const priceHtml = p.hide_price
+            ? '<span class="badge bg-warning text-dark" style="font-size:0.7rem;">حصراً من المتجر</span>'
+            : `<span class="cat-product-price">${formatPrice(p.price)} ل.س</span>`;
+
+        return `
+            <div class="cat-product-item">
+                ${imgHtml}
+                <div class="cat-product-info">
+                    <div class="cat-product-name">${escapeHtml(p.name)}</div>
+                    <div class="cat-product-meta">
+                        <i class="bi bi-boxes"></i> الكمية: ${p.stock_quantity}
+                    </div>
+                </div>
+                ${priceHtml}
+            </div>`;
+    }
+
+    modalEl.addEventListener('show.bs.modal', async function(event) {
+        const btn = event.relatedTarget;
+        if (!btn) return;
+
+        const catId = btn.dataset.categoryId;
+        const catName = btn.dataset.categoryName || '—';
+
+        nameEl.textContent = catName;
+        manageBtn.href = `/store/${storeId}/categories/${catId}/manage-products`;
+
+        loadingEl.style.display = 'block';
+        emptyEl.style.display = 'none';
+        listEl.innerHTML = '';
+
+        try {
+            const res = await fetch(`/store/${storeId}/categories/${catId}/products.json`, {
+                headers: { 'Accept': 'application/json' },
+                credentials: 'same-origin'
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+
+            loadingEl.style.display = 'none';
+
+            if (!data.products || data.products.length === 0) {
+                emptyEl.style.display = 'block';
+                return;
+            }
+
+            listEl.innerHTML = data.products.map(renderProduct).join('');
+        } catch (err) {
+            loadingEl.style.display = 'none';
+            emptyEl.style.display = 'block';
+            const h = emptyEl.querySelector('h6');
+            if (h) h.textContent = 'تعذر تحميل المنتجات';
+        }
+    });
+})();
+</script>
 {% endblock %}

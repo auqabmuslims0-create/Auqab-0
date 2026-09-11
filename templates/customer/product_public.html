@@ -26,7 +26,7 @@
     .stars::before { content: "★★★★★"; letter-spacing: 3px; background: linear-gradient(90deg, #ffc107 var(--percent), #e0e0e0 var(--percent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
     .star-rating { direction: ltr; display: inline-flex; gap: 5px; font-size: 1.8rem; cursor: pointer; }
     .star-rating .star { color: #e0e0e0; transition: color var(--transition-fast); }
-    .star-rating .star.active, .star-rating .star.hover { color: #ffc107; }
+    .star-rating .star.active, .star-rating .star:hover { color: #ffc107; }
     .comment-item { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
     .comment-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; overflow: hidden; }
     .comment-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
@@ -35,28 +35,175 @@
     .comment-text { font-size: 0.9rem; margin-bottom: 2px; }
     .comment-meta { font-size: 0.7rem; color: #6c757d; }
     .favorite-btn { border-radius: var(--radius-sm); min-width: 48px; }
+
+    /* ===== فيديو المنتج ===== */
     .product-reel-video-section { margin-top: 30px; margin-bottom: 30px; }
-    .product-reel-slide { position: relative; width: 100%; max-width: 500px; margin: 0 auto; border-radius: 20px; overflow: hidden; background: #000; box-shadow: 0 8px 20px rgba(0,0,0,0.2); line-height: 0; }
-    .product-reel-video-wrapper { position: relative; width: 100%; line-height: 0; }
-    .product-reel-video { width: 100%; height: auto; display: block; cursor: pointer; background: #000; }
-    .product-reel-play-btn { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: transparent; border: none; color: #fff; font-size: 5rem; line-height: 1; cursor: pointer; text-shadow: 0 0 12px rgba(0,0,0,0.8); z-index: 10; padding: 0; }
-    .product-reel-play-btn:hover { color: #ffd700; transform: translate(-50%, -50%) scale(1.1); }
-    .product-reel-play-btn.hidden { display: none; }
-    .video-loading-spinner { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 11; display: none; width: 50px; height: 50px; border: 4px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
+    .product-reel-slide {
+        position: relative;
+        width: 100%;
+        max-width: 500px;
+        margin: 0 auto;
+        border-radius: 20px;
+        overflow: hidden;
+        background: #000;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+        line-height: 0;
+    }
+    .product-reel-video-wrapper {
+        position: relative;
+        width: 100%;
+        line-height: 0;
+    }
+    .product-reel-video {
+        width: 100%;
+        height: auto;
+        display: block;
+        cursor: pointer;
+        background: #000;
+    }
+
+    /* ===== Overlay التشغيل — مثلث بدون دائرة ===== */
+    .product-reel-play-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 5;
+        pointer-events: none;
+    }
+    .product-reel-play-overlay.hidden { display: none; }
+    .product-reel-play-btn {
+        background: transparent;
+        border: none;
+        color: #fff;
+        font-size: 5rem;
+        line-height: 1;
+        cursor: pointer;
+        pointer-events: auto;
+        text-shadow: 0 0 12px rgba(0,0,0,0.8);
+        transition: color 0.2s, transform 0.2s;
+        padding: 0;
+    }
+    .product-reel-play-btn:hover {
+        color: #ffd700;
+        transform: scale(1.1);
+    }
+
+    /* ===== Overlay الإيقاف المؤقت — خطان بدون دائرة ===== */
+    .product-reel-pause-overlay {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 6;
+        pointer-events: none;
+    }
+    .product-reel-pause-overlay.show { display: flex; }
+    .product-reel-pause-btn {
+        background: transparent;
+        border: none;
+        color: #fff;
+        font-size: 5rem;
+        line-height: 1;
+        cursor: pointer;
+        pointer-events: auto;
+        text-shadow: 0 0 12px rgba(0,0,0,0.8);
+        transition: color 0.2s, transform 0.2s;
+        padding: 0;
+    }
+    .product-reel-pause-btn:hover {
+        color: #ffd700;
+        transform: scale(1.1);
+    }
+
+    /* ===== Spinner ===== */
+    .video-loading-spinner {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 4;
+        display: none;
+        width: 50px;
+        height: 50px;
+        border: 4px solid rgba(255,255,255,0.3);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
     .video-loading-spinner.show { display: block; }
-    @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
-    .reel-content { position: absolute; bottom: 0; left: 0; right: 0; z-index: 2; display: flex; justify-content: space-between; align-items: flex-end; padding: 15px; gap: 10px; pointer-events: none; line-height: 1.6; }
+    @keyframes spin {
+        to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    /* ===== شريط المعلومات أسفل الفيديو ===== */
+    .reel-content {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 2;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding: 15px;
+        gap: 10px;
+        pointer-events: none;
+        line-height: 1.6;
+    }
     .reel-info-bottom { flex: 1; min-width: 0; pointer-events: auto; }
-    .reel-store-link { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: #fff; margin-bottom: 8px; pointer-events: auto; cursor: pointer; }
-    .reel-store-avatar, .reel-store-avatar-placeholder { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #fff; background: #333; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.2rem; flex-shrink: 0; pointer-events: auto; }
-    .reel-store-name { font-weight: 600; font-size: 0.9rem; text-shadow: 0 1px 3px rgba(0,0,0,0.5); pointer-events: none; }
-    .reel-product-link { text-decoration: none; color: #fff; display: block; pointer-events: auto; cursor: pointer; }
-    .reel-product-name { margin: 0; font-size: 1.1rem; font-weight: 700; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
-    .reel-product-price { font-size: 1rem; font-weight: 600; color: #ffd700; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
-    .reel-actions-column { display: flex; flex-direction: column; gap: 12px; align-items: center; pointer-events: auto; }
-    .reel-action-btn { background: rgba(255,255,255,0.2); border: none; color: #fff; width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; cursor: pointer; transition: background 0.2s, transform 0.2s; backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); }
-    .reel-action-btn:hover { background: rgba(255,255,255,0.35); transform: scale(1.05); }
+    .reel-store-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        color: #fff;
+        margin-bottom: 8px;
+        pointer-events: auto;
+    }
+    .reel-store-avatar, .reel-store-avatar-placeholder {
+        width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+        border: 2px solid #fff; background: #333;
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: 1.2rem; flex-shrink: 0;
+    }
+    .reel-store-name {
+        font-weight: 600; font-size: 0.9rem;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .reel-product-link {
+        text-decoration: none; color: #fff; display: block;
+    }
+    .reel-product-name {
+        margin: 0; font-size: 1.1rem; font-weight: 700;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .reel-product-price {
+        font-size: 1rem; font-weight: 600; color: #ffd700;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+    .reel-actions-column {
+        display: flex; flex-direction: column; gap: 12px;
+        align-items: center; pointer-events: auto;
+    }
+    .reel-action-btn {
+        background: rgba(255,255,255,0.2);
+        border: none; color: #fff;
+        width: 46px; height: 46px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.3rem; cursor: pointer;
+        transition: background 0.2s, transform 0.2s;
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+    }
+    .reel-action-btn:hover {
+        background: rgba(255,255,255,0.35);
+        transform: scale(1.05);
+    }
     .reel-action-btn:disabled { opacity: 0.5; pointer-events: none; }
+
     #offlineContent { display: none; }
     .offline-product-card { background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.08); padding: 20px; margin-top: 15px; }
     body.dark-mode .offline-product-card { background: #1e1e1e; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
@@ -66,6 +213,13 @@
     body.dark-mode .offline-product-price { color: var(--accent); }
     .offline-store-link { display: inline-flex; align-items: center; gap: 8px; margin-top: 10px; text-decoration: none; color: inherit; }
     .offline-store-logo { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #f0f0f0; }
+
+    @media (max-width: 576px) {
+        .product-reel-play-btn,
+        .product-reel-pause-btn {
+            font-size: 4rem;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -108,7 +262,15 @@
             <!-- معلومات المنتج -->
             <div class="col-md-6">
                 <h1 class="product-title">{{ product.name }}</h1>
-                <div class="mb-2">{{ macros.render_price(product.price, product.original_price, product.is_offer) }}</div>
+                <div class="mb-2">
+                    {% if product.hide_price %}
+                        <span class="badge bg-warning text-dark" style="font-size:1rem;padding:8px 14px;">
+                            <i class="bi bi-shop"></i> حصراً من المتجر — السعر عند التواصل
+                        </span>
+                    {% else %}
+                        {{ macros.render_price(product.effective_price, product.original_price, product.is_offer) }}
+                    {% endif %}
+                </div>
                 <div class="mb-3">
                     <span class="badge bg-secondary">{{ product.category.name if product.category else 'غير مصنف' }}</span>
                     <span class="badge bg-info text-dark"><i class="bi bi-eye"></i> {{ product.views }} مشاهدة</span>
@@ -123,9 +285,15 @@
                     <div class="product-options mb-3">{{ product.options }}</div>
                 {% endif %}
                 <div class="d-flex gap-2">
-                    <button class="btn btn-custom" onclick="addToCart({{ product.id }}, 1, (d) => showToast('تمت الإضافة', 'success'))" {% if product.stock_quantity == 0 %}disabled{% endif %}>
-                        <i class="bi bi-cart-plus"></i> أضف للسلة
-                    </button>
+                    {% if product.hide_price %}
+                        <a href="{{ url_for('stores.store_public', store_id=product.store.id) }}" class="btn btn-warning">
+                            <i class="bi bi-shop"></i> تواصل مع المتجر
+                        </a>
+                    {% else %}
+                        <button class="btn btn-custom" onclick="addToCart({{ product.id }}, 1)" {% if product.stock_quantity == 0 %}disabled{% endif %}>
+                            <i class="bi bi-cart-plus"></i> أضف للسلة
+                        </button>
+                    {% endif %}
                     <button class="btn btn-outline-danger favorite-btn" onclick="toggleFavoriteProduct({{ product.id }}, this)" aria-label="إضافة إلى المفضلة">
                         <i class="bi {% if is_favorite %}bi-heart-fill{% else %}bi-heart{% endif %}"></i>
                     </button>
@@ -151,15 +319,28 @@
             <h5 class="fw-bold mb-3"><i class="bi bi-camera-video"></i> فيديو المنتج</h5>
             <div class="product-reel-slide" id="product-reel-{{ product.id }}">
                 <div class="product-reel-video-wrapper">
-                    <video class="product-reel-video" loop playsinline preload="auto"
+                    <video class="product-reel-video" loop playsinline preload="metadata"
                            src="{{ product.video | get_image_url }}"
                            poster="{{ product.main_image.strip() | get_image_url if product.main_image else '' }}"
                            data-product-reel-video></video>
+
                     <div class="video-loading-spinner" data-video-spinner></div>
-                    <button type="button" class="product-reel-play-btn" data-play-btn aria-label="تشغيل الفيديو">
-                        <i class="bi bi-play-fill"></i>
-                    </button>
+
+                    <!-- زر التشغيل (مثلث بدون دائرة) -->
+                    <div class="product-reel-play-overlay" data-play-overlay>
+                        <button type="button" class="product-reel-play-btn" data-play-btn aria-label="تشغيل الفيديو">
+                            <i class="bi bi-play-fill"></i>
+                        </button>
+                    </div>
+
+                    <!-- زر الإيقاف المؤقت (خطان بدون دائرة) -->
+                    <div class="product-reel-pause-overlay" data-pause-overlay>
+                        <button type="button" class="product-reel-pause-btn" data-pause-btn aria-label="إيقاف مؤقت">
+                            <i class="bi bi-pause-fill"></i>
+                        </button>
+                    </div>
                 </div>
+
                 <div class="reel-content">
                     <div class="reel-info-bottom">
                         <a href="{{ url_for('stores.store_public', store_id=product.store.id) }}" class="reel-store-link">
@@ -168,26 +349,31 @@
                             {% else %}
                                 <div class="reel-store-avatar-placeholder"><i class="bi bi-shop"></i></div>
                             {% endif %}
+                            <span class="reel-store-name">{{ product.store.name }}</span>
                         </a>
                         <a href="{{ url_for('stores.product_public', product_id=product.id) }}" class="reel-product-link">
                             <h5 class="reel-product-name">{{ product.name }}</h5>
+                            {% if not product.hide_price %}
                             <div class="reel-product-price">
-                                {{ product.price|format_price }} ل.س
+                                {{ product.effective_price|format_price }} ل.س
                                 {% if product.is_offer and product.original_price %}
                                     <span class="text-decoration-line-through text-muted ms-1">{{ product.original_price|format_price }}</span>
                                 {% endif %}
                             </div>
+                            {% endif %}
                         </a>
                     </div>
                     <div class="reel-actions-column">
-                        <button class="reel-action-btn" onclick="shareProduct({{ product.id }}, '{{ product.name }}')" title="مشاركة">
+                        <button class="reel-action-btn" onclick="shareProduct({{ product.id }}, '{{ product.name|e }}')" title="مشاركة">
                             <i class="bi bi-share"></i>
                         </button>
+                        {% if not product.hide_price %}
                         <button class="reel-action-btn {% if product.stock_quantity == 0 %}disabled{% endif %}"
-                                onclick="addToCart({{ product.id }}, 1, (d) => showToast('تمت الإضافة للسلة', 'success'))"
+                                onclick="addToCart({{ product.id }}, 1)"
                                 title="أضف إلى السلة" {% if product.stock_quantity == 0 %}disabled{% endif %}>
                             <i class="bi bi-cart-plus"></i>
                         </button>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -242,7 +428,6 @@
         </div>
     </div>
 
-    <!-- محتوى عدم الاتصال -->
     <div id="offlineContent">
         <div class="alert alert-warning text-center">
             <i class="bi bi-wifi-off"></i> أنت غير متصل بالإنترنت - يتم عرض نسخة محفوظة من المنتج
@@ -257,144 +442,202 @@
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/reels.js') }}"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // معرض الصور
-    const mainImg = document.getElementById('mainProductImage');
-    const thumbnails = document.querySelectorAll('.thumbnail-item');
-    thumbnails.forEach(item => {
-        item.addEventListener('click', function() {
-            const fullSrc = this.dataset.full;
-            if (mainImg) mainImg.src = fullSrc;
-            thumbnails.forEach(t => t.classList.remove('active'));
-            this.classList.add('active');
-        });
-    });
+(function() {
+    'use strict';
 
-    // تقييم النجوم
-    const stars = document.querySelectorAll('#starRating .star');
-    const ratingInput = document.getElementById('ratingValue');
-    function updateStars(elements, value) {
-        elements.forEach(s => {
-            const v = parseInt(s.dataset.value);
-            const icon = s.querySelector('i');
-            if (v <= value) {
-                if (icon) icon.className = 'bi bi-star-fill text-warning';
-                s.classList.add('active');
-            } else {
-                if (icon) icon.className = 'bi bi-star';
-                s.classList.remove('active');
-            }
+    document.addEventListener('DOMContentLoaded', function() {
+        // ===== معرض الصور =====
+        const mainImg = document.getElementById('mainProductImage');
+        const thumbnails = document.querySelectorAll('.thumbnail-item');
+        thumbnails.forEach(item => {
+            item.addEventListener('click', function() {
+                const fullSrc = this.dataset.full;
+                if (mainImg) mainImg.src = fullSrc;
+                thumbnails.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+            });
         });
-    }
-    function setRating(value) {
-        if (!isNaN(value) && value >= 1 && value <= 5) {
-            ratingInput.value = value;
-            updateStars(stars, value);
+
+        // ===== تقييم النجوم =====
+        const stars = document.querySelectorAll('#starRating .star');
+        const ratingInput = document.getElementById('ratingValue');
+
+        function updateStars(elements, value) {
+            elements.forEach(s => {
+                const v = parseInt(s.dataset.value);
+                const icon = s.querySelector('i');
+                if (v <= value) {
+                    if (icon) icon.className = 'bi bi-star-fill text-warning';
+                    s.classList.add('active');
+                } else {
+                    if (icon) icon.className = 'bi bi-star';
+                    s.classList.remove('active');
+                }
+            });
         }
-    }
-    stars.forEach(star => {
-        star.addEventListener('click', function(e) {
-            setRating(parseInt(this.dataset.value));
+
+        stars.forEach(star => {
+            star.addEventListener('click', function() {
+                const v = parseInt(this.dataset.value);
+                if (!isNaN(v)) {
+                    ratingInput.value = v;
+                    updateStars(stars, v);
+                }
+            });
+            star.addEventListener('mouseenter', function() {
+                updateStars(stars, parseInt(this.dataset.value));
+            });
+            star.addEventListener('mouseleave', function() {
+                updateStars(stars, parseInt(ratingInput.value) || 0);
+            });
         });
-        star.addEventListener('mouseenter', function() {
-            updateStars(stars, parseInt(this.dataset.value));
-        });
-        star.addEventListener('mouseleave', function() {
-            updateStars(stars, parseInt(ratingInput.value) || 0);
-        });
-    });
 
-    // حفظ المنتج والمتجر في IndexedDB إذا كان متصلاً
-    if (navigator.onLine && typeof OfflineDB !== 'undefined') {
-        const productData = {
-            id: {{ product.id }},
-            name: {{ product.name | tojson }},
-            price: {{ product.price }},
-            original_price: {{ product.original_price or 'null' }},
-            is_offer: {{ product.is_offer | lower }},
-            stock_quantity: {{ product.stock_quantity }},
-            main_image: {{ product.main_image | tojson if product.main_image else '""' }},
-            description: {{ product.description | tojson if product.description else '""' }},
-            store_id: {{ product.store.id if product.store else 'null' }},
-            store_name: {{ product.store.name | tojson if product.store and product.store.name else '""' }},
-            store_logo: {{ product.store.logo_url | tojson if product.store and product.store.logo_url else '""' }}
-        };
-        OfflineDB.saveProduct(productData).catch(err => console.warn(err));
+        // ===== فيديو المنتج — منطق مستقل (لا يعتمد على reels.js لأنه قد لا يتعامل مع product-reel) =====
+        const productReelSlide = document.querySelector('.product-reel-slide');
+        if (productReelSlide) {
+            const video = productReelSlide.querySelector('[data-product-reel-video]');
+            const playOverlay = productReelSlide.querySelector('[data-play-overlay]');
+            const pauseOverlay = productReelSlide.querySelector('[data-pause-overlay]');
+            const playBtn = productReelSlide.querySelector('[data-play-btn]');
+            const pauseBtn = productReelSlide.querySelector('[data-pause-btn]');
+            const spinner = productReelSlide.querySelector('[data-video-spinner]');
 
-        {% if product.store %}
-        const storeData = {
-            id: {{ product.store.id }},
-            name: {{ product.store.name | tojson }},
-            description: {{ product.store.description | tojson if product.store.description else '""' }},
-            logo_url: {{ product.store.logo_url | tojson if product.store.logo_url else '""' }},
-            phone: {{ product.store.phone | tojson if product.store.phone else '""' }},
-            address: {{ product.store.address | tojson if product.store.address else '""' }},
-            working_hours: {{ product.store.working_hours | tojson if product.store.working_hours else '""' }},
-            subscription_status: {{ product.store.subscription_status | tojson if product.store.subscription_status else '""' }},
-            is_open: false
-        };
-        OfflineDB.saveStore(storeData).catch(err => console.warn(err));
-        {% endif %}
-    }
+            let pauseHideTimer = null;
 
-    // التعامل مع وضع عدم الاتصال
-    const onlineContent = document.getElementById('onlineContent');
-    const offlineContent = document.getElementById('offlineContent');
+            function showSpinner() { if (spinner) spinner.classList.add('show'); }
+            function hideSpinner() { if (spinner) spinner.classList.remove('show'); }
+            function showPlay() { if (playOverlay) playOverlay.classList.remove('hidden'); }
+            function hidePlay() { if (playOverlay) playOverlay.classList.add('hidden'); }
 
-    function showOfflineContent() {
-        if (onlineContent) onlineContent.style.display = 'none';
-        if (offlineContent) offlineContent.style.display = 'block';
-        loadOfflineProduct();
-    }
-
-    function showOnlineContent() {
-        if (onlineContent) onlineContent.style.display = 'block';
-        if (offlineContent) offlineContent.style.display = 'none';
-    }
-
-    async function loadOfflineProduct() {
-        try {
-            if (typeof OfflineDB === 'undefined') return;
-            const product = await OfflineDB.getItem('products', {{ product.id }});
-            const card = document.getElementById('offlineProductCard');
-            if (!card) return;
-            if (product) {
-                const storeHtml = product.store_name ? `
-                    <a href="/store/${product.store_id}/public" class="offline-store-link">
-                        ${product.store_logo ? `<img src="${product.store_logo}" class="offline-store-logo" alt="${product.store_name}">` : ''}
-                        <span>${product.store_name}</span>
-                    </a>
-                ` : '';
-                card.innerHTML = `
-                    ${product.main_image ? `<img src="${product.main_image}" alt="${product.name}" class="offline-product-image">` : ''}
-                    <h1 class="offline-product-title">${product.name}</h1>
-                    <div class="offline-product-price">${product.price} ل.س</div>
-                    <p class="mt-2">${product.description || ''}</p>
-                    <div class="mt-2">
-                        ${product.stock_quantity > 0 ? '<span class="badge bg-success">متوفر</span>' : '<span class="badge bg-danger">نفد المخزون</span>'}
-                    </div>
-                    ${storeHtml}
-                `;
-            } else {
-                card.innerHTML = '<div class="text-center text-muted">لا توجد نسخة محفوظة من هذا المنتج.</div>';
+            function showPause() {
+                if (!pauseOverlay) return;
+                pauseOverlay.classList.add('show');
+                clearTimeout(pauseHideTimer);
+                pauseHideTimer = setTimeout(function() {
+                    pauseOverlay.classList.remove('show');
+                }, 1200);
             }
-        } catch (err) {
-            console.error('خطأ في تحميل المنتج من IndexedDB:', err);
+            function hidePause() {
+                if (!pauseOverlay) return;
+                clearTimeout(pauseHideTimer);
+                pauseOverlay.classList.remove('show');
+            }
+
+            function doPlay() {
+                if (video.readyState < 3) showSpinner();
+                const p = video.play();
+                if (p && p.then) {
+                    p.then(function() {
+                        hideSpinner();
+                        hidePlay();
+                        showPause();
+                    }).catch(function(err) {
+                        console.warn('فشل التشغيل:', err);
+                        hideSpinner();
+                        showPlay();
+                    });
+                } else {
+                    hidePlay();
+                    showPause();
+                }
+            }
+
+            function doPause() {
+                video.pause();
+                hideSpinner();
+                hidePause();
+                showPlay();
+            }
+
+            function doToggle() {
+                if (video.paused) doPlay();
+                else doPause();
+            }
+
+            if (playBtn) {
+                playBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    doPlay();
+                });
+            }
+            if (pauseBtn) {
+                pauseBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    doPause();
+                });
+            }
+            if (video) {
+                video.addEventListener('click', function(e) {
+                    if (e.target.closest('button')) return;
+                    e.stopPropagation();
+                    doToggle();
+                });
+                video.addEventListener('waiting', showSpinner);
+                video.addEventListener('playing', function() {
+                    hideSpinner();
+                    hidePlay();
+                    showPause();
+                });
+                video.addEventListener('canplaythrough', hideSpinner);
+                video.addEventListener('pause', function() {
+                    hideSpinner();
+                    hidePause();
+                    showPlay();
+                });
+                video.addEventListener('ended', function() {
+                    hideSpinner();
+                    hidePause();
+                    showPlay();
+                });
+            }
+
+            // حالة ابتدائية
+            showPlay();
+            hidePause();
         }
-    }
 
-    if (!navigator.onLine) {
-        showOfflineContent();
-    }
+        // ===== حفظ للـ offline =====
+        if (navigator.onLine && typeof OfflineDB !== 'undefined') {
+            const productData = {
+                id: {{ product.id }},
+                name: {{ product.name | tojson }},
+                price: {{ product.effective_price }},
+                original_price: {{ product.original_price or 'null' }},
+                is_offer: {{ product.is_offer | lower }},
+                stock_quantity: {{ product.stock_quantity }},
+                main_image: {{ product.main_image | tojson if product.main_image else '""' }},
+                description: {{ product.description | tojson if product.description else '""' }},
+                store_id: {{ product.store.id if product.store else 'null' }},
+                store_name: {{ product.store.name | tojson if product.store and product.store.name else '""' }},
+                store_logo: {{ product.store.logo_url | tojson if product.store and product.store.logo_url else '""' }}
+            };
+            OfflineDB.saveProduct(productData).catch(err => console.warn(err));
+        }
 
-    window.addEventListener('online', function() {
-        showOnlineContent();
-        window.location.reload();
+        // ===== الأوفلاين =====
+        const onlineContent = document.getElementById('onlineContent');
+        const offlineContent = document.getElementById('offlineContent');
+
+        function showOfflineContent() {
+            if (onlineContent) onlineContent.style.display = 'none';
+            if (offlineContent) offlineContent.style.display = 'block';
+        }
+        function showOnlineContent() {
+            if (onlineContent) onlineContent.style.display = 'block';
+            if (offlineContent) offlineContent.style.display = 'none';
+        }
+
+        if (!navigator.onLine) {
+            showOfflineContent();
+        }
+        window.addEventListener('online', function() {
+            showOnlineContent();
+            window.location.reload();
+        });
+        window.addEventListener('offline', showOfflineContent);
     });
-
-    window.addEventListener('offline', function() {
-        showOfflineContent();
-    });
-});
+})();
 </script>
 {% endblock %}

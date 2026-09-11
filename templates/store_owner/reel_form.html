@@ -4,8 +4,18 @@
 
 {% block head %}
 <style>
-    .form-card { border-radius: 20px; border: none; box-shadow: 0 8px 24px rgba(0,0,0,0.08); background: #fff; }
-    body.dark-mode .form-card { background: #1e1e1e; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+    .form-card {
+        border-radius: 20px;
+        border: none;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+        background: #fff;
+    }
+    body.dark-mode .form-card {
+        background: #1e1e1e;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        color: #fff;
+    }
+
     .custom-input-wrap { position: relative; margin-bottom: 0; }
     .custom-input-wrap .form-control, .custom-input-wrap .form-select {
         border-radius: 12px; padding-right: 40px; padding-left: 40px; height: 48px;
@@ -23,54 +33,766 @@
         border-color: #c9a227; box-shadow: 0 0 0 0.2rem rgba(201,162,39,0.2);
     }
     body.dark-mode .custom-input-icon { color: #adb5bd; }
-    .btn-custom { border-radius: 25px; font-weight: 600; transition: background 0.2s, transform 0.2s; }
+
+    .btn-custom {
+        border-radius: 25px; font-weight: 600;
+        transition: background 0.2s, transform 0.2s;
+    }
     .btn-custom:hover { transform: translateY(-2px); background: var(--primary-dark); }
+
+    /* ===== منطقة رفع الفيديو ===== */
+    .video-upload-area {
+        width: 100%;
+        max-width: 320px;
+        aspect-ratio: 9 / 16;
+        margin: 0 auto;
+        border-radius: 18px;
+        border: 2px dashed #ced4da;
+        background: #fafafa;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+        overflow: hidden;
+    }
+    .video-upload-area:hover {
+        border-color: var(--primary);
+        background: rgba(46,93,52,0.03);
+    }
+    body.dark-mode .video-upload-area {
+        background: #252525;
+        border-color: #444;
+    }
+    body.dark-mode .video-upload-area:hover {
+        background: rgba(201,162,39,0.05);
+        border-color: var(--accent);
+    }
+    .video-upload-icon {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: rgba(46,93,52,0.1);
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        transition: transform 0.2s;
+    }
+    body.dark-mode .video-upload-icon {
+        background: rgba(201,162,39,0.15);
+        color: var(--accent);
+    }
+    .video-upload-area:hover .video-upload-icon { transform: scale(1.08); }
+    .video-upload-text {
+        text-align: center;
+        padding: 0 20px;
+    }
+    .video-upload-text .primary-line {
+        font-weight: 700;
+        font-size: 1rem;
+        color: #333;
+        margin-bottom: 4px;
+    }
+    body.dark-mode .video-upload-text .primary-line { color: #fff; }
+    .video-upload-text .secondary-line {
+        font-size: 0.8rem;
+        color: #888;
+    }
+    body.dark-mode .video-upload-text .secondary-line { color: #aaa; }
+
+    /* معاينة الفيديو */
+    .video-preview-wrapper {
+        width: 100%;
+        max-width: 320px;
+        aspect-ratio: 9 / 16;
+        margin: 0 auto;
+        border-radius: 18px;
+        overflow: hidden;
+        position: relative;
+        background: #000;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+    .video-preview-wrapper video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    .video-preview-remove {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: rgba(220,53,69,0.9);
+        color: #fff;
+        border: none;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 3;
+        transition: transform 0.15s, background 0.15s;
+        backdrop-filter: blur(4px);
+    }
+    .video-preview-remove:hover {
+        background: #dc3545;
+        transform: scale(1.1);
+    }
+    .video-duration-badge {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        background: rgba(0,0,0,0.7);
+        color: #fff;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        z-index: 3;
+        backdrop-filter: blur(4px);
+    }
+    .video-duration-badge.warning {
+        background: rgba(220,53,69,0.9);
+    }
+
+    /* ===== v1: بطاقة بديلة عند فشل المعاينة ===== */
+    .video-fallback-card {
+        width: 100%;
+        max-width: 320px;
+        aspect-ratio: 9 / 16;
+        margin: 0 auto;
+        border-radius: 18px;
+        background: linear-gradient(135deg, #e7f5ec, #d1e7dd);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        position: relative;
+        border: 2px solid #a3cfbb;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+    }
+    body.dark-mode .video-fallback-card {
+        background: linear-gradient(135deg, #102e1a, #1e5c36);
+        border-color: #1e5c36;
+    }
+    .video-fallback-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: rgba(25,135,84,0.15);
+        color: #198754;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.4rem;
+        animation: videoFallbackPulse 1.8s infinite;
+    }
+    body.dark-mode .video-fallback-icon {
+        background: rgba(110,223,160,0.15);
+        color: #6edfa0;
+    }
+    @keyframes videoFallbackPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.06); }
+    }
+    .video-fallback-text {
+        text-align: center;
+        padding: 0 24px;
+        color: #0f5132;
+    }
+    body.dark-mode .video-fallback-text { color: #6edfa0; }
+    .video-fallback-filename {
+        font-weight: 700;
+        font-size: 0.9rem;
+        word-break: break-all;
+        margin-bottom: 6px;
+        line-height: 1.3;
+    }
+    .video-fallback-note {
+        font-size: 0.78rem;
+        opacity: 0.8;
+        line-height: 1.5;
+    }
+    .video-fallback-remove {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: rgba(220,53,69,0.9);
+        color: #fff;
+        border: none;
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 3;
+        transition: transform 0.15s, background 0.15s;
+        backdrop-filter: blur(4px);
+    }
+    .video-fallback-remove:hover {
+        background: #dc3545;
+        transform: scale(1.1);
+    }
+
+    /* معلومات المدة */
+    .video-info-box {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 12px;
+        font-size: 0.85rem;
+        padding: 8px 14px;
+        border-radius: 12px;
+    }
+    .video-info-box.success {
+        background: #d1e7dd;
+        color: #0f5132;
+        border: 1px solid #a3cfbb;
+    }
+    .video-info-box.warning {
+        background: #f8d7da;
+        color: #842029;
+        border: 1px solid #f1aeb5;
+    }
+    body.dark-mode .video-info-box.success {
+        background: #102e1a;
+        color: #6edfa0;
+        border-color: #1e5c36;
+    }
+    body.dark-mode .video-info-box.warning {
+        background: #3e1a1d;
+        color: #ff8a95;
+        border-color: #6b2a30;
+    }
+
+    /* ===== منطقة الـ thumbnail ===== */
+    .thumb-upload-area {
+        width: 100%;
+        max-width: 280px;
+        aspect-ratio: 16 / 9;
+        margin: 0 auto;
+        border-radius: 14px;
+        border: 2px dashed #ced4da;
+        background: #fafafa;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+        overflow: hidden;
+    }
+    .thumb-upload-area:hover {
+        border-color: var(--primary);
+        background: rgba(46,93,52,0.03);
+    }
+    body.dark-mode .thumb-upload-area {
+        background: #252525;
+        border-color: #444;
+    }
+    body.dark-mode .thumb-upload-area:hover {
+        background: rgba(201,162,39,0.05);
+        border-color: var(--accent);
+    }
+    .thumb-upload-area i { font-size: 1.8rem; color: var(--primary); }
+    body.dark-mode .thumb-upload-area i { color: var(--accent); }
+    .thumb-upload-area .text { font-size: 0.85rem; color: #888; }
+    body.dark-mode .thumb-upload-area .text { color: #aaa; }
+
+    .thumb-preview {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+    .thumb-remove-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: rgba(220,53,69,0.9);
+        color: #fff;
+        border: none;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 3;
+        transition: all 0.15s;
+    }
+    .thumb-remove-btn:hover {
+        background: #dc3545;
+        transform: scale(1.1);
+    }
+
+    /* ===== قسم ربط المنتج ===== */
+    .product-hint {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 0.85rem;
+        color: #666;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+    }
+    body.dark-mode .product-hint { background: #252525; color: #aaa; }
+
+    /* ===== أزرار الحفظ ===== */
+    .save-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 24px;
+    }
+
+    @media (max-width: 576px) {
+        .video-upload-area,
+        .video-preview-wrapper { max-width: 260px; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="card form-card p-4 shadow-sm">
-        <h1 class="h4 mb-4 text-center"><i class="bi bi-film"></i> إضافة ريل جديد</h1>
-        <form method="post" enctype="multipart/form-data" action="{{ url_for('store.new_reel', store_id=store.id) }}">
+        <h1 class="h4 mb-4 text-center">
+            <i class="bi bi-film"></i> إضافة ريل جديد
+        </h1>
+
+        <form method="post" enctype="multipart/form-data" id="reelForm"
+              action="{{ url_for('store.new_reel', store_id=store.id) }}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
 
+            <!-- ===== فيديو الريل ===== -->
             <div class="mb-4">
-                <label class="form-label fw-bold">فيديو الريل (مطلوب)</label>
-                <input type="file" name="video" accept="video/*" class="form-control" required>
-                <p class="text-muted small mt-1">يُفضل فيديو بصيغة MP4 وبمدة لا تتجاوز 60 ثانية.</p>
+                <label class="form-label fw-bold text-center d-block mb-3">
+                    <i class="bi bi-camera-video-fill text-primary"></i>
+                    فيديو الريل <span class="text-danger">*</span>
+                </label>
+
+                <!-- منطقة الرفع (تظهر قبل الاختيار) -->
+                <div class="video-upload-area" id="videoUploadArea">
+                    <div class="video-upload-icon">
+                        <i class="bi bi-cloud-arrow-up"></i>
+                    </div>
+                    <div class="video-upload-text">
+                        <div class="primary-line">اضغط لاختيار فيديو</div>
+                        <div class="secondary-line">MP4 • حتى 60 ثانية</div>
+                    </div>
+                </div>
+
+                <!-- معاينة الفيديو (تظهر بعد الاختيار) -->
+                <div class="video-preview-wrapper" id="videoPreviewWrapper" style="display:none;">
+                    <video id="videoPreview" controls playsinline preload="metadata"></video>
+                    <button type="button" class="video-preview-remove" id="removeVideoBtn" title="إزالة">
+                        <i class="bi bi-x"></i>
+                    </button>
+                    <div class="video-duration-badge" id="videoDurationBadge">0:00</div>
+                </div>
+
+                <input type="file" name="video" id="videoInput" accept="video/*" class="d-none" required>
+
+                <div id="videoInfoBox" class="video-info-box" style="display:none;"></div>
+
+                <p class="text-muted small text-center mt-2 mb-0">
+                    يُفضل استخدام فيديو عمودي (9:16) لأفضل عرض
+                </p>
             </div>
 
+            <hr class="my-4">
+
+            <!-- ===== صورة مصغرة (اختياري) ===== -->
             <div class="mb-4">
-                <label class="form-label fw-bold">صورة مصغرة (اختياري)</label>
-                <input type="file" name="thumbnail" accept="image/*" class="form-control">
+                <label class="form-label fw-bold text-center d-block mb-3">
+                    <i class="bi bi-image text-info"></i>
+                    صورة مصغرة <span class="text-muted small">(اختياري)</span>
+                </label>
+
+                <div class="thumb-upload-area" id="thumbUploadArea">
+                    <i class="bi bi-plus-circle"></i>
+                    <span class="text">إضافة صورة</span>
+                </div>
+
+                <div class="thumb-upload-area" id="thumbPreviewWrapper" style="display:none; border-style: solid;">
+                    <img id="thumbPreview" class="thumb-preview" alt="معاينة">
+                    <button type="button" class="thumb-remove-btn" id="removeThumbBtn" title="إزالة">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+
+                <input type="file" name="thumbnail" id="thumbnailInput" accept="image/*" class="d-none">
+
+                <p class="text-muted small text-center mt-2 mb-0">
+                    تظهر كصورة الغلاف قبل تشغيل الفيديو
+                </p>
             </div>
 
+            <hr class="my-4">
+
+            <!-- ===== ربط منتج (اختياري) ===== -->
             <div class="mb-4">
-                <label class="form-label fw-bold">ربط بمنتج (اختياري)</label>
-                <select name="product_id" class="form-select">
-                    <option value="">بدون منتج</option>
-                    {% for p in products %}
-                        <option value="{{ p.id }}">{{ p.name }} ({{ p.price|format_price }} ل.س)</option>
-                    {% endfor %}
-                </select>
-                <p class="text-muted small mt-1">يمكنك ربط الريل بمنتج معين ليظهر في صفحة المنتج ويسهل شراءه.</p>
+                <label class="form-label fw-bold">
+                    <i class="bi bi-box-seam text-success"></i>
+                    ربط بمنتج <span class="text-muted small">(اختياري)</span>
+                </label>
+
+                {% if products %}
+                <div class="custom-input-wrap">
+                    <i class="bi bi-tag custom-input-icon"></i>
+                    <select name="product_id" class="form-select" id="productSelect">
+                        <option value="">بدون منتج</option>
+                        {% for p in products %}
+                            <option value="{{ p.id }}"
+                                    data-price="{{ p.effective_price }}"
+                                    data-hide-price="{{ 'yes' if p.hide_price else 'no' }}">
+                                {{ p.name }} — {{ p.effective_price|format_price }} ل.س
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="product-hint">
+                    <i class="bi bi-info-circle text-info"></i>
+                    <span>ربط الريل بمنتج يسهّل على الزبون شراءه مباشرة من الفيديو.</span>
+                </div>
+                {% else %}
+                <div class="product-hint">
+                    <i class="bi bi-info-circle text-warning"></i>
+                    <span>لا توجد منتجات في متجرك. يمكنك إضافة ريل بدون ربط منتج.</span>
+                </div>
+                {% endif %}
             </div>
 
+            <!-- ===== الوصف ===== -->
             <div class="mb-4">
-                <label class="form-label fw-bold">وصف أو تعليق (اختياري)</label>
-                <textarea name="caption" class="form-control" rows="3" placeholder="مثال: فيديو تعريفي عن منتج جديد"></textarea>
+                <label class="form-label fw-bold">
+                    <i class="bi bi-chat-quote text-warning"></i>
+                    وصف أو تعليق <span class="text-muted small">(اختياري)</span>
+                </label>
+                <textarea name="caption" class="form-control" rows="3"
+                          placeholder="مثال: عرض جديد لفترة محدودة..." maxlength="300"></textarea>
             </div>
 
-            <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary flex-fill">
+            <!-- ===== أزرار الحفظ ===== -->
+            <div class="save-actions">
+                <button type="submit" class="btn btn-custom flex-fill" id="submitBtn">
                     <i class="bi bi-check-circle"></i> حفظ الريل
                 </button>
-                <a href="{{ url_for('store.store_reels', store_id=store.id) }}" class="btn btn-outline-secondary">
+                <a href="{{ url_for('store.store_reels', store_id=store.id) }}"
+                   class="btn btn-outline-secondary" style="border-radius:25px;">
                     <i class="bi bi-arrow-right"></i> عودة
                 </a>
             </div>
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    'use strict';
+
+    // ===== عناصر DOM =====
+    const videoInput = document.getElementById('videoInput');
+    const videoUploadArea = document.getElementById('videoUploadArea');
+    const videoPreviewWrapper = document.getElementById('videoPreviewWrapper');
+    const videoPreview = document.getElementById('videoPreview');
+    const removeVideoBtn = document.getElementById('removeVideoBtn');
+    const videoDurationBadge = document.getElementById('videoDurationBadge');
+    const videoInfoBox = document.getElementById('videoInfoBox');
+    const reelForm = document.getElementById('reelForm');
+    const submitBtn = document.getElementById('submitBtn');
+
+    const thumbnailInput = document.getElementById('thumbnailInput');
+    const thumbUploadArea = document.getElementById('thumbUploadArea');
+    const thumbPreviewWrapper = document.getElementById('thumbPreviewWrapper');
+    const thumbPreview = document.getElementById('thumbPreview');
+    const removeThumbBtn = document.getElementById('removeThumbBtn');
+
+    let videoTooLong = false;
+    let currentVideoObjectUrl = null;
+    let currentThumbObjectUrl = null;
+
+    // ===== الفيديو =====
+    function formatDuration(seconds) {
+        const m = Math.floor(seconds / 60);
+        const s = Math.round(seconds % 60);
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    }
+
+    function checkVideoDuration(file) {
+        return new Promise((resolve, reject) => {
+            const url = URL.createObjectURL(file);
+            const video = document.createElement('video');
+            video.preload = 'metadata';
+            video.muted = true;
+            video.playsInline = true;
+
+            let resolved = false;
+            let timeoutId;
+
+            const cleanup = () => {
+                URL.revokeObjectURL(url);
+                if (timeoutId) clearTimeout(timeoutId);
+            };
+
+            const tryResolve = () => {
+                if (!resolved && video.duration && isFinite(video.duration)) {
+                    resolved = true;
+                    cleanup();
+                    resolve(video.duration);
+                }
+            };
+
+            video.onloadedmetadata = tryResolve;
+            video.onloadeddata = tryResolve;
+            video.ondurationchange = tryResolve;
+            video.oncanplay = tryResolve;
+            video.onerror = function() {
+                if (!resolved) {
+                    resolved = true;
+                    cleanup();
+                    reject(new Error('failed'));
+                }
+            };
+
+            timeoutId = setTimeout(() => {
+                if (!resolved) {
+                    resolved = true;
+                    cleanup();
+                    reject(new Error('timeout'));
+                }
+            }, 5000);
+
+            video.src = url;
+            video.load();
+        });
+    }
+
+    function showVideoPreview(file, duration) {
+        // نظّف الـ URL القديم
+        if (currentVideoObjectUrl) {
+            URL.revokeObjectURL(currentVideoObjectUrl);
+        }
+        currentVideoObjectUrl = URL.createObjectURL(file);
+        videoPreview.src = currentVideoObjectUrl;
+
+        videoUploadArea.style.display = 'none';
+        videoPreviewWrapper.style.display = 'block';
+
+        videoDurationBadge.textContent = formatDuration(duration);
+        videoDurationBadge.classList.toggle('warning', duration > 60);
+    }
+
+    function hideVideoPreview() {
+        if (currentVideoObjectUrl) {
+            URL.revokeObjectURL(currentVideoObjectUrl);
+            currentVideoObjectUrl = null;
+        }
+        videoPreview.removeAttribute('src');
+        videoPreview.load();
+        videoUploadArea.style.display = 'flex';
+        videoPreviewWrapper.style.display = 'none';
+        videoInfoBox.style.display = 'none';
+        videoDurationBadge.classList.remove('warning');
+
+        // v1: أزل بطاقة البديل إن وُجدت
+        const fallback = document.querySelector('.video-fallback-card');
+        if (fallback) fallback.remove();
+    }
+
+    // v1: بطاقة بديلة عند فشل المعاينة (HEVC/H.265 مثلاً)
+    function showVideoFallback(file) {
+        videoPreviewWrapper.style.display = 'none';
+        videoUploadArea.style.display = 'none';
+
+        const old = document.querySelector('.video-fallback-card');
+        if (old) old.remove();
+
+        const fallback = document.createElement('div');
+        fallback.className = 'video-fallback-card';
+
+        // اسم الملف بأمان
+        const nameEl = document.createElement('div');
+        nameEl.className = 'video-fallback-filename';
+        nameEl.textContent = file.name;
+
+        fallback.innerHTML = `
+            <div class="video-fallback-icon">
+                <i class="bi bi-camera-video-fill"></i>
+            </div>
+            <div class="video-fallback-text">
+                <div class="video-fallback-filename"></div>
+                <div class="video-fallback-note">
+                    تم اختيار الفيديو — المعاينة غير متوفرة لهذا التنسيق، لكن الرفع سيعمل بشكل طبيعي.
+                </div>
+            </div>
+            <button type="button" class="video-fallback-remove" title="إزالة">
+                <i class="bi bi-x"></i>
+            </button>
+        `;
+        fallback.querySelector('.video-fallback-filename').textContent = file.name;
+
+        videoUploadArea.parentNode.insertBefore(fallback, videoUploadArea.nextSibling);
+
+        fallback.querySelector('.video-fallback-remove').addEventListener('click', function() {
+            videoInput.value = '';
+            videoTooLong = false;
+            fallback.remove();
+            hideVideoPreview();
+        });
+    }
+
+    if (videoUploadArea && videoInput) {
+        videoUploadArea.addEventListener('click', () => videoInput.click());
+    }
+
+    if (videoInput) {
+        videoInput.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            videoTooLong = false;
+            videoInfoBox.style.display = 'none';
+
+            if (!file) {
+                hideVideoPreview();
+                return;
+            }
+
+            if (!file.type.startsWith('video/')) {
+                if (typeof showToast === 'function') showToast('الرجاء اختيار ملف فيديو صالح', 'error');
+                videoInput.value = '';
+                return;
+            }
+
+            try {
+                const duration = await checkVideoDuration(file);
+
+                if (duration > 60) {
+                    videoTooLong = true;
+                    showVideoPreview(file, duration);
+                    videoInfoBox.className = 'video-info-box warning';
+                    videoInfoBox.innerHTML = '<i class="bi bi-exclamation-triangle-fill"></i> مدة الفيديو ' + formatDuration(duration) + ' — يجب أن تكون 60 ثانية أو أقل';
+                    videoInfoBox.style.display = 'flex';
+                    if (typeof showToast === 'function') showToast('مدة الفيديو تتجاوز 60 ثانية', 'error');
+                } else {
+                    videoTooLong = false;
+                    showVideoPreview(file, duration);
+                    videoInfoBox.className = 'video-info-box success';
+                    videoInfoBox.innerHTML = '<i class="bi bi-check-circle-fill"></i> مدة الفيديو ' + formatDuration(duration) + ' — مقبول';
+                    videoInfoBox.style.display = 'flex';
+                }
+            } catch (err) {
+                videoTooLong = false;
+                // v1: لا نحاول عرض فيديو مكسور — نعرض بطاقة بديلة أنيقة
+                showVideoFallback(file);
+                videoInfoBox.className = 'video-info-box success';
+                videoInfoBox.innerHTML = '<i class="bi bi-info-circle-fill"></i> سيتم رفع الفيديو ومعالجته على الخادم';
+                videoInfoBox.style.display = 'flex';
+            }
+        });
+    }
+
+    if (removeVideoBtn) {
+        removeVideoBtn.addEventListener('click', function() {
+            videoInput.value = '';
+            videoTooLong = false;
+            hideVideoPreview();
+        });
+    }
+
+    // ===== الصورة المصغرة =====
+    if (thumbUploadArea && thumbnailInput) {
+        thumbUploadArea.addEventListener('click', () => thumbnailInput.click());
+    }
+
+    if (thumbnailInput) {
+        thumbnailInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) {
+                hideThumbPreview();
+                return;
+            }
+
+            if (!file.type.startsWith('image/')) {
+                if (typeof showToast === 'function') showToast('الرجاء اختيار صورة صالحة', 'error');
+                thumbnailInput.value = '';
+                return;
+            }
+
+            if (currentThumbObjectUrl) {
+                URL.revokeObjectURL(currentThumbObjectUrl);
+            }
+            currentThumbObjectUrl = URL.createObjectURL(file);
+            thumbPreview.src = currentThumbObjectUrl;
+
+            thumbUploadArea.style.display = 'none';
+            thumbPreviewWrapper.style.display = 'flex';
+        });
+    }
+
+    function hideThumbPreview() {
+        if (currentThumbObjectUrl) {
+            URL.revokeObjectURL(currentThumbObjectUrl);
+            currentThumbObjectUrl = null;
+        }
+        thumbPreview.removeAttribute('src');
+        thumbUploadArea.style.display = 'flex';
+        thumbPreviewWrapper.style.display = 'none';
+    }
+
+    if (removeThumbBtn) {
+        removeThumbBtn.addEventListener('click', function() {
+            thumbnailInput.value = '';
+            hideThumbPreview();
+        });
+    }
+
+    // ===== عند الإرسال =====
+    if (reelForm) {
+        reelForm.addEventListener('submit', function(e) {
+            if (!videoInput.files || !videoInput.files[0]) {
+                e.preventDefault();
+                if (typeof showToast === 'function') showToast('يرجى اختيار فيديو للريل', 'error');
+                return;
+            }
+
+            if (videoTooLong) {
+                e.preventDefault();
+                if (typeof showToast === 'function') showToast('لا يمكن حفظ الريل: مدة الفيديو تتجاوز 60 ثانية', 'error');
+                return;
+            }
+
+            if (submitBtn && !submitBtn.disabled) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>جارٍ الرفع...';
+            }
+        });
+    }
+
+    // ===== تنظيف عند مغادرة الصفحة =====
+    window.addEventListener('beforeunload', function() {
+        if (currentVideoObjectUrl) URL.revokeObjectURL(currentVideoObjectUrl);
+        if (currentThumbObjectUrl) URL.revokeObjectURL(currentThumbObjectUrl);
+    });
+})();
+</script>
 {% endblock %}

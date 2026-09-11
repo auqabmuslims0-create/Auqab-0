@@ -1,197 +1,454 @@
 {% extends 'base.html' %}
-{% import '_macros.html' as macros %}
 
 {% block title %}الإشعارات{% endblock %}
 
 {% block head %}
 <style>
-    .notification-list { display: flex; flex-direction: column; gap: 10px; }
-    .notification-item {
-        display: flex; align-items: center; gap: 12px; padding: 12px 15px;
-        border-radius: 15px; background: #fff; border: 1px solid #eaeaea;
-        transition: background 0.2s, border-color 0.2s, opacity 0.2s; position: relative;
+    /* ═════ Header ═════ */
+    .notif-page-header {
+        display: flex; flex-wrap: wrap; justify-content: space-between;
+        align-items: center; gap: 12px; margin-bottom: 18px;
     }
-    .notification-item.unread {
-        background: #f0f7f0; border-right: 4px solid var(--primary);
-        border-left: 1px solid #eaeaea; box-shadow: 0 2px 8px rgba(0,0,0,0.05); opacity: 1;
+    .notif-page-title {
+        font-size: 1.4rem; font-weight: 800; margin: 0;
+        display: flex; align-items: center; gap: 10px;
     }
-    .notification-item.read {
-        opacity: 0.7; background: #f8f9fa; border-right: 4px solid transparent;
-    }
-    body.dark-mode .notification-item { background: #1e1e1e; border-color: #333; }
-    body.dark-mode .notification-item.unread {
-        background: #263626; border-right-color: var(--accent); border-left-color: #333; opacity: 1;
-    }
-    body.dark-mode .notification-item.read { background: #252525; opacity: 0.7; }
+    .notif-page-title i { color: var(--primary); }
+    body.dark-mode .notif-page-title i { color: var(--accent); }
 
-    .notification-check { flex-shrink: 0; display: flex; align-items: center; }
-    .notification-icon {
-        width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center;
-        justify-content: center; font-size: 1.2rem; flex-shrink: 0;
+    .notif-toolbar {
+        display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
     }
-    .icon-order { background: rgba(13,110,253,0.1); color: #0d6efd; }
-    .icon-subscription { background: rgba(25,135,84,0.1); color: #198754; }
-    .icon-delivery { background: rgba(255,193,7,0.1); color: #ffc107; }
-    .icon-message { background: rgba(13,202,240,0.1); color: #0dcaf0; }
-    .icon-alert { background: rgba(220,53,69,0.1); color: #dc3545; }
-    .icon-default { background: rgba(108,117,125,0.1); color: #6c757d; }
-    .icon-store_follow { background: rgba(111,66,193,0.1); color: #6f42c1; }
-    .icon-new_product { background: rgba(40,167,69,0.1); color: #28a745; }
-    .icon-new_offer { background: rgba(255,152,0,0.1); color: #ff9800; }
-    .icon-reel { background: rgba(233,30,99,0.1); color: #e91e63; }
-    body.dark-mode .icon-order { background: rgba(13,110,253,0.2); color: #6ea8fe; }
-    body.dark-mode .icon-subscription { background: rgba(25,135,84,0.2); color: #75b798; }
-    body.dark-mode .icon-delivery { background: rgba(255,193,7,0.2); color: #ffda6a; }
-    body.dark-mode .icon-message { background: rgba(13,202,240,0.2); color: #6edff6; }
-    body.dark-mode .icon-alert { background: rgba(220,53,69,0.2); color: #ea868f; }
-    body.dark-mode .icon-default { background: rgba(173,181,189,0.2); color: #adb5bd; }
-    body.dark-mode .icon-store_follow { background: rgba(111,66,193,0.2); color: #b197fc; }
-    body.dark-mode .icon-new_product { background: rgba(40,167,69,0.2); color: #90ee90; }
-    body.dark-mode .icon-new_offer { background: rgba(255,152,0,0.2); color: #ffd180; }
-    body.dark-mode .icon-reel { background: rgba(233,30,99,0.2); color: #f48fb1; }
+    .notif-tool-btn {
+        border-radius: 22px; padding: 8px 14px; font-size: 0.85rem;
+        border: 1px solid #e0e0e0; background: #fff; color: #555;
+        font-weight: 600; display: inline-flex; align-items: center; gap: 6px;
+        cursor: pointer; transition: all 0.2s;
+    }
+    .notif-tool-btn:hover {
+        border-color: var(--primary); color: var(--primary);
+    }
+    body.dark-mode .notif-tool-btn {
+        background: #1e1e1e; border-color: #444; color: #ccc;
+    }
+    body.dark-mode .notif-tool-btn:hover { color: var(--accent); border-color: var(--accent); }
 
-    .notification-content { flex: 1; min-width: 0; }
-    .notification-title { font-weight: 600; margin-bottom: 2px; }
-    .notification-message { font-size: 0.9rem; color: #555; line-height: 1.4; word-break: break-word; }
-    body.dark-mode .notification-message { color: #ccc; }
-    .notification-meta { display: flex; align-items: center; gap: 10px; margin-top: 5px; font-size: 0.75rem; color: #888; }
-    .notification-actions { flex-shrink: 0; display: flex; gap: 5px; }
-    .btn-action {
-        border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center;
-        justify-content: center; padding: 0; border: 1px solid transparent;
+    .notif-tool-btn.primary {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: #fff; border-color: transparent;
     }
-    .btn-mark-read { background: #e9ecef; color: #198754; border-color: #ced4da; }
-    .btn-mark-read:hover { background: #198754; color: #fff; border-color: #198754; }
-    .btn-delete { background: #f8d7da; color: #dc3545; border-color: #f5c2c7; }
-    .btn-delete:hover { background: #dc3545; color: #fff; border-color: #dc3545; }
-    .btn-link-view { font-size: 0.8rem; text-decoration: none; color: var(--primary); }
-    body.dark-mode .btn-link-view { color: var(--accent); }
+    body.dark-mode .notif-tool-btn.primary {
+        background: linear-gradient(135deg, var(--accent), #b08c1e);
+        color: #000;
+    }
+    .notif-tool-btn.danger {
+        color: #dc3545; border-color: #f1aeb5;
+    }
+    .notif-tool-btn.danger:hover {
+        background: #dc3545; color: #fff; border-color: #dc3545;
+    }
 
-    #offlineNotificationsContainer { display: none; }
-    .offline-notification-item {
-        background: #fff; border-radius: 15px;
-        padding: 12px 15px; margin-bottom: 10px;
-        border: 1px solid #eaeaea;
+    /* ═════ Filter Tabs ═════ */
+    .notif-filters {
+        display: flex; gap: 8px; overflow-x: auto;
+        padding-bottom: 4px; margin-bottom: 18px;
     }
-    body.dark-mode .offline-notification-item {
-        background: #1e1e1e;
-        border-color: #333;
+    .notif-filter {
+        padding: 9px 16px; border-radius: 25px;
+        background: #fff; color: #666; border: 1px solid #e0e0e0;
+        font-weight: 600; font-size: 0.85rem; white-space: nowrap;
+        display: inline-flex; align-items: center; gap: 6px;
+        cursor: pointer; transition: all 0.2s;
     }
-    .pagination { display: flex; justify-content: center; gap: 5px; margin-top: 20px; }
-    .pagination .page-link { border-radius: 8px; }
+    .notif-filter:hover { color: var(--primary); border-color: var(--primary); }
+    .notif-filter.active {
+        background: var(--primary); color: #fff; border-color: var(--primary);
+        box-shadow: 0 4px 12px rgba(46,93,52,0.25);
+    }
+    body.dark-mode .notif-filter {
+        background: #1e1e1e; color: #ccc; border-color: #444;
+    }
+    body.dark-mode .notif-filter.active {
+        background: var(--accent); color: #000; border-color: var(--accent);
+    }
+    .notif-filter .count-badge {
+        background: rgba(0,0,0,0.08); border-radius: 10px;
+        padding: 1px 7px; font-size: 0.7rem; font-weight: 700;
+    }
+    .notif-filter.active .count-badge {
+        background: rgba(255,255,255,0.25);
+    }
+    body.dark-mode .notif-filter .count-badge {
+        background: rgba(255,255,255,0.1);
+    }
+    body.dark-mode .notif-filter.active .count-badge {
+        background: rgba(0,0,0,0.15);
+    }
 
-    .select-all-checkbox { width: 18px; height: 18px; cursor: pointer; }
-    .notification-actions .btn { font-size: 0.85rem; }
+    /* ═════ Status Bar ═════ */
+    .notif-status-bar {
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 10px 14px; border-radius: 12px;
+        background: #fff; margin-bottom: 14px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    body.dark-mode .notif-status-bar {
+        background: #1e1e1e; color: #fff;
+    }
+    .notif-status-bar.active {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: #fff;
+    }
+    body.dark-mode .notif-status-bar.active {
+        background: linear-gradient(135deg, #2d4a30, #1e2f20);
+    }
+    .notif-status-bar .status-info {
+        display: flex; align-items: center; gap: 10px;
+        font-weight: 600; font-size: 0.9rem;
+    }
+    .notif-status-bar .status-actions {
+        display: flex; gap: 8px; flex-wrap: wrap;
+    }
+    .notif-status-bar .notif-tool-btn {
+        white-space: nowrap;
+    }
+
+    /* ═════ Groups ═════ */
+    .notif-group { margin-bottom: 22px; }
+    .notif-group-header {
+        font-weight: 700; font-size: 0.85rem; color: #888;
+        margin-bottom: 8px; padding-right: 4px;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .notif-group-header::after {
+        content: ''; flex: 1; height: 1px; background: #f0f0f0;
+    }
+    body.dark-mode .notif-group-header { color: #aaa; }
+    body.dark-mode .notif-group-header::after { background: #333; }
+    .notif-group-body {
+        display: flex; flex-direction: column; gap: 8px;
+    }
+
+    /* ═════ Card ═════ */
+    .notif-card {
+        position: relative;
+        display: flex; align-items: flex-start; gap: 12px;
+        padding: 14px 16px; border-radius: 14px;
+        background: #fff; border: 1px solid #f0f0f0;
+        transition: all 0.15s; cursor: pointer;
+    }
+    .notif-card:hover {
+        border-color: #e0e0e0;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    body.dark-mode .notif-card {
+        background: #1e1e1e; border-color: #333; color: #fff;
+    }
+    body.dark-mode .notif-card:hover { border-color: #555; }
+
+    .notif-card.unread {
+        background: linear-gradient(90deg, #f0f7f0, #ffffff);
+        border-right: 4px solid var(--primary);
+    }
+    body.dark-mode .notif-card.unread {
+        background: linear-gradient(90deg, #263626, #1e1e1e);
+        border-right-color: var(--accent);
+    }
+    .notif-card.read {
+        opacity: 0.75;
+    }
+
+    .unread-dot {
+        position: absolute; top: 12px; left: 12px;
+        width: 8px; height: 8px; border-radius: 50%;
+        background: #dc3545;
+        box-shadow: 0 0 0 3px rgba(220,53,69,0.15);
+        animation: unreadPulse 1.8s infinite;
+    }
+    @keyframes unreadPulse {
+        0%, 100% { box-shadow: 0 0 0 3px rgba(220,53,69,0.15); }
+        50% { box-shadow: 0 0 0 6px rgba(220,53,69,0.05); }
+    }
+
+    .notif-checkbox-wrap {
+        display: flex; align-items: center; padding-right: 4px; cursor: pointer;
+    }
+    .notif-checkbox {
+        width: 20px; height: 20px; cursor: pointer;
+        accent-color: var(--primary);
+    }
+
+    .notif-icon {
+        width: 42px; height: 42px; border-radius: 12px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.2rem; flex-shrink: 0;
+        transition: transform 0.2s;
+    }
+    .notif-card:hover .notif-icon { transform: scale(1.05); }
+
+    /* ألوان الأيقونات */
+    .notif-icon.icon-order { background: rgba(13,110,253,0.1); color: #0d6efd; }
+    .notif-icon.icon-subscription { background: rgba(25,135,84,0.1); color: #198754; }
+    .notif-icon.icon-delivery { background: rgba(255,193,7,0.12); color: #d39e00; }
+    .notif-icon.icon-message { background: rgba(13,202,240,0.1); color: #0dcaf0; }
+    .notif-icon.icon-alert { background: rgba(220,53,69,0.1); color: #dc3545; }
+    .notif-icon.icon-default { background: rgba(108,117,125,0.1); color: #6c757d; }
+    .notif-icon.icon-store_follow { background: rgba(111,66,193,0.1); color: #6f42c1; }
+    .notif-icon.icon-new_product { background: rgba(40,167,69,0.1); color: #28a745; }
+    .notif-icon.icon-new_offer { background: rgba(255,152,0,0.1); color: #ff9800; }
+    .notif-icon.icon-reel { background: rgba(233,30,99,0.1); color: #e91e63; }
+
+    body.dark-mode .notif-icon.icon-order { background: rgba(13,110,253,0.2); color: #6ea8fe; }
+    body.dark-mode .notif-icon.icon-subscription { background: rgba(25,135,84,0.2); color: #75b798; }
+    body.dark-mode .notif-icon.icon-delivery { background: rgba(255,193,7,0.2); color: #ffda6a; }
+    body.dark-mode .notif-icon.icon-message { background: rgba(13,202,240,0.2); color: #6edff6; }
+    body.dark-mode .notif-icon.icon-alert { background: rgba(220,53,69,0.2); color: #ea868f; }
+    body.dark-mode .notif-icon.icon-default { background: rgba(173,181,189,0.2); color: #adb5bd; }
+
+    .notif-body { flex: 1; min-width: 0; }
+    .notif-title {
+        font-weight: 700; font-size: 0.95rem; margin-bottom: 3px;
+        color: #222;
+    }
+    body.dark-mode .notif-title { color: #fff; }
+    .notif-message {
+        font-size: 0.875rem; color: #555; line-height: 1.5;
+        word-break: break-word;
+    }
+    body.dark-mode .notif-message { color: #ccc; }
+    .notif-meta {
+        display: flex; align-items: center; gap: 12px; margin-top: 6px;
+        font-size: 0.75rem; color: #999;
+    }
+    body.dark-mode .notif-meta { color: #888; }
+
+    .notif-open-btn {
+        color: var(--primary); text-decoration: none;
+        font-weight: 600; display: inline-flex; align-items: center; gap: 3px;
+    }
+    body.dark-mode .notif-open-btn { color: var(--accent); }
+    .notif-open-btn:hover { text-decoration: underline; }
+
+    .notif-actions {
+        display: flex; gap: 4px; align-self: flex-start;
+        opacity: 0; transition: opacity 0.15s;
+    }
+    .notif-card:hover .notif-actions { opacity: 1; }
+    @media (hover: none) {
+        .notif-actions { opacity: 1; }
+    }
+
+    .notif-action-btn {
+        width: 30px; height: 30px; border-radius: 8px;
+        border: 1px solid #e0e0e0; background: #fff; color: #666;
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; transition: all 0.15s; font-size: 0.85rem;
+    }
+    .notif-action-btn:hover {
+        background: var(--primary); color: #fff; border-color: var(--primary);
+    }
+    .notif-action-btn.danger:hover {
+        background: #dc3545; color: #fff; border-color: #dc3545;
+    }
+    body.dark-mode .notif-action-btn {
+        background: #252525; border-color: #444; color: #ccc;
+    }
+
+    /* ═════ Load More ═════ */
+    .load-more-wrapper {
+        text-align: center; margin: 24px 0 12px;
+        display: none;
+    }
+    .load-more-btn {
+        border-radius: 25px; padding: 10px 30px;
+        background: #fff; color: var(--primary);
+        border: 2px solid var(--primary);
+        font-weight: 700; font-size: 0.9rem;
+        cursor: pointer; transition: all 0.2s;
+        display: inline-flex; align-items: center; gap: 8px;
+    }
+    .load-more-btn:hover {
+        background: var(--primary); color: #fff;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(46,93,52,0.25);
+    }
+    body.dark-mode .load-more-btn {
+        background: #1e1e1e; border-color: var(--accent); color: var(--accent);
+    }
+    body.dark-mode .load-more-btn:hover {
+        background: var(--accent); color: #000;
+    }
+
+    /* ═════ Empty/Loading ═════ */
+    .notif-empty {
+        text-align: center; padding: 60px 20px;
+        background: #fff; border-radius: 20px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+    body.dark-mode .notif-empty { background: #1e1e1e; color: #fff; }
+    .notif-empty i {
+        font-size: 4rem; color: #ccc;
+        display: block; margin-bottom: 16px;
+    }
+    body.dark-mode .notif-empty i { color: #444; }
+
+    .notif-loading {
+        text-align: center; padding: 40px;
+        display: none;
+    }
+    .notif-loading .spinner-border {
+        width: 40px; height: 40px;
+        color: var(--primary);
+    }
+    body.dark-mode .notif-loading .spinner-border { color: var(--accent); }
+
+    .offline-banner {
+        display: none; background: #fff3cd; color: #664d03;
+        padding: 12px; border-radius: 12px;
+        text-align: center; margin-bottom: 16px;
+        border: 1px solid #ffe69c;
+    }
+    body.dark-mode .offline-banner {
+        background: #3a2f1a; color: #ffd666; border-color: #5c4a2a;
+    }
+
+    @media (max-width: 576px) {
+        .notif-actions { opacity: 1; }
+        .notif-card { padding: 12px 12px; }
+        .notif-icon { width: 38px; height: 38px; font-size: 1.1rem; }
+        .notif-page-title { font-size: 1.2rem; }
+
+        /* إصلاح: شريط الأدوات على الموبايل */
+        .notif-status-bar {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        .notif-status-bar .status-info {
+            justify-content: center;
+            font-size: 0.85rem;
+        }
+        .notif-status-bar .status-actions {
+            justify-content: center;
+            display: flex;
+            flex-wrap: nowrap;
+            gap: 6px;
+        }
+        .notif-status-bar .notif-tool-btn {
+            flex: 1 1 auto;
+            padding: 8px 8px;
+            font-size: 0.78rem;
+            justify-content: center;
+            min-width: 0;
+        }
+    }
+
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
-    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
-        <h4 class="fw-bold mb-0"><i class="bi bi-bell"></i> الإشعارات</h4>
-        <div class="d-flex gap-2 flex-wrap">
-            <button id="enablePushBtn" class="btn btn-sm btn-outline-primary">
-                <i class="bi bi-bell-fill"></i> تفعيل الإشعارات الفورية
+    <!-- ═════ رأس الصفحة ═════ -->
+    <div class="notif-page-header">
+        <h1 class="notif-page-title">
+            <i class="bi bi-bell-fill"></i>
+            الإشعارات
+        </h1>
+        <div class="notif-toolbar">
+            <button id="enablePushBtn" class="notif-tool-btn" type="button">
+                <i class="bi bi-bell"></i> <span class="d-none d-sm-inline">تفعيل الفوري</span>
             </button>
-            <button id="markAllReadBtn" class="btn btn-sm btn-outline-success">
-                <i class="bi bi-check2-all"></i> تحديد الكل كمقروء
+            <button id="selectModeBtn" class="notif-tool-btn" type="button">
+                <i class="bi bi-check2-square"></i> <span class="d-none d-sm-inline">تحديد</span>
             </button>
-            <button id="deleteReadBtn" class="btn btn-sm btn-outline-danger">
-                <i class="bi bi-trash"></i> حذف المقروءة
-            </button>
-            <button id="deleteSelectedBtn" class="btn btn-sm btn-outline-danger">
-                <i class="bi bi-trash"></i> حذف المحدد
+            <button id="markAllReadBtn" class="notif-tool-btn primary" type="button">
+                <i class="bi bi-check2-all"></i> <span class="d-none d-sm-inline">تعليم الكل كمقروء</span>
             </button>
         </div>
     </div>
 
-    <div id="onlineNotificationsContent">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <div class="form-check">
-                <input class="form-check-input select-all-checkbox" type="checkbox" id="selectAllCheckbox">
-                <label class="form-check-label" for="selectAllCheckbox">
-                    تحديد الكل
-                </label>
-            </div>
+    <!-- ═════ شريط الأوفلاين ═════ -->
+    <div id="offlineBanner" class="offline-banner">
+        <i class="bi bi-wifi-off"></i> أنت غير متصل — يتم عرض نسخة محفوظة
+    </div>
+
+    <!-- ═════ تبويبات الفلترة ═════ -->
+    <div class="notif-filters" role="tablist">
+        <button class="notif-filter active" data-filter="all" type="button">
+            <i class="bi bi-grid-3x3-gap"></i> الكل
+            <span class="count-badge" data-filter-badge="total" style="display:none;">0</span>
+        </button>
+        <button class="notif-filter" data-filter="unread" type="button">
+            <i class="bi bi-circle-fill" style="font-size:0.6rem;color:#dc3545;"></i> غير مقروء
+            <span class="count-badge" data-filter-badge="unread" style="display:none;">0</span>
+        </button>
+        <button class="notif-filter" data-filter="type" data-value="order" type="button">
+            <i class="bi bi-bag-check"></i> الطلبات
+            <span class="count-badge" data-filter-badge="order" style="display:none;">0</span>
+        </button>
+        <button class="notif-filter" data-filter="type" data-value="subscription" type="button">
+            <i class="bi bi-arrow-repeat"></i> الاشتراكات
+            <span class="count-badge" data-filter-badge="subscription" style="display:none;">0</span>
+        </button>
+        <button class="notif-filter" data-filter="type" data-value="delivery" type="button">
+            <i class="bi bi-truck"></i> التوصيل
+            <span class="count-badge" data-filter-badge="delivery" style="display:none;">0</span>
+        </button>
+    </div>
+
+    <!-- ═════ شريط أدوات التحديد (يظهر في وضع التحديد) ═════ -->
+    <div id="notificationsToolbar" class="notif-status-bar">
+        <div class="status-info">
+            <i class="bi bi-check2-square"></i>
+            <span>تم تحديد <strong id="selectedCount">0</strong> إشعار</span>
         </div>
-        <div id="notificationsList" class="notification-list">
-            {% for notif in notifs %}
-                <div class="notification-item {% if not notif.is_read %}unread{% else %}read{% endif %}" data-id="{{ notif.id }}" data-read="{{ notif.is_read }}">
-                    <div class="notification-check">
-                        <input type="checkbox" class="form-check-input notif-checkbox" value="{{ notif.id }}">
-                    </div>
-                    <div class="notification-icon
-                        {%- if notif.type == 'order' %} icon-order
-                        {%- elif notif.type == 'subscription' %} icon-subscription
-                        {%- elif notif.type == 'delivery' %} icon-delivery
-                        {%- elif notif.type == 'message' %} icon-message
-                        {%- elif notif.type == 'alert' %} icon-alert
-                        {%- elif notif.type == 'store_follow' %} icon-store_follow
-                        {%- elif notif.type == 'new_product' %} icon-new_product
-                        {%- elif notif.type == 'new_offer' %} icon-new_offer
-                        {%- elif notif.type == 'reel' %} icon-reel
-                        {%- else %} icon-default{% endif %}">
-                        {% if notif.type == 'order' %}<i class="bi bi-bag-check"></i>
-                        {% elif notif.type == 'subscription' %}<i class="bi bi-arrow-repeat"></i>
-                        {% elif notif.type == 'delivery' %}<i class="bi bi-truck"></i>
-                        {% elif notif.type == 'message' %}<i class="bi bi-chat-dots"></i>
-                        {% elif notif.type == 'alert' %}<i class="bi bi-exclamation-triangle"></i>
-                        {% elif notif.type == 'store_follow' %}<i class="bi bi-person-plus"></i>
-                        {% elif notif.type == 'new_product' %}<i class="bi bi-box-seam"></i>
-                        {% elif notif.type == 'new_offer' %}<i class="bi bi-tags"></i>
-                        {% elif notif.type == 'reel' %}<i class="bi bi-film"></i>
-                        {% else %}<i class="bi bi-bell"></i>{% endif %}
-                    </div>
-                    <div class="notification-content">
-                        {% if notif.title %}<div class="notification-title">{{ notif.title }}</div>{% endif %}
-                        <div class="notification-message">{{ notif.message }}</div>
-                        <div class="notification-meta">
-                            <span class="notification-time"><i class="bi bi-clock"></i> {{ notif.created_at.strftime('%Y-%m-%d %H:%M') if notif.created_at else '' }}</span>
-                            {% if notif.link %}
-                                <a href="{{ notif.link }}" class="btn-link-view"><i class="bi bi-box-arrow-up-left"></i> عرض</a>
-                            {% endif %}
-                        </div>
-                    </div>
-                    <div class="notification-actions">
-                        {% if not notif.is_read %}
-                        <button class="btn btn-action btn-mark-read mark-read-btn" data-id="{{ notif.id }}" title="تعليم كمقروء">
-                            <i class="bi bi-check"></i>
-                        </button>
-                        {% endif %}
-                        <button class="btn btn-action btn-delete delete-notif-btn" data-id="{{ notif.id }}" title="حذف">
-                            <i class="bi bi-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            {% else %}
-                {{ macros.render_empty_state('bi-bell-slash', 'لا توجد إشعارات', url_for('market.market'), 'العودة للسوق') }}
-            {% endfor %}
-        </div>
-        <div id="paginationContainer" class="pagination">
-            {% if total_pages > 1 %}
-                {% for p in range(1, total_pages+1) %}
-                    <button class="btn btn-sm {% if p == page %}btn-primary{% else %}btn-outline-primary{% endif %} page-link-btn" data-page="{{ p }}">{{ p }}</button>
-                {% endfor %}
-            {% endif %}
+        <div class="status-actions">
+            <button id="bulkMarkReadBtn" class="notif-tool-btn primary" type="button" disabled>
+                <i class="bi bi-check2"></i> <span class="d-none d-sm-inline">تعليم كمقروء</span>
+            </button>
+            <button id="bulkDeleteBtn" class="notif-tool-btn danger" type="button" disabled>
+                <i class="bi bi-trash"></i> <span class="d-none d-sm-inline">حذف</span>
+            </button>
+            <button id="cancelSelectBtn" class="notif-tool-btn" type="button">
+                <i class="bi bi-x-lg"></i> <span class="d-none d-sm-inline">إلغاء</span>
+            </button>
         </div>
     </div>
 
-    <div id="offlineNotificationsContainer">
-        <div class="alert alert-warning text-center">
-            <i class="bi bi-wifi-off"></i> أنت غير متصل - يتم عرض الإشعارات المحفوظة
+    <!-- ═════ قائمة الإشعارات ═════ -->
+    <div id="notificationsList"></div>
+
+    <!-- ═════ حالة فارغة ═════ -->
+    <div id="notificationsEmpty" class="notif-empty" style="display:none;">
+        <i class="bi bi-bell-slash"></i>
+        <h5>لا توجد إشعارات</h5>
+        <p class="text-muted mb-0">ستظهر هنا الإشعارات الجديدة عند وصولها</p>
+    </div>
+
+    <!-- ═════ مؤشر التحميل ═════ -->
+    <div id="notificationsLoading" class="notif-loading">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">جارٍ التحميل...</span>
         </div>
-        <div id="offlineNotificationsList"></div>
+    </div>
+
+    <!-- ═════ Load More ═════ -->
+    <div id="loadMoreWrapper" class="load-more-wrapper">
+        <button id="loadMoreBtn" class="load-more-btn" type="button">
+            <i class="bi bi-arrow-down-circle"></i> تحميل المزيد
+        </button>
+    </div>
+
+    <!-- ═════ زر حذف المقروءة (أسفل الصفحة) ═════ -->
+    <div class="text-center mt-4 mb-4">
+        <button id="deleteReadBtn" class="notif-tool-btn danger" type="button">
+            <i class="bi bi-trash"></i> حذف الإشعارات المقروءة
+        </button>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
-<script>
-    window.notificationsConfig = {
-        currentPage: {{ page }},
-        totalPages: {{ total_pages }},
-        userId: {{ session.get('user_id') }}
-    };
-</script>
 {% endblock %}

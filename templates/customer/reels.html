@@ -23,12 +23,22 @@
                     <video class="reel-video" loop playsinline preload="auto"
                            src="{{ reel.video_url | get_image_url }}"
                            poster="{{ reel.thumbnail_url | get_image_url if reel.thumbnail_url else (reel.product.images.split(',')[0].strip() | get_image_url if reel.product and reel.product.images else '') }}"
-                           data-reel-video>
+                           data-reel-video
+                           data-reel-id="{{ reel.id }}">
                     </video>
                     <div class="video-loading-spinner" data-video-spinner></div>
+
+                    <!-- زر التشغيل (مثلث بدون دائرة) -->
                     <div class="reel-play-overlay" data-play-overlay>
                         <button type="button" class="reel-play-btn" data-play-btn aria-label="تشغيل الفيديو">
                             <i class="bi bi-play-fill"></i>
+                        </button>
+                    </div>
+
+                    <!-- زر الإيقاف المؤقت (خطان بدون دائرة) -->
+                    <div class="reel-pause-overlay" data-pause-overlay>
+                        <button type="button" class="reel-pause-btn" data-pause-btn aria-label="إيقاف مؤقت">
+                            <i class="bi bi-pause-fill"></i>
                         </button>
                     </div>
                     {% else %}
@@ -50,7 +60,7 @@
                         <a href="{{ url_for('stores.product_public', product_id=reel.product.id) }}" class="reel-product-link">
                             <h5 class="reel-product-name">{{ reel.product.name }}</h5>
                             <div class="reel-product-price">
-                                {{ reel.product.price|format_price }} ل.س
+                                {{ reel.product.effective_price|format_price }} ل.س
                                 {% if reel.product.is_offer and reel.product.original_price %}
                                     <span class="text-decoration-line-through text-muted ms-1">{{ reel.product.original_price|format_price }}</span>
                                 {% endif %}
@@ -66,10 +76,10 @@
                                 title="إعجاب">
                             <i class="bi bi-heart{% if reel.id in user_reaction_map and user_reaction_map[reel.id] == 'like' %}-fill{% endif %}"></i>
                         </button>
-                        <button class="reel-action-btn" onclick="shareReel({{ reel.id }}, '{{ reel.product.name if reel.product else reel.caption }}')" title="مشاركة">
+                        <button class="reel-action-btn" onclick="shareReel({{ reel.id }}, '{{ (reel.product.name if reel.product else reel.caption) | e }}')" title="مشاركة">
                             <i class="bi bi-share"></i>
                         </button>
-                        {% if reel.product %}
+                        {% if reel.product and not reel.product.hide_price %}
                         <button class="reel-action-btn {% if reel.product.stock_quantity == 0 %}disabled{% endif %}"
                                 onclick="addToCart({{ reel.product.id }}, 1, (d) => showToast('تمت الإضافة للسلة', 'success'))"
                                 title="أضف إلى السلة" {% if reel.product.stock_quantity == 0 %}disabled{% endif %}>

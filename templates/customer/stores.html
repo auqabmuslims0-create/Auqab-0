@@ -11,9 +11,9 @@
         justify-content: space-between;
         background: linear-gradient(135deg, #f8f9fa, #fff);
         border-radius: 20px;
-        padding: 16px 20px;
+        padding: 14px 18px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        margin-bottom: 20px;
+        margin-bottom: 18px;
         flex-wrap: wrap;
         gap: 10px;
     }
@@ -22,30 +22,21 @@
         box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
     .stores-hero-icon {
-        width: 50px;
-        height: 50px;
-        border-radius: 15px;
+        width: 46px;
+        height: 46px;
+        border-radius: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.8rem;
+        font-size: 1.6rem;
         color: #fff;
         background: linear-gradient(135deg, var(--primary), var(--primary-dark));
         flex-shrink: 0;
     }
     .stores-count {
-        font-size: 1rem;
-        padding: 0.5rem 1rem;
+        font-size: 0.95rem;
+        padding: 0.45rem 0.9rem;
         border-radius: 25px;
-    }
-    .filter-bar {
-        background: #f8f9fa;
-        border-radius: 15px;
-        padding: 15px;
-        margin-bottom: 20px;
-    }
-    body.dark-mode .filter-bar {
-        background: #252525;
     }
     .stores-grid {
         display: grid;
@@ -57,12 +48,6 @@
             grid-template-columns: repeat(2, 1fr);
             gap: 10px;
         }
-    }
-    .store-card-image img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        display: block;
     }
     .store-status-badge {
         font-size: 0.7rem;
@@ -108,10 +93,16 @@
     .store-card-name {
         font-weight: 600;
         font-size: 0.95rem;
-        margin-bottom: 4px;
-        white-space: nowrap;
+        margin-bottom: 6px;
+        line-height: 1.3;
+        min-height: 2.6em;
+        white-space: normal !important;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
         overflow: hidden;
-        text-overflow: ellipsis;
     }
     .store-visit-btn {
         margin-top: auto;
@@ -140,9 +131,7 @@
         background: var(--accent);
         color: #000;
     }
-    #offlineContent {
-        display: none;
-    }
+    #offlineContent { display: none; }
     .offline-store-card {
         background: #fff;
         border-radius: 15px;
@@ -176,9 +165,80 @@
         font-weight: 600;
         margin-bottom: 4px;
         font-size: 0.9rem;
-        white-space: nowrap;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    /* ====== شريط البحث الموحّد ====== */
+    .market-header-section { margin-bottom: 18px; }
+    .search-wrapper { position: relative; }
+    .search-bar-modern {
+        border-radius: 25px;
         overflow: hidden;
-        text-overflow: ellipsis;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.4);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        transition: box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    .search-bar-modern:focus-within {
+        border-color: var(--primary);
+        box-shadow: 0 4px 16px rgba(46, 93, 52, 0.2);
+    }
+    .search-icon {
+        background: transparent;
+        border: none;
+        color: var(--primary);
+        padding-right: 12px;
+    }
+    .search-input-modern {
+        border: none;
+        background: transparent;
+        padding: 10px 12px;
+        font-size: 0.95rem;
+        outline: none;
+        box-shadow: none;
+    }
+    .search-input-modern:focus { box-shadow: none; }
+    .filter-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.4);
+        color: var(--primary);
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        transition: background-color 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+        flex-shrink: 0;
+    }
+    .filter-btn:hover {
+        transform: scale(1.05);
+        background: rgba(255,255,255,0.95);
+    }
+    .filter-btn.has-filters {
+        background: var(--primary);
+        color: #fff;
+    }
+    body.dark-mode .search-bar-modern,
+    body.dark-mode .filter-btn {
+        background: rgba(30, 30, 30, 0.7);
+        border-color: rgba(255,255,255,0.1);
+    }
+    body.dark-mode .search-bar-modern { box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    body.dark-mode .filter-btn {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        color: var(--accent);
+    }
+    body.dark-mode .filter-btn.has-filters {
+        background: var(--accent);
+        color: #000;
     }
 </style>
 {% endblock %}
@@ -199,26 +259,26 @@
             <span class="badge bg-primary stores-count">{{ pagination.total }} متجر</span>
         </div>
 
-        <div class="filter-bar">
-            <form method="GET" action="{{ url_for('stores.stores_page') }}" class="row g-2 align-items-end">
-                <div class="col-12 col-md-6">
-                    <label class="form-label small fw-bold">بحث</label>
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-search"></i></span>
-                        <input type="text" name="q" value="{{ q or '' }}" class="form-control" placeholder="ابحث عن متجر بالاسم أو المالك...">
+        <div class="market-header-section">
+            <form method="GET" action="{{ url_for('stores.stores_page') }}" class="d-flex gap-2 align-items-center" id="storesSearchForm">
+                <div class="flex-grow-1 search-wrapper">
+                    <div class="input-group search-bar-modern">
+                        <span class="input-group-text search-icon"><i class="bi bi-search"></i></span>
+                        <input type="text" name="q" class="form-control search-input-modern"
+                               placeholder="ابحث عن متجر بالاسم أو المالك..." value="{{ q or '' }}" autocomplete="off">
+                        {% if q %}
+                        <a href="{{ url_for('stores.stores_page', status=status_filter) }}"
+                           class="btn btn-link text-danger" tabindex="-1">
+                            <i class="bi bi-x"></i>
+                        </a>
+                        {% endif %}
                     </div>
                 </div>
-                <div class="col-6 col-md-4">
-                    <label class="form-label small fw-bold">الحالة</label>
-                    <select name="status" class="form-select">
-                        <option value="">الكل</option>
-                        <option value="open" {% if status_filter == 'open' %}selected{% endif %}>مفتوح الآن</option>
-                        <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>مغلق</option>
-                    </select>
-                </div>
-                <div class="col-6 col-md-2 d-grid">
-                    <button type="submit" class="btn btn-custom"><i class="bi bi-funnel"></i> تصفية</button>
-                </div>
+                <button class="btn filter-btn {% if status_filter %}has-filters{% endif %}"
+                        type="button" data-bs-toggle="offcanvas" data-bs-target="#storesFilterSidebar"
+                        aria-label="تصفية">
+                    <i class="bi bi-sliders"></i>
+                </button>
             </form>
         </div>
 
@@ -240,6 +300,33 @@
             <i class="bi bi-wifi-off"></i> أنت غير متصل بالإنترنت - يتم عرض نسخة محفوظة من المتاجر
         </div>
         <div class="stores-grid" id="offlineStoresGrid"></div>
+    </div>
+</div>
+
+<!-- Offcanvas للتصفية -->
+<div class="offcanvas offcanvas-start filter-sidebar" tabindex="-1" id="storesFilterSidebar">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title"><i class="bi bi-sliders"></i> تصفية المتاجر</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+        <form method="GET" action="{{ url_for('stores.stores_page') }}">
+            <input type="hidden" name="q" value="{{ q or '' }}">
+            <div class="mb-3">
+                <label class="form-label fw-bold">حالة المتجر</label>
+                <select name="status" class="form-select">
+                    <option value="">الكل</option>
+                    <option value="open" {% if status_filter == 'open' %}selected{% endif %}>مفتوح الآن</option>
+                    <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>مغلق</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-custom w-100">
+                <i class="bi bi-check-circle"></i> تطبيق
+            </button>
+            <a href="{{ url_for('stores.stores_page', q=q) }}" class="btn btn-outline-secondary w-100 mt-2">
+                <i class="bi bi-arrow-counterclockwise"></i> إعادة تعيين
+            </a>
+        </form>
     </div>
 </div>
 {% endblock %}

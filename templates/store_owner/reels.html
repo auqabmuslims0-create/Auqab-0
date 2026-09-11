@@ -3,59 +3,322 @@
 {% block title %}إدارة الريلز - {{ store.name }}{% endblock %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/reels.css') }}">
+<style>
+    /* ===== رأس الصفحة ===== */
+    .reels-header {
+        display: flex; flex-wrap: wrap; justify-content: space-between;
+        align-items: center; gap: 12px; margin-bottom: 18px;
+        padding: 14px 18px; border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    body.dark-mode .reels-header {
+        background: #1e1e1e; color: #fff;
+    }
+    .reels-header h4 {
+        display: flex; align-items: center; gap: 8px;
+        font-size: 1.15rem; margin: 0;
+    }
+    .reels-header h4 i { color: var(--primary); }
+    body.dark-mode .reels-header h4 i { color: var(--accent); }
+
+    /* ===== زر الحذف ===== */
+    .owner-reel-delete-btn {
+        background: rgba(220,53,69,0.9);
+        color: #fff;
+        border: 2px solid rgba(255,255,255,0.3);
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.2s;
+        padding: 0;
+        flex-shrink: 0;
+    }
+    .owner-reel-delete-btn:hover {
+        background: #dc3545;
+        transform: scale(1.08);
+    }
+
+    /* ===== حاوية الريلز ===== */
+    .owner-reels-list {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        align-items: center;
+    }
+    .owner-reel-card {
+        position: relative;
+        border-radius: 18px;
+        overflow: hidden;
+        background: #000;
+        width: 100%;
+        max-width: 500px;
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        line-height: 0;
+    }
+
+    /* ===== الفيديو ===== */
+    .owner-reel-video-wrap {
+        position: relative;
+        width: 100%;
+        background: #000;
+        line-height: 0;
+    }
+    .owner-reel-video-wrap video {
+        width: 100%;
+        height: auto;
+        display: block;
+        background: #000;
+        cursor: pointer;
+    }
+
+    /* ===== Overlay التشغيل — مثلث بدون دائرة ===== */
+    .owner-play-overlay {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 5;
+        pointer-events: none;
+    }
+    .owner-play-overlay.show { display: flex; }
+    .owner-play-btn {
+        background: transparent;
+        border: none;
+        color: #fff;
+        font-size: 5rem;
+        line-height: 1;
+        cursor: pointer;
+        pointer-events: auto;
+        text-shadow: 0 0 12px rgba(0,0,0,0.8);
+        transition: color 0.2s, transform 0.2s;
+        padding: 0;
+    }
+    .owner-play-btn:hover {
+        color: #ffd700;
+        transform: scale(1.1);
+    }
+
+    /* ===== Overlay الإيقاف المؤقت — خطان بدون دائرة ===== */
+    .owner-pause-overlay {
+        position: absolute;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 6;
+        pointer-events: none;
+    }
+    .owner-pause-overlay.show { display: flex; }
+    .owner-pause-btn {
+        background: transparent;
+        border: none;
+        color: #fff;
+        font-size: 5rem;
+        line-height: 1;
+        cursor: pointer;
+        pointer-events: auto;
+        text-shadow: 0 0 12px rgba(0,0,0,0.8);
+        transition: color 0.2s, transform 0.2s;
+        padding: 0;
+    }
+    .owner-pause-btn:hover {
+        color: #ffd700;
+        transform: scale(1.1);
+    }
+
+    /* ===== Spinner ===== */
+    .owner-video-spinner {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 48px;
+        height: 48px;
+        border: 4px solid rgba(255,255,255,0.3);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: ownerSpin 1s linear infinite;
+        display: none;
+        z-index: 7;
+        pointer-events: none;
+    }
+    .owner-video-spinner.show { display: block; }
+    @keyframes ownerSpin {
+        to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    /* ===== معلومات الريل ===== */
+    .owner-reel-info {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 40px 16px 14px;
+        background: linear-gradient(to top, rgba(0,0,0,0.85), transparent);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        gap: 12px;
+        pointer-events: none;
+        line-height: 1.5;
+    }
+    .owner-reel-info-left {
+        flex: 1;
+        min-width: 0;
+        pointer-events: auto;
+    }
+    .owner-reel-product-link {
+        text-decoration: none;
+        color: #fff;
+        display: block;
+        pointer-events: auto;
+    }
+    .owner-reel-product-name {
+        font-size: 1.05rem;
+        font-weight: 700;
+        margin: 0 0 2px;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    }
+    .owner-reel-product-price {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #ffd700;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+    }
+    .owner-reel-caption {
+        color: #fff;
+        font-size: 0.95rem;
+        margin: 0;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+        word-break: break-word;
+    }
+    .owner-reel-meta {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 4px 10px;
+        border-radius: 12px;
+        background: rgba(0,0,0,0.5);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        font-weight: 600;
+        font-size: 0.75rem;
+        color: #fff;
+        width: fit-content;
+        margin-top: 8px;
+    }
+    .owner-reel-meta i { opacity: 0.9; }
+
+    /* ===== حالة فارغة ===== */
+    .empty-reels {
+        text-align: center;
+        padding: 60px 20px;
+        background: #fff;
+        border-radius: 20px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    }
+    body.dark-mode .empty-reels { background: #1e1e1e; color: #fff; }
+    .empty-reels i {
+        font-size: 4rem;
+        color: #adb5bd;
+        display: block;
+        margin-bottom: 12px;
+    }
+
+    @media (max-width: 576px) {
+        .owner-play-btn,
+        .owner-pause-btn {
+            font-size: 4rem;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="reels-page-container">
+<div class="container mt-4">
     <div class="reels-header">
-        <h4 class="fw-bold mb-0"><i class="bi bi-film"></i> إدارة الريلز - {{ store.name }}</h4>
-        <a href="{{ url_for('store.new_reel', store_id=store.id) }}" class="btn btn-primary btn-sm">
+        <h4>
+            <i class="bi bi-film"></i>
+            إدارة الريلز - {{ store.name }}
+        </h4>
+        <a href="{{ url_for('store.new_reel', store_id=store.id) }}"
+           class="btn btn-primary btn-sm" style="border-radius:20px;">
             <i class="bi bi-plus-lg"></i> إضافة ريل
         </a>
     </div>
 
     {% if reels %}
-    <div class="reels-vertical-container">
+    <div class="owner-reels-list">
         {% for reel in reels %}
-        <div class="reel-slide" id="reel-{{ reel.id }}">
-            <div class="reel-video-wrapper">
+        <div class="owner-reel-card" data-reel-id="{{ reel.id }}">
+            <div class="owner-reel-video-wrap">
                 {% if reel.video_url %}
-                <video class="reel-video" loop playsinline preload="metadata"
+                <video class="owner-reel-video"
+                       loop
+                       playsinline
+                       preload="metadata"
                        src="{{ reel.video_url | get_image_url }}"
                        poster="{{ reel.thumbnail_url | get_image_url if reel.thumbnail_url else '' }}"
-                       data-reel-video>
+                       data-owner-video>
                 </video>
-                <div class="video-loading-spinner" data-video-spinner></div>
-                <div class="reel-play-overlay" data-play-overlay>
-                    <button type="button" class="reel-play-btn" data-play-btn aria-label="تشغيل الفيديو">
+
+                <div class="owner-video-spinner" data-spinner></div>
+
+                <div class="owner-play-overlay show" data-play-overlay>
+                    <button type="button" class="owner-play-btn" data-play-btn aria-label="تشغيل الفيديو">
                         <i class="bi bi-play-fill"></i>
                     </button>
                 </div>
-                {% else %}
-                <div class="reel-video-placeholder"><i class="bi bi-film"></i></div>
-                {% endif %}
-            </div>
 
-            <div class="reel-content">
-                <div class="reel-info-bottom">
-                    {% if reel.product %}
-                    <a href="{{ url_for('stores.product_public', product_id=reel.product.id) }}" class="reel-product-link">
-                        <h5 class="reel-product-name">{{ reel.product.name }}</h5>
-                    </a>
-                    {% else %}
-                    <p class="reel-caption text-white mb-0">{{ reel.caption or 'بدون وصف' }}</p>
-                    {% endif %}
-                    <div class="reel-meta text-white small mt-1">
-                        <span><i class="bi bi-eye"></i> {{ reel.views }}</span> |
-                        <span><i class="bi bi-calendar"></i> {{ reel.created_at.strftime('%Y-%m-%d') }}</span>
-                    </div>
+                <div class="owner-pause-overlay" data-pause-overlay>
+                    <button type="button" class="owner-pause-btn" data-pause-btn aria-label="إيقاف مؤقت">
+                        <i class="bi bi-pause-fill"></i>
+                    </button>
                 </div>
-                <div class="reel-actions-column">
-                    <form action="{{ url_for('store.delete_reel', store_id=store.id, reel_id=reel.id) }}" method="post" onsubmit="return confirm('هل أنت متأكد من حذف هذا الريل؟');">
+
+                {% else %}
+                <div style="aspect-ratio: 9/16; background:#222; display:flex; align-items:center; justify-content:center;">
+                    <i class="bi bi-film" style="font-size:3rem; color:#666;"></i>
+                </div>
+                {% endif %}
+
+                <div class="owner-reel-info">
+                    <div class="owner-reel-info-left">
+                        {% if reel.product %}
+                        <a href="{{ url_for('stores.product_public', product_id=reel.product.id) }}"
+                           target="_blank" rel="noopener"
+                           class="owner-reel-product-link">
+                            <h5 class="owner-reel-product-name">{{ reel.product.name }}</h5>
+                            {% if not reel.product.hide_price %}
+                            <div class="owner-reel-product-price">
+                                {{ reel.product.effective_price|format_price }} ل.س
+                            </div>
+                            {% endif %}
+                        </a>
+                        {% else %}
+                        <p class="owner-reel-caption">{{ reel.caption or 'بدون وصف' }}</p>
+                        {% endif %}
+
+                        <div class="owner-reel-meta">
+                            <span><i class="bi bi-eye-fill"></i> {{ reel.views }}</span>
+                            <span>·</span>
+                            <span><i class="bi bi-calendar"></i> {{ reel.created_at.strftime('%Y-%m-%d') }}</span>
+                        </div>
+                    </div>
+
+                    <form action="{{ url_for('store.delete_reel', store_id=store.id, reel_id=reel.id) }}"
+                          method="post" class="d-inline"
+                          onsubmit="return confirm('هل أنت متأكد من حذف هذا الريل؟');">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                        <button type="submit" class="reel-action-btn delete" title="حذف">
-                            <i class="bi bi-trash"></i>
+                        <button type="submit" class="owner-reel-delete-btn" title="حذف">
+                            <i class="bi bi-trash-fill"></i>
                         </button>
                     </form>
                 </div>
@@ -64,15 +327,140 @@
         {% endfor %}
     </div>
     {% else %}
-    <div class="text-center py-5">
-        <i class="bi bi-film" style="font-size: 4rem; color: #adb5bd;"></i>
-        <h4 class="mt-3">لا توجد ريلزات بعد</h4>
+    <div class="empty-reels">
+        <i class="bi bi-film"></i>
+        <h4>لا توجد ريلزات بعد</h4>
         <p class="text-muted">ابدأ بإضافة ريل جديد لجذب العملاء.</p>
+        <a href="{{ url_for('store.new_reel', store_id=store.id) }}"
+           class="btn btn-custom mt-2" style="border-radius:20px;">
+            <i class="bi bi-plus-lg"></i> إضافة ريل جديد
+        </a>
     </div>
     {% endif %}
+
+    <div class="text-center mt-4 mb-4">
+        <a href="{{ url_for('store.store_manage', store_id=store.id) }}"
+           class="btn btn-outline-secondary" style="border-radius:20px;">
+            <i class="bi bi-arrow-right"></i> عودة لإدارة المتجر
+        </a>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/reels.js') }}"></script>
+<script>
+(function() {
+    'use strict';
+
+    function setupCard(card) {
+        var video = card.querySelector('[data-owner-video]');
+        if (!video) return;
+
+        var playOverlay = card.querySelector('[data-play-overlay]');
+        var pauseOverlay = card.querySelector('[data-pause-overlay]');
+        var playBtn = card.querySelector('[data-play-btn]');
+        var pauseBtn = card.querySelector('[data-pause-btn]');
+        var spinner = card.querySelector('[data-spinner]');
+
+        var pauseHideTimer = null;
+
+        function showSpinner() { if (spinner) spinner.classList.add('show'); }
+        function hideSpinner() { if (spinner) spinner.classList.remove('show'); }
+        function showPlayOverlay() { if (playOverlay) playOverlay.classList.add('show'); }
+        function hidePlayOverlay() { if (playOverlay) playOverlay.classList.remove('show'); }
+
+        function showPauseOverlay() {
+            if (!pauseOverlay) return;
+            pauseOverlay.classList.add('show');
+            clearTimeout(pauseHideTimer);
+            pauseHideTimer = setTimeout(function() {
+                pauseOverlay.classList.remove('show');
+            }, 1200);
+        }
+        function hidePauseOverlay() {
+            if (!pauseOverlay) return;
+            clearTimeout(pauseHideTimer);
+            pauseOverlay.classList.remove('show');
+        }
+
+        function doPlay() {
+            if (video.readyState < 3) showSpinner();
+            var p = video.play();
+            if (p && p.then) {
+                p.then(function() {
+                    hideSpinner();
+                    hidePlayOverlay();
+                    showPauseOverlay();
+                }).catch(function(err) {
+                    console.warn('فشل التشغيل:', err);
+                    hideSpinner();
+                    showPlayOverlay();
+                });
+            } else {
+                hidePlayOverlay();
+                showPauseOverlay();
+            }
+        }
+
+        function doPause() {
+            video.pause();
+            hideSpinner();
+            hidePauseOverlay();
+            showPlayOverlay();
+        }
+
+        function doToggle() {
+            if (video.paused) doPlay();
+            else doPause();
+        }
+
+        if (playBtn) {
+            playBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                doPlay();
+            });
+        }
+
+        if (pauseBtn) {
+            pauseBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                doPause();
+            });
+        }
+
+        video.addEventListener('click', function(e) {
+            if (e.target.closest('button')) return;
+            e.stopPropagation();
+            doToggle();
+        });
+
+        video.addEventListener('waiting', showSpinner);
+        video.addEventListener('playing', function() {
+            hideSpinner();
+            hidePlayOverlay();
+            showPauseOverlay();
+        });
+        video.addEventListener('canplaythrough', hideSpinner);
+        video.addEventListener('pause', function() {
+            hideSpinner();
+            hidePauseOverlay();
+            showPlayOverlay();
+        });
+        video.addEventListener('ended', function() {
+            hideSpinner();
+            hidePauseOverlay();
+            showPlayOverlay();
+        });
+
+        showPlayOverlay();
+        hidePauseOverlay();
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.owner-reel-card').forEach(setupCard);
+    });
+})();
+</script>
 {% endblock %}

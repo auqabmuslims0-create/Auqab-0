@@ -24,6 +24,7 @@
     .stat-icon {
         font-size: 2rem;
     }
+
     .product-card {
         border-radius: 15px;
         border: none;
@@ -58,11 +59,6 @@
     .product-card:hover .product-image {
         transform: scale(1.03);
     }
-    .form-select:focus,
-    .form-control:focus {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 0.2rem rgba(46,93,52,0.15);
-    }
     .btn-custom {
         border-radius: 25px;
         padding: 10px 20px;
@@ -73,19 +69,77 @@
         transform: translateY(-2px);
         background: var(--primary-dark);
     }
-    body.dark-mode .form-select,
-    body.dark-mode .form-control {
-        background-color: #2d2d2d;
-        border-color: #444;
-        color: #f0ede8;
+
+    /* ===== شريط البحث الموحّد (نفس نمط صفحة السوق) ===== */
+    .market-header-section { margin-bottom: 18px; }
+    .search-wrapper { position: relative; }
+    .search-bar-modern {
+        border-radius: 25px;
+        overflow: hidden;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.4);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        transition: box-shadow 0.25s ease, border-color 0.25s ease;
     }
-    body.dark-mode .btn-outline-secondary {
-        color: #f0ede8;
-        border-color: #555;
+    .search-bar-modern:focus-within {
+        border-color: var(--primary);
+        box-shadow: 0 4px 16px rgba(46, 93, 52, 0.2);
     }
-    body.dark-mode .btn-outline-secondary:hover {
-        background: #3a3a3a;
+    .search-icon {
+        background: transparent;
+        border: none;
+        color: var(--primary);
+        padding-right: 12px;
+    }
+    .search-input-modern {
+        border: none;
+        background: transparent;
+        padding: 10px 12px;
+        font-size: 0.95rem;
+        outline: none;
+        box-shadow: none;
+    }
+    .search-input-modern:focus { box-shadow: none; }
+    .filter-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.4);
+        color: var(--primary);
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        transition: background-color 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+        flex-shrink: 0;
+    }
+    .filter-btn:hover {
+        transform: scale(1.05);
+        background: rgba(255,255,255,0.95);
+    }
+    .filter-btn.has-filters {
+        background: var(--primary);
         color: #fff;
+    }
+    body.dark-mode .search-bar-modern,
+    body.dark-mode .filter-btn {
+        background: rgba(30, 30, 30, 0.7);
+        border-color: rgba(255,255,255,0.1);
+    }
+    body.dark-mode .search-bar-modern { box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    body.dark-mode .filter-btn {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        color: var(--accent);
+    }
+    body.dark-mode .filter-btn.has-filters {
+        background: var(--accent);
+        color: #000;
     }
 </style>
 {% endblock %}
@@ -94,42 +148,46 @@
 <div class="container mt-4">
     <h1 class="mb-4 text-center"><i class="bi bi-box-seam"></i> منتجات {{ store.name }}</h1>
 
-    <!-- إحصائيات سريعة -->
+    <!-- ===== إحصائيات + زر الإضافة ===== -->
     <div class="row g-3 mb-4">
-        <div class="col-6 col-md-4">
+        <div class="col-6">
             <div class="card p-3 text-center stat-card">
                 <i class="bi bi-box-seam stat-icon text-primary"></i>
                 <h5 class="mt-2">{{ products|length }}</h5>
                 <p class="text-muted mb-0">منتج</p>
             </div>
         </div>
-        <div class="col-6 col-md-4">
-            <div class="card p-3 text-center stat-card">
-                <i class="bi bi-cash-stack stat-icon text-success"></i>
-                <h5 class="mt-2">{{ total_products_value|format_price }} ل.س</h5>
-                <p class="text-muted mb-0">قيمة المنتجات</p>
-            </div>
-        </div>
-        <div class="col-6 col-md-4">
-            <a href="{{ url_for('store.new_product', store_id=store.id) }}" class="btn btn-custom w-100 py-3">
-                <i class="bi bi-plus-circle"></i> إضافة منتج جديد
+        <div class="col-6">
+            <a href="{{ url_for('store.new_product', store_id=store.id) }}" class="btn btn-custom w-100 h-100 d-flex flex-column align-items-center justify-content-center py-3">
+                <i class="bi bi-plus-circle" style="font-size:1.8rem;"></i>
+                <span class="mt-1 fw-bold">إضافة منتج جديد</span>
             </a>
         </div>
     </div>
 
-    <!-- شريط البحث والتصفية -->
-    <form method="get" class="mb-4 d-flex flex-wrap gap-2">
-        <select name="category_id" class="form-select status-select" style="max-width:200px;">
-            <option value="">جميع التصنيفات</option>
-            {% for category in categories %}
-                <option value="{{ category.id }}" {% if selected_category == category.id %}selected{% endif %}>
-                    {{ category.name }}
-                </option>
-            {% endfor %}
-        </select>
-        <input type="text" name="q" value="{{ q }}" class="form-control search-input flex-grow-1" placeholder="بحث باسم المنتج..." style="min-width:200px;">
-        <button type="submit" class="btn btn-outline-secondary">بحث</button>
-    </form>
+    <!-- ===== شريط البحث الموحّد ===== -->
+    <div class="market-header-section">
+        <form method="GET" action="{{ url_for('store.store_products', store_id=store.id) }}" class="d-flex gap-2 align-items-center">
+            <div class="flex-grow-1 search-wrapper">
+                <div class="input-group search-bar-modern">
+                    <span class="input-group-text search-icon"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" class="form-control search-input-modern"
+                           placeholder="ابحث باسم المنتج..." value="{{ q or '' }}" autocomplete="off">
+                    {% if q %}
+                    <a href="{{ url_for('store.store_products', store_id=store.id, category_id=selected_category) }}"
+                       class="btn btn-link text-danger" tabindex="-1">
+                        <i class="bi bi-x"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <button class="btn filter-btn {% if selected_category %}has-filters{% endif %}"
+                    type="button" data-bs-toggle="offcanvas" data-bs-target="#productsFilterSidebar"
+                    aria-label="تصفية">
+                <i class="bi bi-sliders"></i>
+            </button>
+        </form>
+    </div>
 
     {% if products %}
         <div class="row g-3">
@@ -150,7 +208,7 @@
                         </div>
                         <div class="card-body text-center p-2">
                             <h6 class="card-title mb-1">{{ product.name }}</h6>
-                            <p class="text-success fw-bold mb-1 price">{{ product.price|format_price }} ل.س</p>
+                            <p class="text-success fw-bold mb-1 price">{{ product.effective_price|format_price }} ل.س</p>
                             <p class="text-muted small mb-2">{{ product.category.name if product.category else 'بدون تصنيف' }}</p>
                         </div>
                     </a>
@@ -173,6 +231,36 @@
         <a href="{{ url_for('store.store_manage', store_id=store.id) }}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-right"></i> عودة لإدارة المتجر
         </a>
+    </div>
+</div>
+
+<!-- ===== Offcanvas التصفية ===== -->
+<div class="offcanvas offcanvas-start filter-sidebar" tabindex="-1" id="productsFilterSidebar">
+    <div class="offcanvas-header">
+        <h5 class="offcanvas-title"><i class="bi bi-sliders"></i> تصفية المنتجات</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+    </div>
+    <div class="offcanvas-body">
+        <form method="GET" action="{{ url_for('store.store_products', store_id=store.id) }}">
+            <input type="hidden" name="q" value="{{ q or '' }}">
+            <div class="mb-3">
+                <label class="form-label fw-bold">التصنيف</label>
+                <select name="category_id" class="form-select">
+                    <option value="">كل التصنيفات</option>
+                    {% for category in categories %}
+                        <option value="{{ category.id }}" {% if selected_category == category.id %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-custom w-100">
+                <i class="bi bi-check-circle"></i> تطبيق
+            </button>
+            <a href="{{ url_for('store.store_products', store_id=store.id, q=q) }}" class="btn btn-outline-secondary w-100 mt-2">
+                <i class="bi bi-arrow-counterclockwise"></i> إعادة تعيين
+            </a>
+        </form>
     </div>
 </div>
 {% endblock %}
