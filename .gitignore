@@ -37,3 +37,13 @@ static/uploads/
 gunicorn.pid
 gunicorn.log
 templates.bak.*
+
+# Backups
+*.bak
+*.bak.*
+*.backup
+*.backup.*
+*.infinite
+customer.bak.infinite/
+templates/customer.bak.infinite/
+blueprints/*.bak.*
