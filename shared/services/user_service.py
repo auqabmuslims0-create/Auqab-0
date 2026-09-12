@@ -4,6 +4,7 @@ from models import (
     Store, Product, Reel, ReelReaction, ReelComment, CartItem,
     Favorite, Review, ProductComment, ProductReaction,
     Notification, PushSubscription, Payment, UserActivity,
+    LoginAttempt, PasswordReset, PasswordResetAttempt,
 )
 from shared.repositories.user_repository import UserRepository
 from werkzeug.security import generate_password_hash
@@ -34,13 +35,16 @@ class UserService:
     def delete_user_fully(user_id, admin_user_id=None):
         """
         حذف المستخدم مع كل بياناته المرتبطة.
-        يتعامل يدوياً مع العلاقات التي لا تدعم cascade:
-          - ChatMessage (sender/receiver)
-          - OrderStatusHistory.changed_by
-          - Order (customer_id, delivery_person_id)
-          - Subscription (user_id)
-          - UserActivity (user_id هو PK — يجب الحذف لا NULL)
-          - جداول أمنية إن وُجدت (LoginAttempt, PasswordReset...)
+
+        معالجة العلاقات التي لا تدعم cascade:
+          - ChatMessage (sender/receiver) → DELETE
+          - OrderStatusHistory.changed_by → NULL
+          - Subscription.user_id → NULL
+          - Order.delivery_person_id → NULL
+          - Order.customer_id (NOT NULL) → DELETE + cascade (items, payments, history)
+          - UserActivity (PK) → DELETE
+          - PasswordReset (NOT NULL) → DELETE
+          - LoginAttempt / PasswordResetAttempt → NULL (نبقي السجل للأمان)
         """
         target = UserRepository.get_by_id(user_id)
         if not target:
@@ -71,7 +75,7 @@ class UserService:
             except Exception:
                 pass
 
-            # ===== 2. تنظيف العلاقات التي لا تدعم cascade =====
+            # ===== 2. معالجة العلاقات الخاصة =====
 
             # 2a) ChatMessage: حذف رسائل المستخدم كمرسل أو مستقبل
             ChatMessage.query.filter(
@@ -84,7 +88,7 @@ class UserService:
                 {'changed_by': None}, synchronize_session=False
             )
 
-            # 2c) Subscription.user_id → NULL (nullable في الموديل)
+            # 2c) Subscription.user_id → NULL
             Subscription.query.filter_by(user_id=target.id).update(
                 {'user_id': None}, synchronize_session=False
             )
@@ -94,31 +98,29 @@ class UserService:
                 {'delivery_person_id': None}, synchronize_session=False
             )
 
-            # 2e) Order as customer → حذف كامل (customer_id NOT NULL)
+            # 2e) Order as customer → DELETE كامل
             #     cascade على Order يحذف: OrderItem, Payment, OrderStatusHistory
             customer_orders = Order.query.filter_by(customer_id=target.id).all()
             for order in customer_orders:
                 db.session.delete(order)
 
-            # 2f) UserActivity — user_id هو PK، يجب الحذف لا NULL
+            # 2f) UserActivity (PK) → DELETE إجباري
             UserActivity.query.filter_by(user_id=target.id).delete(
                 synchronize_session=False
             )
 
-            # 2g) جداول أمنية إن وُجدت (احتياطي)
-            try:
-                import models.security as sec
-                for Model in (getattr(sec, 'LoginAttempt', None),
-                              getattr(sec, 'PasswordReset', None),
-                              getattr(sec, 'PasswordResetAttempt', None)):
-                    if Model is None:
-                        continue
-                    if hasattr(Model, 'user_id'):
-                        Model.query.filter_by(user_id=target.id).delete(
-                            synchronize_session=False
-                        )
-            except Exception:
-                pass
+            # 2g) PasswordReset (NOT NULL) → DELETE إجباري
+            PasswordReset.query.filter_by(user_id=target.id).delete(
+                synchronize_session=False
+            )
+
+            # 2h) LoginAttempt / PasswordResetAttempt → NULL (نبقي السجل)
+            LoginAttempt.query.filter_by(user_id=target.id).update(
+                {'user_id': None}, synchronize_session=False
+            )
+            PasswordResetAttempt.query.filter_by(user_id=target.id).update(
+                {'user_id': None}, synchronize_session=False
+            )
 
             db.session.flush()
 
