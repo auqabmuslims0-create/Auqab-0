@@ -250,7 +250,7 @@
 
                 <div class="user-actions">
                     <form action="{{ url_for('admin.admin_toggle_user', user_id=user.id) }}" method="post">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="btn btn-sm btn-outline-secondary btn-action">
                             {% if user.is_active %}حظر{% else %}تفعيل{% endif %}
                         </button>
@@ -269,7 +269,7 @@
 
                     <form action="{{ url_for('admin.admin_delete_user', user_id=user.id) }}" method="post"
                           onsubmit="return confirm('سيتم حذف المستخدم وجميع بياناته نهائيًا. هل أنت متأكد؟')">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="btn btn-sm btn-outline-danger btn-action">حذف</button>
                     </form>
                 </div>
@@ -334,7 +334,7 @@
             </div>
             <div class="modal-footer">
                 <form id="resetPasswordForm" method="post">
-                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                     <button type="submit" class="btn btn-warning">تأكيد وإعادة تعيين</button>
                 </form>

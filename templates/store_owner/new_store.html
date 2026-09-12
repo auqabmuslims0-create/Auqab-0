@@ -147,7 +147,7 @@
                 {% if step == 1 %}
                 <form method="post" enctype="multipart/form-data" action="{{ url_for('store.new_store') }}">
                     <input type="hidden" name="step" value="1">
-                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
                     <div class="mb-3 text-center">
                         <label class="form-label d-block">شعار المتجر</label>
@@ -191,7 +191,7 @@
                 {% if step == 2 %}
                 <form method="post" action="{{ url_for('store.new_store') }}">
                     <input type="hidden" name="step" value="2">
-                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
                     <div class="mb-3">
                         <label class="form-label">العنوان</label>
@@ -221,7 +221,7 @@
                 {% if step == 3 %}
                 <form method="post" action="{{ url_for('store.new_store') }}">
                     <input type="hidden" name="step" value="3">
-                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
                     <div class="mb-3">
                         <label class="form-label">ساعات العمل</label>

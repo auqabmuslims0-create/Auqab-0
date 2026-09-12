@@ -273,7 +273,7 @@
             <span>{% if user.is_available %}متاح لاستقبال الطلبات{% else %}غير متاح حالياً{% endif %}</span>
         </div>
         <form method="POST" action="{{ url_for('delivery.update_availability') }}" class="d-inline">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="is_available" value="{{ 'false' if user.is_available else 'true' }}">
             <button type="submit" class="btn btn-sm {% if user.is_available %}btn-outline-danger{% else %}btn-success{% endif %}" style="border-radius:20px;">
                 <i class="bi bi-{{ 'pause-circle' if user.is_available else 'play-circle' }}"></i>
@@ -477,7 +477,7 @@
                     {% endif %}
 
                     <form method="POST" action="{{ url_for('delivery.delivery_claim_order', order_id=order.id) }}">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="btn-action-lg btn-primary-lg" {% if not is_available_now %}disabled{% endif %}>
                             <i class="bi bi-hand-index-thumb"></i> استلم هذا الطلب
                         </button>
@@ -562,7 +562,7 @@
 
 <!-- نموذج إرسال كود الاستلام (مخفي) -->
 <form method="POST" id="pickupSubmitForm" style="display:none;">
-    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="pickup_code" id="pickupSubmitCodeInput">
 </form>
 
@@ -580,7 +580,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" id="deliverForm">
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <div class="modal-body">
                     <p class="text-muted small mb-3">
                         اطلب من الزبون إعطاءك كود التسليم الظاهر في حسابه.

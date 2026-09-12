@@ -156,7 +156,7 @@
                     </div>
 
                     <form method="post" action="{{ url_for('admin.admin_delivery_shift_edit', user_id=person.id) }}" class="shift-form">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <div class="row g-2">
                             <div class="col-6">
                                 <label>بداية الوردية</label>
@@ -183,14 +183,14 @@
                         <a href="{{ url_for('admin.admin_delivery_person_edit', user_id=person.id) }}"
                            class="btn btn-sm btn-outline-secondary btn-action flex-grow-1">تعديل</a>
                         <form action="{{ url_for('admin.admin_delivery_person_toggle', user_id=person.id) }}" method="post">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button type="submit" class="btn btn-sm btn-outline-warning btn-action">
                                 {{ 'حظر' if person.is_active else 'تفعيل' }}
                             </button>
                         </form>
                         <form action="{{ url_for('admin.admin_delivery_person_delete', user_id=person.id) }}" method="post"
                               onsubmit="return confirm('سيتم حذف المندوب نهائيًا. هل أنت متأكد؟')">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button type="submit" class="btn btn-sm btn-outline-danger btn-action">حذف</button>
                         </form>
                     </div>

@@ -272,7 +272,7 @@
                         <form method="post"
                               action="{{ url_for('store.delete_category', store_id=store.id, category_id=category.id) }}"
                               class="d-inline">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button type="submit" class="btn btn-sm btn-outline-danger btn-action"
                                     onclick="return confirm('هل أنت متأكد من حذف هذا التصنيف؟')">
                                 <i class="bi bi-trash"></i>
@@ -304,7 +304,7 @@
                                 <form method="post"
                                       action="{{ url_for('store.delete_category', store_id=store.id, category_id=child.id) }}"
                                       class="d-inline">
-                                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger btn-action"
                                             onclick="return confirm('هل أنت متأكد من حذف هذا التصنيف؟')">
                                         <i class="bi bi-trash"></i>

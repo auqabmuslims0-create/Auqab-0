@@ -316,7 +316,7 @@
                     <form action="{{ url_for('store.delete_reel', store_id=store.id, reel_id=reel.id) }}"
                           method="post" class="d-inline"
                           onsubmit="return confirm('هل أنت متأكد من حذف هذا الريل؟');">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="owner-reel-delete-btn" title="حذف">
                             <i class="bi bi-trash-fill"></i>
                         </button>

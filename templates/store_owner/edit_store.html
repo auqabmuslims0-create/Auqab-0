@@ -122,7 +122,7 @@
     <h1 class="mb-4 text-center"><i class="bi bi-pencil-square"></i> تعديل بيانات المتجر</h1>
 
     <form method="post" enctype="multipart/form-data">
-        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
         <!-- بطاقة الشعار -->
         <div class="card p-4 mb-4 shadow-sm">
@@ -237,7 +237,7 @@
         <div class="delete-countdown" id="deleteCountdown">48:00:00</div>
         <p class="text-muted small mt-2">إضغط للتراجع قبل انتهاء المدة.</p>
         <form method="post" action="{{ url_for('store.cancel_delete_store', store_id=store.id) }}">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="btn btn-outline-secondary w-100">إلغاء الحذف</button>
         </form>
     </div>
@@ -246,7 +246,7 @@
         <h5 class="mb-3 text-danger"><i class="bi bi-trash3"></i> منطقة الخطر</h5>
         <form method="post" action="{{ url_for('store.request_delete_store', store_id=store.id) }}"
               onsubmit="return confirm('هل انت متأكد من حذف المتجر فعلا.!؟');">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <button type="submit" class="btn btn-outline-danger w-100">حذف المتجر</button>
         </form>
     </div>

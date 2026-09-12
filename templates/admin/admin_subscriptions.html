@@ -293,7 +293,7 @@
                     {% if sub.status == 'pending' %}
                     <form action="{{ url_for('admin.admin_approve_subscription', sub_id=sub.id) }}" method="post"
                           onsubmit="return confirm('هل تريد الموافقة على هذا الاشتراك؟')">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <div class="override-form">
                             <div class="row g-2">
                                 <div class="col-6 col-md-3">
@@ -326,7 +326,7 @@
 
                     <form action="{{ url_for('admin.admin_reject_subscription', sub_id=sub.id) }}" method="post"
                           onsubmit="return confirm('هل تريد رفض هذا الاشتراك؟')" class="mt-2">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <div class="row g-2 align-items-end">
                             <div class="col-8 col-md-6">
                                 <input type="text" name="admin_note" class="form-control form-control-sm"
@@ -342,7 +342,7 @@
                     {% else %}
                         {% if sub.status in ['paid', 'suspended'] %}
                         <form action="{{ url_for('admin.admin_extend_subscription', sub_id=sub.id) }}" method="post">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <div class="override-form">
                                 <div class="row g-2 align-items-end">
                                     <div class="col-6 col-md-3">
@@ -365,7 +365,7 @@
                         {% endif %}
 
                         <form action="{{ url_for('admin.admin_set_subscription_end', sub_id=sub.id) }}" method="post" class="mt-2">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <div class="override-form">
                                 <div class="row g-2 align-items-end">
                                     <div class="col-6 col-md-3">

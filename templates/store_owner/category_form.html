@@ -109,7 +109,7 @@
         {% endif %}
 
         <form method="post" action="{% if category %}{{ url_for('store.edit_category', store_id=store.id, category_id=category.id) }}{% else %}{{ url_for('store.new_category', store_id=store.id) }}{% endif %}{% if next_url %}?next={{ next_url | urlencode }}{% endif %}">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             {% if next_url %}
             <input type="hidden" name="next" value="{{ next_url }}">
             {% endif %}

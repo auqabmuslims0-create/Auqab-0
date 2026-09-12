@@ -253,7 +253,7 @@
         <!-- نموذج الإرسال -->
         <div class="chat-input-area">
             <form method="post" action="{{ url_for('admin.admin_send_message') }}">
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="hidden" name="user_id" value="{{ target_user.id }}">
                 <input type="text" name="message" placeholder="اكتب ردك..." required autocomplete="off" id="messageInput">
                 <button type="submit" class="send-btn" aria-label="إرسال">

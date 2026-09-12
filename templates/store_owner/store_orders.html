@@ -694,13 +694,13 @@
 
 <!-- نموذج الإسناد (مخفي) -->
 <form method="POST" id="assignForm" style="display:none;">
-    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="delivery_person_id" id="assignPersonIdInput">
 </form>
 
 <!-- نموذج تغيير الحالة (مخفي) -->
 <form method="POST" id="statusForm" style="display:none;">
-    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <input type="hidden" name="status" id="statusInput">
 </form>
 {% endblock %}

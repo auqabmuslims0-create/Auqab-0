@@ -141,7 +141,7 @@
                     <i class="bi bi-lock lock-icon"></i>
                     <h4 class="mb-3">أدخل كلمة المرور لعرض البيانات</h4>
                     <form action="{{ url_for('auth.account_unlock') }}" method="post">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <div class="mb-3">
                             <div class="custom-input-wrap">
                                 <i class="bi bi-lock custom-input-icon"></i>
@@ -211,7 +211,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
             </div>
             <form id="editProfileForm" action="{{ url_for('auth.account_update') }}" method="post" enctype="multipart/form-data">
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">اسم المستخدم</label>
@@ -268,7 +268,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
             </div>
             <form action="{{ url_for('auth.account_change_password') }}" method="post">
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">كلمة المرور الحالية</label>
@@ -321,7 +321,7 @@
             </div>
             <div class="modal-footer">
                 <form action="{{ url_for('auth.account_delete') }}" method="post" class="w-100 d-flex justify-content-between" onsubmit="return confirm('هل أنت متأكد من حذف حسابك نهائيًا؟')">
-                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                     <button type="submit" class="btn btn-danger">حذف الحساب</button>
                 </form>

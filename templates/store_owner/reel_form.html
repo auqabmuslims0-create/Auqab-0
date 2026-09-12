@@ -380,7 +380,7 @@
 
         <form method="post" enctype="multipart/form-data" id="reelForm"
               action="{{ url_for('store.new_reel', store_id=store.id) }}">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
             <!-- ===== فيديو الريل ===== -->
             <div class="mb-4">

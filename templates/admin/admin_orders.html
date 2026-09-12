@@ -261,7 +261,7 @@
 
                             {% if order.status != 'cancelled' %}
                             <form action="{{ url_for('admin.admin_update_order_status', order_id=order.id) }}" method="post" class="status-update-form">
-                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                                 <select name="status" class="form-select form-select-sm">
                                     <option value="new" {% if order.status == 'new' %}selected{% endif %}>جديد</option>
                                     <option value="confirmed" {% if order.status == 'confirmed' %}selected{% endif %}>مؤكد</option>

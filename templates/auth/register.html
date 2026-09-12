@@ -149,7 +149,7 @@
                 {% if step == 1 %}
                 <form method="post" action="{{ url_for('auth.register') }}">
                     <input type="hidden" name="step" value="1">
-                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
                     <div class="mb-3">
                         <label class="form-label">اسم المستخدم</label>
@@ -184,7 +184,7 @@
                 {% if step == 2 %}
                 <form method="post" action="{{ url_for('auth.register') }}">
                     <input type="hidden" name="step" value="2">
-                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
                     <div class="mb-3">
                         <label class="form-label">كلمة المرور</label>
@@ -231,7 +231,7 @@
                 {% if step == 3 %}
                 <form method="post" enctype="multipart/form-data" action="{{ url_for('auth.register') }}">
                     <input type="hidden" name="step" value="3">
-                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
                     <div class="mb-3 text-center">
                         <label class="form-label d-block">الصورة الشخصية</label>

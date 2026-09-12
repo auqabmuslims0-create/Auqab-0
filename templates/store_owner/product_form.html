@@ -311,7 +311,7 @@
     <div class="card form-card p-4 shadow-sm">
         <form method="post" enctype="multipart/form-data" id="productForm"
               action="{% if product %}{{ url_for('store.edit_product', store_id=store.id, product_id=product.id) }}{% else %}{{ url_for('store.new_product', store_id=store.id) }}{% endif %}">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
             <!-- الحقول الأساسية -->
             <div class="row g-3">

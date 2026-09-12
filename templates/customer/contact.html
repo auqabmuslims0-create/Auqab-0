@@ -197,7 +197,7 @@
         </div>
         <div class="chat-input-area">
             <form id="chatForm" action="{{ url_for('services.send_contact_message') }}" method="post">
-                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <input type="text" id="messageInput" name="message" placeholder="اكتب رسالتك هنا..." required autocomplete="off">
                 <button type="submit" class="send-btn" aria-label="إرسال">
                     <i class="bi bi-send"></i>

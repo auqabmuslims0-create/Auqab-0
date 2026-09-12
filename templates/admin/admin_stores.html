@@ -356,14 +356,14 @@
 
                     {% if store.subscription_status == 'active' %}
                         <form action="{{ url_for('admin.admin_toggle_store', store_id=store.id) }}" method="post">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <input type="hidden" name="action" value="suspend">
                             <button type="submit" class="btn btn-sm btn-outline-warning btn-action">تعليق</button>
                         </form>
                     {% elif store.subscription_status in ['suspended', 'cancelled', 'expired'] %}
                         <form action="{{ url_for('admin.admin_toggle_store', store_id=store.id) }}" method="post"
                               onsubmit="return confirm('سيتم تفعيل المتجر حتى لو لم يوجد اشتراك ساري. متابعة؟')">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <input type="hidden" name="action" value="activate">
                             <button type="submit" class="btn btn-sm btn-outline-success btn-action">تفعيل</button>
                         </form>
@@ -377,7 +377,7 @@
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <form method="post" action="{{ url_for('admin.admin_store_subscription_settings', store_id=store.id) }}">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <div class="modal-header">
                             <h5 class="modal-title">إعدادات اشتراك {{ store.name }}</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>
@@ -432,7 +432,7 @@
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <form method="post" action="{{ url_for('admin.admin_extend_store_subscription', store_id=store.id) }}">
-                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <div class="modal-header">
                             <h5 class="modal-title">تمديد اشتراك {{ store.name }}</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="إغلاق"></button>

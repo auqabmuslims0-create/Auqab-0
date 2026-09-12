@@ -248,12 +248,12 @@
             {% if payment.status == 'pending' %}
             <div class="payment-actions">
                 <form method="post" action="{{ url_for('admin.admin_update_payment_status', payment_id=payment.id) }}">
-                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="new_status" value="paid">
                     <button type="submit" class="btn btn-approve">تأكيد الدفع</button>
                 </form>
                 <form method="post" action="{{ url_for('admin.admin_update_payment_status', payment_id=payment.id) }}">
-                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" name="new_status" value="failed">
                     <button type="submit" class="btn btn-reject">رفض</button>
                 </form>

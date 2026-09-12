@@ -36,3 +36,4 @@ static/uploads/
 .env.*.local
 gunicorn.pid
 gunicorn.log
+templates.bak.*

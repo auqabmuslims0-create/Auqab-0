@@ -324,7 +324,7 @@
 <!-- ===== شريط الأزرار الثابت ===== -->
 <form method="POST" id="manageForm"
       action="{{ url_for('store.manage_category_products', store_id=store.id, category_id=category.id) }}">
-    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
     <!-- حقول product_ids ستُضاف هنا ديناميكياً -->
 
     <div class="sticky-actions">

@@ -215,7 +215,7 @@
                     <div class="card-footer d-flex justify-content-center gap-1 p-2 bg-transparent border-0">
                         <a href="{{ url_for('store.edit_product', store_id=store.id, product_id=product.id) }}" class="btn btn-sm btn-outline-secondary">تعديل</a>
                         <form action="{{ url_for('store.delete_product', store_id=store.id, product_id=product.id) }}" method="post" class="d-inline">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('هل أنت متأكد من حذف هذا المنتج؟')">حذف</button>
                         </form>
                     </div>

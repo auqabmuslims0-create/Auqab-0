@@ -309,7 +309,7 @@
                         {% if order.status == 'new' %}
                         <form action="{{ url_for('cart.cancel_order', order_id=order.id) }}" method="post"
                               onsubmit="return confirm('هل تريد إلغاء هذا الطلب؟')">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button type="submit" class="btn btn-sm btn-outline-danger">
                                 <i class="bi bi-x-circle"></i> إلغاء الطلب
                             </button>
@@ -319,7 +319,7 @@
                         {% if order.status in ['delivered', 'cancelled'] %}
                         <form action="{{ url_for('cart.delete_order', order_id=order.id) }}" method="post"
                               onsubmit="return confirm('هل تريد حذف هذا الطلب نهائيًا؟')">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <button type="submit" class="btn btn-sm btn-outline-danger btn-delete-order">
                                 <i class="bi bi-trash"></i> حذف الطلب
                             </button>
