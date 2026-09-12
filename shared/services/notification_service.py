@@ -8,7 +8,11 @@ from shared.repositories.notification_repository import NotificationRepository
 
 
 def _push_enabled():
-    return os.environ.get('PUSH_ENABLED', '0') == '1'
+    try:
+        from shared.services.push_service import is_push_enabled
+        return is_push_enabled()
+    except Exception:
+        return False
 
 
 class NotificationService:
@@ -259,7 +263,8 @@ class NotificationService:
     def send_to_followers(store, message, title=None, link=None, type_=None, priority=None, icon=None,
                           extra_data=None, send_push=True, expires_at=None,
                           entity_type=None, entity_id=None):
-        follower_ids = []
+        from shared.repositories.follow_repository import FollowRepository
+        follower_ids = FollowRepository.get_store_followers_ids(store.id if store else None)
         return NotificationService._send_to_many(
             follower_ids, message, title=title, link=link,
             type_=type_ or NotificationService.TYPE_STORE_FOLLOW,

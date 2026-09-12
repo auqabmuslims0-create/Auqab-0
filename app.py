@@ -71,6 +71,7 @@ csp_policy = (
     "font-src 'self'; "
     "connect-src 'self' https://*.tile.openstreetmap.org https://router.project-osrm.org https://server.arcgisonline.com ; "
     "media-src 'self' https:; "
+    "worker-src 'self'; "
     "frame-src 'self'"
 )
 Talisman(app, content_security_policy=csp_policy, force_https=os.environ.get('FLASK_DEBUG', 'False').lower() != 'true')

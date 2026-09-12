@@ -1,10 +1,10 @@
 // ============================================================
 // Service Worker — سوق الحسينية
-// الإصدار: v15 (مُصحّح)
+// الإصدار: v16
 // قاعدة ذهبية: لا نعترض cross-origin requests (Cloudinary, OSM, Fonts CDN...)
 // ============================================================
 
-const CACHE_VERSION = 15;
+const CACHE_VERSION = 16;
 
 const STATIC_CACHE = `husayniyyah-static-v${CACHE_VERSION}`;
 const HTML_CACHE   = `husayniyyah-html-v${CACHE_VERSION}`;
@@ -256,6 +256,39 @@ self.addEventListener('push', event => {
   event.waitUntil(
     self.registration.showNotification(data.title || 'سوق الحسينية', options)
   );
+});
+
+
+// ============================================================
+// pushsubscriptionchange — المتصفح جدّد الاشتراك تلقائياً
+// نرسل الاشتراك الجديد للسيرفر ليحل محل القديم
+// ============================================================
+self.addEventListener('pushsubscriptionchange', event => {
+  event.waitUntil((async () => {
+    try {
+      const applicationServerKey = event.oldSubscription
+        ? event.oldSubscription.options.applicationServerKey
+        : null;
+
+      const newSubscription = event.newSubscription || await self.registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: applicationServerKey,
+      });
+
+      if (!newSubscription) return;
+
+      await fetch('/api/notifications/push/subscribe', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ subscription: newSubscription.toJSON() }),
+      });
+    } catch (err) {
+      // صامت — سيُعالَج عند الفتح التالي إن فشل
+    }
+  })());
 });
 
 
