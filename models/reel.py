@@ -23,7 +23,6 @@ class Reel(db.Model):
     store = db.relationship('Store', back_populates='reels')
     product = db.relationship('Product', back_populates='reels')
     reactions = db.relationship('ReelReaction', back_populates='reel', cascade="all, delete-orphan")
-    comments = db.relationship('ReelComment', back_populates='reel', cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<Reel {self.id}>'
@@ -43,14 +42,3 @@ class ReelReaction(db.Model):
 
     reel = db.relationship('Reel', back_populates='reactions')
     user = db.relationship('User', back_populates='reels_reactions')
-
-class ReelComment(db.Model):
-    __tablename__ = 'reel_comments'
-    id = db.Column(db.Integer, primary_key=True)
-    reel_id = db.Column(db.Integer, db.ForeignKey('reels.id'), nullable=False, index=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
-    text = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, default=current_time)
-
-    reel = db.relationship('Reel', back_populates='comments')
-    user = db.relationship('User', back_populates='reels_comments')

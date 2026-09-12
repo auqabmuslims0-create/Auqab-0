@@ -7,7 +7,7 @@ from .favorite import Favorite
 from .review import Review
 from .notification import Notification, PushSubscription
 from .subscription import Subscription
-from .reel import Reel, ReelReaction, ReelComment
+from .reel import Reel, ReelReaction
 from .payment import Payment
 from .security import LoginAttempt, PasswordReset, PasswordResetAttempt
 from .chat import ChatMessage

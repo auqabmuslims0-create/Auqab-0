@@ -1,10 +1,10 @@
 from database import db
-from models import Reel, ReelReaction, ReelComment, Store
+from models import Reel, ReelReaction, Store
 from sqlalchemy.orm import joinedload
 from sqlalchemy import func, desc
 
 # خيارات الترتيب المسموح بها
-SORT_OPTIONS = ('views', 'newest', 'reactions', 'comments')
+SORT_OPTIONS = ('views', 'newest', 'reactions')
 DEFAULT_SORT = 'views'
 
 
@@ -18,7 +18,7 @@ class ReelRepository:
         """
         بناء استعلام الريلز مع الترتيب المطلوب.
         - views / newest : ترتيب مباشر
-        - reactions / comments : عبر subquery مع GROUP BY لتفادي التكرار
+        - reactions      : عبر subquery مع GROUP BY لتفادي التكرار
         """
         if not ReelRepository.is_valid_sort(sort_key):
             sort_key = DEFAULT_SORT
@@ -42,20 +42,6 @@ class ReelRepository:
                 func.coalesce(subq.c.cnt, 0).desc(),
                 Reel.created_at.desc()
             )
-        elif sort_key == 'comments':
-            subq = (
-                db.session.query(
-                    ReelComment.reel_id.label('reel_id'),
-                    func.count(ReelComment.id).label('cnt')
-                )
-                .group_by(ReelComment.reel_id)
-                .subquery()
-            )
-            query = query.outerjoin(subq, Reel.id == subq.c.reel_id)
-            query = query.order_by(
-                func.coalesce(subq.c.cnt, 0).desc(),
-                Reel.created_at.desc()
-            )
         elif sort_key == 'newest':
             query = query.order_by(Reel.created_at.desc())
         else:  # views (default)
@@ -65,7 +51,6 @@ class ReelRepository:
             joinedload(Reel.store),
             joinedload(Reel.product),
             joinedload(Reel.reactions),
-            joinedload(Reel.comments).joinedload(ReelComment.user)
         )
 
         return query
@@ -82,7 +67,6 @@ class ReelRepository:
             joinedload(Reel.store),
             joinedload(Reel.product),
             joinedload(Reel.reactions),
-            joinedload(Reel.comments).joinedload(ReelComment.user)
         ).get(reel_id)
 
     @staticmethod
@@ -108,22 +92,3 @@ class ReelRepository:
     @staticmethod
     def delete_reaction(reaction):
         db.session.delete(reaction)
-
-    @staticmethod
-    def create_comment(reel_id, user_id, text):
-        comment = ReelComment(reel_id=reel_id, user_id=user_id, text=text)
-        db.session.add(comment)
-        return comment
-
-    @staticmethod
-    def get_comment(comment_id):
-        return db.session.get(ReelComment, comment_id)
-
-    @staticmethod
-    def update_comment(comment, new_text):
-        comment.text = new_text
-        db.session.add(comment)
-
-    @staticmethod
-    def delete_comment(comment):
-        db.session.delete(comment)

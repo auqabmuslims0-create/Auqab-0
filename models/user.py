@@ -33,7 +33,6 @@ class User(db.Model):
     payments = db.relationship('Payment', back_populates='user', cascade="all, delete-orphan")
     push_subscriptions = db.relationship('PushSubscription', back_populates='user', cascade="all, delete-orphan")
     reels_reactions = db.relationship('ReelReaction', back_populates='user', cascade="all, delete-orphan")
-    reels_comments = db.relationship('ReelComment', back_populates='user', cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<User {self.username}>'

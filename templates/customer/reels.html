@@ -30,6 +30,28 @@
     body.dark-mode .reels-sort-tab { background: #2d2d2d; color: #ccc; }
     body.dark-mode .reels-sort-tab:hover { background: #3a3a3a; color: #fff; }
     body.dark-mode .reels-sort-tab.active { background: var(--accent, #d4af37); color: #000; }
+
+    /* شارة عدد المشاهدات */
+    .reel-views-badge {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        z-index: 6;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 11px;
+        background: rgba(0, 0, 0, 0.55);
+        color: #fff;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        pointer-events: none;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+    .reel-views-badge i { font-size: 0.85rem; }
 </style>
 {% endblock %}
 
@@ -40,7 +62,7 @@
         <span class="text-muted small">{{ reels|length }} فيديو</span>
     </div>
 
-    {# ===== شريط الترتيب ===== #}
+    {# ===== شريط الترتيب (3 خيارات) ===== #}
     <div class="reels-sort-tabs">
         <a href="{{ sort_urls.views }}" class="reels-sort-tab {% if current_sort == 'views' %}active{% endif %}">
             <i class="bi bi-fire"></i> الأكثر مشاهدة
@@ -50,9 +72,6 @@
         </a>
         <a href="{{ sort_urls.reactions }}" class="reels-sort-tab {% if current_sort == 'reactions' %}active{% endif %}">
             <i class="bi bi-heart-fill"></i> الأكثر تفاعلاً
-        </a>
-        <a href="{{ sort_urls.comments }}" class="reels-sort-tab {% if current_sort == 'comments' %}active{% endif %}">
-            <i class="bi bi-chat-dots-fill"></i> الأكثر تعليقاً
         </a>
     </div>
     {# ===== نهاية شريط الترتيب ===== #}
@@ -70,6 +89,11 @@
                            data-reel-id="{{ reel.id }}">
                     </video>
                     <div class="video-loading-spinner" data-video-spinner></div>
+
+                    {# شارة عدد المشاهدات #}
+                    <span class="reel-views-badge">
+                        <i class="bi bi-eye-fill"></i> {{ reel.views or 0 }}
+                    </span>
 
                     <div class="reel-play-overlay" data-play-overlay>
                         <button type="button" class="reel-play-btn" data-play-btn aria-label="تشغيل الفيديو">

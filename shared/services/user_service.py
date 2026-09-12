@@ -1,7 +1,7 @@
 from database import db
 from models import (
     User, Order, OrderStatusHistory, Subscription, ChatMessage,
-    Store, Product, Reel, ReelReaction, ReelComment, CartItem,
+    Store, Product, Reel, ReelReaction, CartItem,
     Favorite, Review, ProductComment, ProductReaction,
     Notification, PushSubscription, Payment, UserActivity,
     LoginAttempt, PasswordReset, PasswordResetAttempt,

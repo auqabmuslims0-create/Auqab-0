@@ -20,7 +20,6 @@ def reels_page():
         page=page, per_page=per_page, user_id=user_id, sort_key=sort
     )
 
-    # روابط الترتيب جاهزة من Python (تفادي قيود Jinja2)
     sort_urls = {key: url_for('reels.reels_page', sort=key) for key in SORT_OPTIONS}
 
     return render_template('customer/reels.html',
@@ -69,61 +68,3 @@ def api_toggle_reaction(reel_id):
         return jsonify({'message': 'نوع التفاعل غير صالح'}), 400
     result = ReelService.toggle_reaction(reel_id, session['user_id'], reaction_type)
     return jsonify({'message': 'تم تحديث التفاعل', 'result': result}), 200
-
-
-@reels_bp.route('/api/reels/<int:reel_id>/comments', methods=['GET'])
-def api_get_comments(reel_id):
-    reel = ReelService.get_reel_by_id(reel_id)
-    if not reel:
-        return jsonify({'message': 'الريل غير موجود'}), 404
-    comments = sorted(reel.comments, key=lambda c: c.created_at, reverse=True)
-    comments_data = [{
-        'id': c.id,
-        'user_id': c.user_id,
-        'username': c.user.username if c.user else 'مستخدم',
-        'text': c.text,
-        'created_at': c.created_at.strftime('%Y-%m-%d %H:%M') if c.created_at else None
-    } for c in comments]
-    return jsonify({'comments': comments_data}), 200
-
-
-@reels_bp.route('/api/reels/<int:reel_id>/comments', methods=['POST'])
-@api_login_required
-def api_add_comment(reel_id):
-    data = request.get_json(silent=True) or {}
-    text = (data.get('text') or '').strip()
-    if not text:
-        return jsonify({'message': 'التعليق لا يمكن أن يكون فارغاً'}), 400
-    comment = ReelService.add_comment(reel_id, session['user_id'], text)
-    return jsonify({
-        'message': 'تم إضافة التعليق',
-        'comment': {
-            'id': comment.id,
-            'user_id': comment.user_id,
-            'username': comment.user.username if comment.user else 'مستخدم',
-            'text': comment.text,
-            'created_at': comment.created_at.strftime('%Y-%m-%d %H:%M')
-        }
-    }), 201
-
-
-@reels_bp.route('/api/reels/comments/<int:comment_id>', methods=['PUT'])
-@api_login_required
-def api_edit_comment(comment_id):
-    data = request.get_json(silent=True) or {}
-    text = (data.get('text') or '').strip()
-    if not text:
-        return jsonify({'message': 'التعليق لا يمكن أن يكون فارغاً'}), 400
-    comment = ReelService.update_comment(comment_id, session['user_id'], text)
-    if comment is None:
-        return jsonify({'message': 'غير مسموح أو التعليق غير موجود'}), 403
-    return jsonify({'message': 'تم تعديل التعليق'}), 200
-
-
-@reels_bp.route('/api/reels/comments/<int:comment_id>', methods=['DELETE'])
-@api_login_required
-def api_delete_comment(comment_id):
-    success = ReelService.delete_comment(comment_id, session['user_id'])
-    if not success:
-        return jsonify({'message': 'غير مسموح أو التعليق غير موجود'}), 403
-    return jsonify({'message': 'تم حذف التعليق'}), 200

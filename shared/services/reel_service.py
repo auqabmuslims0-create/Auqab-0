@@ -1,8 +1,9 @@
 from sqlalchemy.orm import joinedload
 from database import db
-from models import Reel, ReelReaction, ReelComment, Store
+from models import Reel, ReelReaction, Store
 from shared.repositories.reel_repository import ReelRepository, DEFAULT_SORT
 from shared.time_utils import current_time
+
 
 class ReelService:
     @staticmethod
@@ -51,34 +52,6 @@ class ReelService:
             ReelRepository.create_reaction(reel_id, user_id, reaction_type)
             db.session.commit()
             return {'added': True}
-
-    @staticmethod
-    def add_comment(reel_id, user_id, text):
-        comment = ReelRepository.create_comment(reel_id, user_id, text)
-        db.session.commit()
-        return comment
-
-    @staticmethod
-    def update_comment(comment_id, user_id, new_text):
-        comment = ReelRepository.get_comment(comment_id)
-        if not comment:
-            return None
-        if comment.user_id != user_id:
-            return None
-        ReelRepository.update_comment(comment, new_text)
-        db.session.commit()
-        return comment
-
-    @staticmethod
-    def delete_comment(comment_id, user_id):
-        comment = ReelRepository.get_comment(comment_id)
-        if not comment:
-            return False
-        if comment.user_id != user_id:
-            return False
-        ReelRepository.delete_comment(comment)
-        db.session.commit()
-        return True
 
     @staticmethod
     def serialize_reel(reel, user_reaction_map=None):
