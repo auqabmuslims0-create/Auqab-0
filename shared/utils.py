@@ -50,7 +50,12 @@ def set_setting(key, value):
     else:
         setting = Setting(key=key, value=value)
         db.session.add(setting)
-    db.session.commit()
+    try:
+        db.session.commit()
+        return True
+    except Exception:
+        db.session.rollback()
+        raise
     return True
 
 def is_store_open(store):
