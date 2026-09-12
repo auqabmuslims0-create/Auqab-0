@@ -389,7 +389,7 @@
                     <div class="stars ms-2" style="--rating: {{ avg_rating }};"></div>
                 </div>
                 {% if current_user %}
-                <form method="POST" action="{{ url_for('account.add_review', product_id=product.id) }}" class="mb-4">
+                <form method="POST" action="{{ url_for('account.add_review', product_id=product.id) }}" class="mb-4" data-ajax-replace>
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <div class="star-rating mb-2" id="starRating">
                         {% for i in range(1,6) %}

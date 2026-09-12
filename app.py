@@ -368,6 +368,38 @@ def inject_show_bottom_nav():
     return dict(show_bottom_nav=show)
 
 
+# ============ منع bfcache على الصفحات الديناميكية ============
+# بعد POST/PRG، يحتفظ المتصفح بنسخة قديمة من الصفحة السابقة في bfcache.
+# عند زر الرجوع، يعرض المتصفح تلك النسخة القديمة (بدون تحديثات POST).
+# `no-store` يجبر المتصفح على إعادة الجلب من السيرفر → عرض الحالة الحديثة.
+CACHEABLE_ENDPOINTS = frozenset({
+    'static',
+    'auth.login', 'auth.register', 'auth.forgot_password',
+    'auth.confirm_identity', 'auth.reset_password', 'auth.show_public_id',
+    'services.services_page', 'services.contact',
+    'onboarding',
+})
+
+CACHEABLE_PATH_PREFIXES = ('/static/', '/api/', '/.well-known/')
+
+
+@app.after_request
+def add_no_cache_headers(response):
+    if request.path.startswith(CACHEABLE_PATH_PREFIXES):
+        return response
+    if request.endpoint in CACHEABLE_ENDPOINTS:
+        return response
+    if 'Cache-Control' in response.headers:
+        return response
+    if response.status_code >= 400:
+        return response
+
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
+
+
 @app.template_filter('format_price')
 def format_price(value):
     try:

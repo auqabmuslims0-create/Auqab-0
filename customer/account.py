@@ -140,6 +140,7 @@ def toggle_favorite_store(store_id):
 @account_bp.route('/product/<int:product_id>/review', methods=['POST'])
 @login_required
 def add_review(product_id):
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
     user_id = session['user_id']
     product = Product.query.get_or_404(product_id)
 
@@ -152,11 +153,17 @@ def add_review(product_id):
         rating = 0
 
     if rating < 1 or rating > 5:
-        flash('التقييم يجب أن يكون بين 1 و 5', 'error')
+        msg = 'التقييم يجب أن يكون بين 1 و 5'
+        if is_ajax:
+            return jsonify({'status': 'error', 'message': msg}), 400
+        flash(msg, 'error')
         return redirect(url_for('stores.product_public', product_id=product.id))
 
     if not comment:
-        flash('يرجى كتابة تعليق', 'error')
+        msg = 'يرجى كتابة تعليق'
+        if is_ajax:
+            return jsonify({'status': 'error', 'message': msg}), 400
+        flash(msg, 'error')
         return redirect(url_for('stores.product_public', product_id=product.id))
 
     existing = Review.query.filter_by(user_id=user_id, product_id=product.id).first()
@@ -173,5 +180,9 @@ def add_review(product_id):
         db.session.add(review)
 
     db.session.commit()
+
+    if is_ajax:
+        return jsonify({'status': 'success', 'message': 'تم حفظ تقييمك'})
+
     flash('تم حفظ تقييمك', 'success')
     return redirect(url_for('stores.product_public', product_id=product.id))

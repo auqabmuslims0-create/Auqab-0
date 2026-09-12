@@ -63,6 +63,13 @@
       if (document.body) applyToBody();
       else document.addEventListener('DOMContentLoaded', applyToBody);
     })();
+
+    // منع عرض نسخة قديمة من bfcache بعد عمليات POST
+    window.addEventListener('pageshow', function(event) {
+      if (event.persisted) {
+        window.location.reload();
+      }
+    });
   </script>
 
   <style>
@@ -298,6 +305,51 @@
     var csrfToken = "{{ csrf_token }}";
     window.csrfToken = csrfToken;
     window.isAuthenticated = {{ 'true' if current_user else 'false' }};
+
+    // ===== إرسال النماذج المميزة بـ data-ajax-replace عبر AJAX =====
+    // الميزة: لا يُضاف إدخال جديد في تاريخ التصفح → زر الرجوع يعود للصفحة السابقة مباشرةً
+    document.addEventListener('submit', async function(e) {
+      const form = e.target.closest('form[data-ajax-replace]');
+      if (!form) return;
+      e.preventDefault();
+
+      const submitBtn = form.querySelector('[type="submit"]');
+      const originalLabel = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> جاري الإرسال...';
+      }
+
+      try {
+        const response = await fetch(form.action, {
+          method: (form.method || 'POST').toUpperCase(),
+          body: new FormData(form),
+          credentials: 'same-origin',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const data = await response.json().catch(() => ({}));
+
+        if (response.ok && data.status === 'success') {
+          if (data.message && typeof showToast === 'function') showToast(data.message, 'success');
+          // إعادة تحميل نفس الصفحة (لا يُضاف إدخال في التاريخ) → تظهر الحالة الحديثة
+          setTimeout(() => { window.location.reload(); }, 250);
+        } else {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalLabel;
+          }
+          if (typeof showToast === 'function') showToast(data.message || 'حدث خطأ، حاول مرة أخرى', 'error');
+        }
+      } catch (err) {
+        console.error('AJAX form error:', err);
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalLabel;
+        }
+        // fallback: إرسال تقليدي
+        form.submit();
+      }
+    });
 
     // U9: توست موحّد — يستبدل أي توست سابق بدل تكديسه
     function showToast(message, type = 'info', image = null) {
