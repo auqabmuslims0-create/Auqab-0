@@ -1,23 +1,80 @@
 from database import db
 from models import Reel, ReelReaction, ReelComment, Store
 from sqlalchemy.orm import joinedload
+from sqlalchemy import func, desc
+
+# خيارات الترتيب المسموح بها
+SORT_OPTIONS = ('views', 'newest', 'reactions', 'comments')
+DEFAULT_SORT = 'views'
+
 
 class ReelRepository:
     @staticmethod
-    def get_feed_query():
-        return Reel.query.join(Store).filter(
+    def is_valid_sort(sort_key):
+        return sort_key in SORT_OPTIONS
+
+    @staticmethod
+    def get_feed_query(sort_key=DEFAULT_SORT):
+        """
+        بناء استعلام الريلز مع الترتيب المطلوب.
+        - views / newest : ترتيب مباشر
+        - reactions / comments : عبر subquery مع GROUP BY لتفادي التكرار
+        """
+        if not ReelRepository.is_valid_sort(sort_key):
+            sort_key = DEFAULT_SORT
+
+        query = Reel.query.join(Store).filter(
             Reel.is_active == True,
             Store.subscription_status == 'active'
-        ).options(
+        )
+
+        if sort_key == 'reactions':
+            subq = (
+                db.session.query(
+                    ReelReaction.reel_id.label('reel_id'),
+                    func.count(ReelReaction.id).label('cnt')
+                )
+                .group_by(ReelReaction.reel_id)
+                .subquery()
+            )
+            query = query.outerjoin(subq, Reel.id == subq.c.reel_id)
+            query = query.order_by(
+                func.coalesce(subq.c.cnt, 0).desc(),
+                Reel.created_at.desc()
+            )
+        elif sort_key == 'comments':
+            subq = (
+                db.session.query(
+                    ReelComment.reel_id.label('reel_id'),
+                    func.count(ReelComment.id).label('cnt')
+                )
+                .group_by(ReelComment.reel_id)
+                .subquery()
+            )
+            query = query.outerjoin(subq, Reel.id == subq.c.reel_id)
+            query = query.order_by(
+                func.coalesce(subq.c.cnt, 0).desc(),
+                Reel.created_at.desc()
+            )
+        elif sort_key == 'newest':
+            query = query.order_by(Reel.created_at.desc())
+        else:  # views (default)
+            query = query.order_by(Reel.views.desc(), Reel.created_at.desc())
+
+        query = query.options(
             joinedload(Reel.store),
             joinedload(Reel.product),
             joinedload(Reel.reactions),
             joinedload(Reel.comments).joinedload(ReelComment.user)
-        ).order_by(Reel.created_at.desc())
+        )
+
+        return query
 
     @staticmethod
-    def get_feed(page=1, per_page=10):
-        return ReelRepository.get_feed_query().paginate(page=page, per_page=per_page, error_out=False)
+    def get_feed(page=1, per_page=10, sort_key=DEFAULT_SORT):
+        return ReelRepository.get_feed_query(sort_key).paginate(
+            page=page, per_page=per_page, error_out=False
+        )
 
     @staticmethod
     def get_by_id(reel_id):
@@ -30,7 +87,7 @@ class ReelRepository:
 
     @staticmethod
     def increment_view(reel):
-        reel.views += 1
+        reel.views = (reel.views or 0) + 1
         db.session.add(reel)
 
     @staticmethod

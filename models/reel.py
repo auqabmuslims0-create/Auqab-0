@@ -10,13 +10,14 @@ class Reel(db.Model):
     video_url = db.Column(db.String(300), nullable=False)
     thumbnail_url = db.Column(db.String(300), nullable=True)
     caption = db.Column(db.Text, nullable=True)
-    views = db.Column(db.Integer, default=0)
+    views = db.Column(db.Integer, default=0, index=True)
     is_active = db.Column(db.Boolean, default=True, index=True)
     created_at = db.Column(db.DateTime, default=current_time, index=True)
 
     __table_args__ = (
         Index('ix_reel_store_created', 'store_id', 'created_at'),
         Index('ix_reel_active_created', 'is_active', 'created_at'),
+        Index('ix_reel_active_views', 'is_active', 'views'),
     )
 
     store = db.relationship('Store', back_populates='reels')

@@ -1,13 +1,16 @@
 from sqlalchemy.orm import joinedload
 from database import db
 from models import Reel, ReelReaction, ReelComment, Store
-from shared.repositories.reel_repository import ReelRepository
+from shared.repositories.reel_repository import ReelRepository, DEFAULT_SORT
 from shared.time_utils import current_time
 
 class ReelService:
     @staticmethod
-    def get_feed(page=1, per_page=10, user_id=None):
-        pagination = ReelRepository.get_feed(page=page, per_page=per_page)
+    def get_feed(page=1, per_page=10, user_id=None, sort_key=DEFAULT_SORT):
+        if not ReelRepository.is_valid_sort(sort_key):
+            sort_key = DEFAULT_SORT
+
+        pagination = ReelRepository.get_feed(page=page, per_page=per_page, sort_key=sort_key)
         reels = pagination.items
 
         user_reaction_map = {}

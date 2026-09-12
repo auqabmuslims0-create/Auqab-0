@@ -5,14 +5,57 @@
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/reels.css') }}">
+<style>
+    /* شريط الترتيب */
+    .reels-sort-tabs {
+        display: flex; gap: 8px; overflow-x: auto; padding: 6px 12px 8px;
+        -webkit-overflow-scrolling: touch; scrollbar-width: none;
+        background: var(--bg, #fff);
+    }
+    .reels-sort-tabs::-webkit-scrollbar { display: none; }
+    .reels-sort-tab {
+        flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+        font-size: 0.85rem; font-weight: 600;
+        background: #f1f3f5; color: #495057; text-decoration: none;
+        border: 1px solid transparent; transition: all 0.2s ease;
+        display: inline-flex; align-items: center; gap: 4px;
+    }
+    .reels-sort-tab:hover { background: #e9ecef; color: #212529; }
+    .reels-sort-tab.active {
+        background: var(--primary, #2e5d34); color: #fff;
+        border-color: var(--primary, #2e5d34);
+        box-shadow: 0 2px 8px rgba(46, 93, 52, 0.25);
+    }
+    body.dark-mode .reels-sort-tabs { background: #1e1e1e; }
+    body.dark-mode .reels-sort-tab { background: #2d2d2d; color: #ccc; }
+    body.dark-mode .reels-sort-tab:hover { background: #3a3a3a; color: #fff; }
+    body.dark-mode .reels-sort-tab.active { background: var(--accent, #d4af37); color: #000; }
+</style>
 {% endblock %}
 
 {% block content %}
-<div class="reels-page-container">
+<div class="reels-page-container" data-current-sort="{{ current_sort }}">
     <div class="reels-header">
         <h4 class="fw-bold mb-0"><i class="bi bi-film"></i> الريلز</h4>
         <span class="text-muted small">{{ reels|length }} فيديو</span>
     </div>
+
+    {# ===== شريط الترتيب ===== #}
+    <div class="reels-sort-tabs">
+        <a href="{{ sort_urls.views }}" class="reels-sort-tab {% if current_sort == 'views' %}active{% endif %}">
+            <i class="bi bi-fire"></i> الأكثر مشاهدة
+        </a>
+        <a href="{{ sort_urls.newest }}" class="reels-sort-tab {% if current_sort == 'newest' %}active{% endif %}">
+            <i class="bi bi-stars"></i> الأحدث
+        </a>
+        <a href="{{ sort_urls.reactions }}" class="reels-sort-tab {% if current_sort == 'reactions' %}active{% endif %}">
+            <i class="bi bi-heart-fill"></i> الأكثر تفاعلاً
+        </a>
+        <a href="{{ sort_urls.comments }}" class="reels-sort-tab {% if current_sort == 'comments' %}active{% endif %}">
+            <i class="bi bi-chat-dots-fill"></i> الأكثر تعليقاً
+        </a>
+    </div>
+    {# ===== نهاية شريط الترتيب ===== #}
 
     {% if reels %}
         <div class="reels-vertical-container" id="reelsContainer">
@@ -28,14 +71,12 @@
                     </video>
                     <div class="video-loading-spinner" data-video-spinner></div>
 
-                    <!-- زر التشغيل (مثلث بدون دائرة) -->
                     <div class="reel-play-overlay" data-play-overlay>
                         <button type="button" class="reel-play-btn" data-play-btn aria-label="تشغيل الفيديو">
                             <i class="bi bi-play-fill"></i>
                         </button>
                     </div>
 
-                    <!-- زر الإيقاف المؤقت (خطان بدون دائرة) -->
                     <div class="reel-pause-overlay" data-pause-overlay>
                         <button type="button" class="reel-pause-btn" data-pause-btn aria-label="إيقاف مؤقت">
                             <i class="bi bi-pause-fill"></i>
