@@ -1,11 +1,8 @@
-// ============ Service Worker — سوق الحسينية ============
-// قاعدة ذهبية: لا تعترض cross-origin requests (Cloudinary، Google Fonts، إلخ)
-// الاستراتيجيات:
-//   - static assets (نفس الأصل) → cache-first + background update
-//   - HTML navigation → stale-while-revalidate
-//   - uploads images (نفس الأصل فقط) → cache-first مع LRU
-//   - API → network-only
-//   - cross-origin → network-only (بدون اعتراض)
+// ============================================================
+// Service Worker — سوق الحسينية
+// الإصدار: v15 (مُصحّح)
+// قاعدة ذهبية: لا نعترض cross-origin requests (Cloudinary, OSM, Fonts CDN...)
+// ============================================================
 
 const CACHE_VERSION = 15;
 
@@ -16,6 +13,7 @@ const IMAGE_CACHE  = `husayniyyah-images-v${CACHE_VERSION}`;
 const MAX_HTML_ENTRIES  = 30;
 const MAX_IMAGE_ENTRIES = 100;
 
+// الأصول الثابتة (كلها same-origin — آمنة للتخزين)
 const STATIC_ASSETS = [
   '/static/css/variables.css',
   '/static/css/base.css',
@@ -42,49 +40,31 @@ const STATIC_ASSETS = [
   '/static/offline.html',
 ];
 
-const PRECACHE_PAGES = [
-  '/market',
-  '/reels',
-  '/stores',
-  '/offers',
-  '/services',
-];
 
-
-// ============ Install ============
+// ============================================================
+// install
+// ============================================================
 self.addEventListener('install', event => {
   event.waitUntil((async () => {
-    // 1. cache static assets
-    const staticCache = await caches.open(STATIC_CACHE);
+    const cache = await caches.open(STATIC_CACHE);
     await Promise.allSettled(
       STATIC_ASSETS.map(asset =>
-        staticCache.add(asset).catch(() => null)
+        cache.add(asset).catch(() => null)
       )
     );
-
-    // 2. precache key pages (best effort)
-    try {
-      const htmlCache = await caches.open(HTML_CACHE);
-      await Promise.allSettled(
-        PRECACHE_PAGES.map(page =>
-          fetch(page, { credentials: 'same-origin' })
-            .then(res => { if (res.ok) htmlCache.put(page, res); })
-            .catch(() => null)
-        )
-      );
-    } catch (_) { /* ignore */ }
-
-    // تفعيل SW الجديد فوراً (لإصلاح سريع)
     await self.skipWaiting();
   })());
 });
 
 
-// ============ Activate ============
+// ============================================================
+// activate
+// ============================================================
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
     const cacheNames = await caches.keys();
     const validCaches = [STATIC_CACHE, HTML_CACHE, IMAGE_CACHE];
+
     await Promise.all(
       cacheNames
         .filter(name => !validCaches.includes(name))
@@ -96,7 +76,9 @@ self.addEventListener('activate', event => {
 });
 
 
-// ============ Message handler ============
+// ============================================================
+// message (من الصفحة)
+// ============================================================
 self.addEventListener('message', event => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
@@ -104,61 +86,80 @@ self.addEventListener('message', event => {
 });
 
 
-// ============ Helper: trim cache ============
+// ============================================================
+// trimCache — يحافظ على حد أقصى للعناصر
+// ============================================================
 async function trimCache(cacheName, maxEntries) {
   try {
     const cache = await caches.open(cacheName);
     const keys = await cache.keys();
     if (keys.length <= maxEntries) return;
-    const toDelete = keys.length - maxEntries;
-    for (let i = 0; i < toDelete; i++) {
+    const excess = keys.length - maxEntries;
+    for (let i = 0; i < excess; i++) {
       await cache.delete(keys[i]);
     }
   } catch (_) { /* ignore */ }
 }
 
 
-// ============ Fetch ============
+// ============================================================
+// fetch
+// ============================================================
 self.addEventListener('fetch', event => {
   const { request } = event;
-  const url = new URL(request.url);
 
-  // ⚠️ IMPORTANT: cross-origin requests — لا تتدخل أبداً
-  // هذا يشمل: Cloudinary, Google Fonts, OSM tiles, إلخ
-  if (url.origin !== self.location.origin) {
-    return; // اترك المتصفح يعالجها مباشرة
+  // ===== 1. فحص cross-origin أولاً — الأهم =====
+  // أي طلب لنطاق مختلف (Cloudinary, Google Fonts, OSM, إلخ)
+  // → لا نتدخل أبداً، يترك للمتصفح
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch (_) {
+    return;
   }
 
-  // نتعامل فقط مع GET (بعد فحص cross-origin)
-  if (request.method !== 'GET') return;
+  if (url.origin !== self.location.origin) {
+    return; // ⚠️ لا respondWith → المتصفح يعالج الطلب مباشرة
+  }
 
-  // API — من الشبكة دائماً
+  // ===== 2. نتعامل فقط مع GET =====
+  if (request.method !== 'GET') {
+    return;
+  }
+
+  // ===== 3. API — من الشبكة دائماً =====
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(fetch(request));
     return;
   }
 
-  // ============ HTML Navigation: Stale-While-Revalidate ============
+  // ===== 4. صفحات HTML — Stale-While-Revalidate =====
   if (request.mode === 'navigate') {
     event.respondWith((async () => {
       const cache = await caches.open(HTML_CACHE);
       const cached = await cache.match(request);
 
-      const networkPromise = fetch(request).then(response => {
-        if (response.ok && response.type !== 'opaqueredirect') {
-          cache.put(request, response.clone());
-          trimCache(HTML_CACHE, MAX_HTML_ENTRIES);
-        }
-        return response;
-      }).catch(() => null);
+      // ابدأ طلب الشبكة في الخلفية (لا تنتظره إن كان هناك cache)
+      const networkPromise = fetch(request)
+        .then(response => {
+          if (response.ok && response.type !== 'opaqueredirect') {
+            cache.put(request, response.clone());
+            trimCache(HTML_CACHE, MAX_HTML_ENTRIES);
+          }
+          return response;
+        })
+        .catch(() => null);
 
+      // إن كانت النسخة المخزّنة متاحة → أعطها فوراً
       if (cached) {
         return cached;
       }
 
+      // لا يوجد cache → انتظر الشبكة
       const fresh = await networkPromise;
       if (fresh) return fresh;
 
+      // فشل الاتصال → صفحة offline
       const offline = await caches.match('/static/offline.html');
       if (offline) return offline;
 
@@ -170,7 +171,7 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // ============ Images (نفس الأصل فقط): Cache-first + LRU ============
+  // ===== 5. الصور (same-origin فقط بعد فحص origin أعلاه) =====
   if (request.destination === 'image') {
     event.respondWith((async () => {
       const cache = await caches.open(IMAGE_CACHE);
@@ -191,16 +192,19 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // ============ Static assets (CSS/JS/Fonts) ============
+  // ===== 6. CSS / JS / الخطوط =====
   if (['style', 'script', 'font'].includes(request.destination)) {
     event.respondWith((async () => {
       const cache = await caches.open(STATIC_CACHE);
       const cached = await cache.match(request);
 
       if (cached) {
-        fetch(request).then(response => {
-          if (response.ok) cache.put(request, response);
-        }).catch(() => null);
+        // حدّث في الخلفية بصمت
+        fetch(request)
+          .then(response => {
+            if (response.ok) cache.put(request, response);
+          })
+          .catch(() => null);
         return cached;
       }
 
@@ -215,12 +219,14 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // ============ Default: network (no respondWith) ============
-  // نترك المتصفح يعالجها مباشرة
+  // ===== 7. الافتراضي — اترك المتصفح =====
+  // (لا respondWith)
 });
 
 
-// ============ Push Notifications ============
+// ============================================================
+// Push Notifications
+// ============================================================
 self.addEventListener('push', event => {
   let data = { title: 'سوق الحسينية', message: 'إشعار جديد', url: '/' };
   if (event.data) {
@@ -253,7 +259,9 @@ self.addEventListener('push', event => {
 });
 
 
-// ============ Notification click ============
+// ============================================================
+// Notification click
+// ============================================================
 self.addEventListener('notificationclick', event => {
   event.notification.close();
   if (event.action === 'close') return;
