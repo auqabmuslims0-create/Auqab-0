@@ -6,7 +6,6 @@
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/reels.css') }}">
 <style>
-    /* شريط الترتيب */
     .reels-sort-tabs {
         display: flex; gap: 8px; overflow-x: auto; padding: 6px 12px 8px;
         -webkit-overflow-scrolling: touch; scrollbar-width: none;
@@ -31,7 +30,6 @@
     body.dark-mode .reels-sort-tab:hover { background: #3a3a3a; color: #fff; }
     body.dark-mode .reels-sort-tab.active { background: var(--accent, #d4af37); color: #000; }
 
-    /* شارة عدد المشاهدات */
     .reel-views-badge {
         position: absolute;
         top: 14px;
@@ -52,6 +50,15 @@
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
     }
     .reel-views-badge i { font-size: 0.85rem; }
+
+    #scroll-loader {
+        text-align: center;
+        padding: 1rem;
+        color: #fff;
+        background: rgba(0,0,0,0.4);
+        font-size: 0.9rem;
+        display: none;
+    }
 </style>
 {% endblock %}
 
@@ -62,7 +69,6 @@
         <span class="text-muted small">{{ reels|length }} فيديو</span>
     </div>
 
-    {# ===== شريط الترتيب (3 خيارات) ===== #}
     <div class="reels-sort-tabs">
         <a href="{{ sort_urls.views }}" class="reels-sort-tab {% if current_sort == 'views' %}active{% endif %}">
             <i class="bi bi-fire"></i> الأكثر مشاهدة
@@ -74,88 +80,16 @@
             <i class="bi bi-heart-fill"></i> الأكثر تفاعلاً
         </a>
     </div>
-    {# ===== نهاية شريط الترتيب ===== #}
 
     {% if reels %}
         <div class="reels-vertical-container" id="reelsContainer">
-            {% for reel in reels %}
-            <div class="reel-slide" id="reel-{{ reel.id }}" data-reel-id="{{ reel.id }}">
-                <div class="reel-video-wrapper">
-                    {% if reel.video_url %}
-                    <video class="reel-video" loop playsinline preload="auto"
-                           src="{{ reel.video_url | get_image_url }}"
-                           poster="{{ reel.thumbnail_url | get_image_url if reel.thumbnail_url else (reel.product.images.split(',')[0].strip() | get_image_url if reel.product and reel.product.images else '') }}"
-                           data-reel-video
-                           data-reel-id="{{ reel.id }}">
-                    </video>
-                    <div class="video-loading-spinner" data-video-spinner></div>
-
-                    {# شارة عدد المشاهدات #}
-                    <span class="reel-views-badge">
-                        <i class="bi bi-eye-fill"></i> {{ reel.views or 0 }}
-                    </span>
-
-                    <div class="reel-play-overlay" data-play-overlay>
-                        <button type="button" class="reel-play-btn" data-play-btn aria-label="تشغيل الفيديو">
-                            <i class="bi bi-play-fill"></i>
-                        </button>
-                    </div>
-
-                    <div class="reel-pause-overlay" data-pause-overlay>
-                        <button type="button" class="reel-pause-btn" data-pause-btn aria-label="إيقاف مؤقت">
-                            <i class="bi bi-pause-fill"></i>
-                        </button>
-                    </div>
-                    {% else %}
-                    <div class="reel-video-placeholder"><i class="bi bi-film"></i></div>
-                    {% endif %}
-                </div>
-
-                <div class="reel-content">
-                    <div class="reel-info-bottom">
-                        <a href="{{ url_for('stores.store_public', store_id=reel.store.id) }}" class="reel-store-link">
-                            {% if reel.store.logo_url %}
-                                <img src="{{ reel.store.logo_url | get_image_url }}" class="reel-store-avatar" alt="{{ reel.store.name }}">
-                            {% else %}
-                                <div class="reel-store-avatar-placeholder"><i class="bi bi-shop"></i></div>
-                            {% endif %}
-                            <span class="reel-store-name">{{ reel.store.name }}</span>
-                        </a>
-                        {% if reel.product %}
-                        <a href="{{ url_for('stores.product_public', product_id=reel.product.id) }}" class="reel-product-link">
-                            <h5 class="reel-product-name">{{ reel.product.name }}</h5>
-                            <div class="reel-product-price">
-                                {{ reel.product.effective_price|format_price }} ل.س
-                                {% if reel.product.is_offer and reel.product.original_price %}
-                                    <span class="text-decoration-line-through text-muted ms-1">{{ reel.product.original_price|format_price }}</span>
-                                {% endif %}
-                            </div>
-                        </a>
-                        {% else %}
-                        <p class="reel-caption text-white mb-0">{{ reel.caption or '' }}</p>
-                        {% endif %}
-                    </div>
-                    <div class="reel-actions-column">
-                        <button class="reel-action-btn {% if reel.id in user_reaction_map and user_reaction_map[reel.id] == 'like' %}active{% endif %}"
-                                onclick="toggleReelReaction({{ reel.id }}, 'like', this)"
-                                title="إعجاب">
-                            <i class="bi bi-heart{% if reel.id in user_reaction_map and user_reaction_map[reel.id] == 'like' %}-fill{% endif %}"></i>
-                        </button>
-                        <button class="reel-action-btn" onclick="shareReel({{ reel.id }}, '{{ (reel.product.name if reel.product else reel.caption) | e }}')" title="مشاركة">
-                            <i class="bi bi-share"></i>
-                        </button>
-                        {% if reel.product and not reel.product.hide_price %}
-                        <button class="reel-action-btn {% if reel.product.stock_quantity == 0 %}disabled{% endif %}"
-                                onclick="addToCart({{ reel.product.id }}, 1, (d) => showToast('تمت الإضافة للسلة', 'success'))"
-                                title="أضف إلى السلة" {% if reel.product.stock_quantity == 0 %}disabled{% endif %}>
-                            <i class="bi bi-cart-plus"></i>
-                        </button>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
+            {% include 'customer/_reel_slides.html' %}
         </div>
+        <div id="scroll-sentinel"
+             data-target="#reelsContainer"
+             data-next-page="{{ pagination.next_num if pagination.has_next else '' }}"
+             style="height:1px;"></div>
+        <div id="scroll-loader">جارٍ التحميل…</div>
     {% else %}
         {{ macros.render_empty_state('bi-film', 'لا توجد ريلزات حالياً', url_for('market.market'), 'تصفح المنتجات') }}
     {% endif %}
@@ -164,4 +98,5 @@
 
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/reels.js') }}"></script>
+<script src="{{ url_for('static', filename='js/infinite-scroll.js') }}" defer></script>
 {% endblock %}

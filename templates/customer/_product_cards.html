@@ -1,0 +1,5 @@
+{% import '_macros.html' as macros %}
+{% set _reaction_map = user_reaction_map if user_reaction_map is defined else None %}
+{% for product in products %}
+    {{ macros.render_product_card(product, None, _reaction_map, show_add_to_cart=True) }}
+{% endfor %}

@@ -1,8 +1,14 @@
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, jsonify, make_response
 from sqlalchemy.orm import joinedload
 from models import Product, Store, Category
 
 offers_bp = Blueprint('offers', __name__)
+
+
+def _wants_json():
+    return (request.args.get('format') == 'json'
+            or request.headers.get('X-Requested-With') == 'XMLHttpRequest')
+
 
 @offers_bp.route('/offers')
 def offers_page():
@@ -28,6 +34,21 @@ def offers_page():
         query = query.filter(Product.store_id == store_id)
 
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
+
+    # ===== استجابة AJAX =====
+    if _wants_json():
+        html = render_template('customer/_product_cards.html',
+                               products=pagination.items,
+                               user_reaction_map=None)
+        resp = make_response(jsonify({
+            'html': html,
+            'has_next': pagination.has_next,
+            'next_page': pagination.next_num if pagination.has_next else None,
+            'total': pagination.total,
+        }))
+        resp.headers['Cache-Control'] = 'private, max-age=0, no-store'
+        return resp
+    # ========================
 
     categories = Category.query.join(Product).filter(
         Product.is_offer == True,

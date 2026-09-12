@@ -129,6 +129,12 @@ def _build_filter_params(q, category_id, store_id, min_price, max_price):
     return params
 
 
+def _wants_json():
+    """هل الطلب AJAX؟"""
+    return (request.args.get('format') == 'json'
+            or request.headers.get('X-Requested-With') == 'XMLHttpRequest')
+
+
 @market_bp.route('/market')
 def market():
     page = request.args.get('page', 1, type=int)
@@ -167,6 +173,25 @@ def market():
             selectinload(Product.category)
         ) \
         .paginate(page=page, per_page=per_page, error_out=False)
+
+    # ===== استجابة AJAX: أرجِع فقط HTML fragment للبطاقات =====
+    if _wants_json():
+        user_reaction_map_ajax = {}
+        if 'user_id' in session:
+            for r in ProductReaction.query.filter_by(user_id=session['user_id']).all():
+                user_reaction_map_ajax[r.product_id] = r.reaction_type
+        html = render_template('customer/_product_cards.html',
+                               products=products_pagination.items,
+                               user_reaction_map=user_reaction_map_ajax)
+        resp = make_response(jsonify({
+            'html': html,
+            'has_next': products_pagination.has_next,
+            'next_page': products_pagination.next_num if products_pagination.has_next else None,
+            'total': products_pagination.total,
+        }))
+        resp.headers['Cache-Control'] = 'private, max-age=0, no-store'
+        return resp
+    # ========================================================
 
     stores = Store.query.filter(Store.subscription_status == 'active').limit(50).all()
     open_stores = [s for s in stores if is_store_open(s)]

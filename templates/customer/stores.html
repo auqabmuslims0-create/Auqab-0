@@ -169,7 +169,6 @@
         overflow-wrap: anywhere;
     }
 
-    /* ====== شريط البحث الموحّد ====== */
     .market-header-section { margin-bottom: 18px; }
     .search-wrapper { position: relative; }
     .search-bar-modern {
@@ -283,16 +282,22 @@
         </div>
 
         {% if stores %}
-        <div class="stores-grid">
+        <div class="stores-grid" id="items-grid">
             {% for store in stores %}
                 {{ macros.render_store_card(store, open_status.get(store.id)) }}
             {% endfor %}
         </div>
+        <div id="scroll-sentinel"
+             data-target="#items-grid"
+             data-next-page="{{ pagination.next_num if pagination.has_next else '' }}"
+             style="height:1px;"></div>
+        <div id="scroll-loader"
+             style="display:none;text-align:center;padding:1rem;color:#888;font-size:0.9rem;">
+            جارٍ التحميل…
+        </div>
         {% else %}
             {{ macros.render_empty_state('bi-shop-window', 'لا توجد متاجر مطابقة', url_for('stores.stores_page'), 'عرض الكل') }}
         {% endif %}
-
-        {{ macros.render_pagination(pagination, 'stores.stores_page', {'q': q, 'status': status_filter}) }}
     </div>
 
     <div id="offlineContent">
@@ -303,7 +308,6 @@
     </div>
 </div>
 
-<!-- Offcanvas للتصفية -->
 <div class="offcanvas offcanvas-start filter-sidebar" tabindex="-1" id="storesFilterSidebar">
     <div class="offcanvas-header">
         <h5 class="offcanvas-title"><i class="bi bi-sliders"></i> تصفية المتاجر</h5>
@@ -332,6 +336,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/infinite-scroll.js') }}" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     if (navigator.onLine && typeof OfflineDB !== 'undefined') {

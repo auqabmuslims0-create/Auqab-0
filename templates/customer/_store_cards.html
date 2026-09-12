@@ -1,0 +1,4 @@
+{% import '_macros.html' as macros %}
+{% for store in stores %}
+    {{ macros.render_store_card(store, open_status.get(store.id)) }}
+{% endfor %}

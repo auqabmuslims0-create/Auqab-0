@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, abort, session
+from flask import Blueprint, render_template, request, abort, session, jsonify, make_response
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy import or_
 from datetime import datetime, timedelta
@@ -9,28 +9,20 @@ from shared.utils import is_store_open, is_store_active
 
 stores_bp = Blueprint('stores', __name__)
 
-# مدة صلاحية تسجيل المشاهدة لكل جلسة (بالدقائق)
 VIEW_COOLDOWN_MINUTES = 30
-# الحد الأقصى لعدد المنتجات المتتبَّعة في الجلسة (لتفادي تضخّم الـ cookie)
 MAX_TRACKED_VIEWS = 200
 
 
-def _should_count_view(product_id):
-    """
-    هل يجب احتساب مشاهدة جديدة لهذا المنتج في الجلسة الحالية؟
+def _wants_json():
+    return (request.args.get('format') == 'json'
+            or request.headers.get('X-Requested-With') == 'XMLHttpRequest')
 
-    المنطق:
-      - إذا لم يُسجَّل من قبل    → احتسب
-      - إذا مرّت مدة التهدئة     → احتسب (زيارة جديدة)
-      - غير ذلك                  → لا تحتسب (refresh أو تنقل سريع)
-    """
+
+def _should_count_view(product_id):
     now_iso = datetime.utcnow().isoformat()
     viewed = session.get('viewed_products', {})
-
     if not isinstance(viewed, dict):
-        # ترحيل من صيغة قديمة (قائمة) إن وُجدت
         viewed = {}
-
     last_seen = viewed.get(str(product_id))
     if last_seen:
         try:
@@ -38,26 +30,41 @@ def _should_count_view(product_id):
             if datetime.utcnow() - last_dt < timedelta(minutes=VIEW_COOLDOWN_MINUTES):
                 return False
         except (ValueError, TypeError):
-            pass  # قيمة تالفة → اعتبرها مشاهدة جديدة
-
+            pass
     return True
 
 
 def _mark_viewed(product_id):
-    """يحدّث قاموس المشاهدات في الجلسة مع تنظيف القديم عند التجاوز."""
     viewed = session.get('viewed_products', {})
     if not isinstance(viewed, dict):
         viewed = {}
-
     viewed[str(product_id)] = datetime.utcnow().isoformat()
-
-    # تنظيف: احتفظ فقط بأحدث MAX_TRACKED_VIEWS عنصر
     if len(viewed) > MAX_TRACKED_VIEWS:
         sorted_items = sorted(viewed.items(), key=lambda kv: kv[1], reverse=True)
         viewed = dict(sorted_items[:MAX_TRACKED_VIEWS])
-
     session['viewed_products'] = viewed
     session.modified = True
+
+
+class PaginationStub:
+    def __init__(self, items, page, total_pages, total):
+        self.items = items
+        self.page = page
+        self.pages = total_pages
+        self.total = total
+        self.has_prev = page > 1
+        self.has_next = page < total_pages
+        self.prev_num = page - 1 if self.has_prev else None
+        self.next_num = page + 1 if self.has_next else None
+
+    def iter_pages(self, left_edge=2, left_current=2, right_current=3, right_edge=2):
+        last = 0
+        for num in range(1, self.pages + 1):
+            if num <= left_edge or (num > self.page - left_current - 1 and num < self.page + right_current) or num > self.pages - right_edge:
+                if last + 1 != num:
+                    yield None
+                yield num
+                last = num
 
 
 @stores_bp.route('/stores')
@@ -92,31 +99,27 @@ def stores_page():
         start = (page - 1) * per_page
         end = start + per_page
         stores_page_items = filtered[start:end]
-
-        class PaginationStub:
-            def __init__(self, items, page, total_pages, total):
-                self.items = items
-                self.page = page
-                self.pages = total_pages
-                self.total = total
-                self.has_prev = page > 1
-                self.has_next = page < total_pages
-                self.prev_num = page - 1 if self.has_prev else None
-                self.next_num = page + 1 if self.has_next else None
-            def iter_pages(self, left_edge=2, left_current=2, right_current=3, right_edge=2):
-                last = 0
-                for num in range(1, self.pages + 1):
-                    if num <= left_edge or (num > self.page - left_current - 1 and num < self.page + right_current) or num > self.pages - right_edge:
-                        if last + 1 != num:
-                            yield None
-                        yield num
-                        last = num
         pagination = PaginationStub(stores_page_items, page, total_pages, total)
-        open_status_for_template = open_status
+        open_status_for_template = {s.id: open_status.get(s.id, False) for s in stores_page_items}
     else:
         pagination = query.order_by(Store.name).paginate(page=page, per_page=per_page, error_out=False)
         stores_page_items = pagination.items
         open_status_for_template = {s.id: is_store_open(s) for s in stores_page_items}
+
+    # ===== استجابة AJAX =====
+    if _wants_json():
+        html = render_template('customer/_store_cards.html',
+                               stores=stores_page_items,
+                               open_status=open_status_for_template)
+        resp = make_response(jsonify({
+            'html': html,
+            'has_next': pagination.has_next,
+            'next_page': pagination.next_num if pagination.has_next else None,
+            'total': pagination.total,
+        }))
+        resp.headers['Cache-Control'] = 'private, max-age=0, no-store'
+        return resp
+    # ========================
 
     return render_template('customer/stores.html',
                            stores=stores_page_items,
@@ -201,7 +204,6 @@ def product_public(product_id):
         if existing_fav:
             is_favorite = True
 
-    # ===== عداد المشاهدات المحمي من التكرار =====
     if _should_count_view(product.id):
         try:
             ProductRepository.increment_views(product)
@@ -209,7 +211,6 @@ def product_public(product_id):
             _mark_viewed(product.id)
         except Exception:
             db.session.rollback()
-    # ==========================================
 
     return render_template(
         'customer/product_public.html',

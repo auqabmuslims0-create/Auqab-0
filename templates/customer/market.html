@@ -33,7 +33,6 @@
         background: rgba(13,110,253,0.2); color: #6ea8fe;
     }
 
-    /* شريط الترتيب */
     .sort-tabs {
         display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px;
         -webkit-overflow-scrolling: touch; scrollbar-width: none;
@@ -134,17 +133,25 @@
         </div>
         {# ===== نهاية أزرار الترتيب ===== #}
 
-        <div class="products-grid">
+        {% if products %}
+        <div class="products-grid" id="items-grid">
             {% for product in products %}
                 {{ macros.render_product_card(product, None, user_reaction_map, show_add_to_cart=True) }}
-            {% else %}
-                <div class="col-12">
-                    {{ macros.render_empty_state('bi-shop', 'لا توجد منتجات مطابقة', url_for('market.market'), 'عرض الكل') }}
-                </div>
             {% endfor %}
         </div>
-
-        {{ macros.render_pagination(pagination, 'market.market', pagination_params) }}
+        <div id="scroll-sentinel"
+             data-target="#items-grid"
+             data-next-page="{{ pagination.next_num if pagination.has_next else '' }}"
+             style="height:1px;"></div>
+        <div id="scroll-loader"
+             style="display:none;text-align:center;padding:1rem;color:#888;font-size:0.9rem;">
+            جارٍ التحميل…
+        </div>
+        {% else %}
+        <div class="col-12">
+            {{ macros.render_empty_state('bi-shop', 'لا توجد منتجات مطابقة', url_for('market.market'), 'عرض الكل') }}
+        </div>
+        {% endif %}
     </div>
 
     <div id="offlineContent">
@@ -203,6 +210,7 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="{{ url_for('static', filename='js/infinite-scroll.js') }}" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('globalSearchInput');
@@ -267,7 +275,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // ====== تحديث عداد المتسوقين النشطين ======
     async function updateActiveShoppers() {
         try {
             const res = await fetch('/api/active-shoppers?t=' + Date.now(), {
