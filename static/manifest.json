@@ -4,58 +4,44 @@
   "description": "منصتك الأولى للتسوق الإلكتروني",
   "lang": "ar",
   "dir": "rtl",
-  "id": "/",
-  "start_url": "/",
+  "id": "/?source=pwa",
+  "start_url": "/market?source=pwa",
   "scope": "/",
   "display": "standalone",
-  "display_override": [
-    "standalone",
-    "minimal-ui"
-  ],
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#f7f4ef",
   "theme_color": "#2e5d34",
   "orientation": "portrait-primary",
-  "categories": [
-    "shopping",
-    "food",
-    "lifestyle"
-  ],
+  "categories": ["shopping", "food", "lifestyle"],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "handle_links": "preferred",
   "icons": [
+    { "src": "/static/icons/icon-96.png",  "sizes": "96x96",   "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-144.png", "sizes": "144x144", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-384.png", "sizes": "384x384", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/static/icons/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ],
+  "screenshots": [
     {
-      "src": "/static/icons/icon-96.png",
-      "sizes": "96x96",
+      "src": "/static/screenshots/home-mobile.png",
+      "sizes": "1080x1920",
       "type": "image/png",
-      "purpose": "any"
+      "form_factor": "narrow",
+      "label": "الصفحة الرئيسية — تصفح المنتجات"
     },
     {
-      "src": "/static/icons/icon-144.png",
-      "sizes": "144x144",
+      "src": "/static/screenshots/market-mobile.png",
+      "sizes": "1080x1920",
       "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/static/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/static/icons/icon-384.png",
-      "sizes": "384x384",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/static/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/static/icons/icon-maskable.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "form_factor": "narrow",
+      "label": "السوق — كل المنتجات في مكان واحد"
     }
   ],
   "shortcuts": [
@@ -64,40 +50,28 @@
       "short_name": "السوق",
       "description": "تصفح المنتجات",
       "url": "/market",
-      "icons": [
-        {
-          "src": "/static/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    },
+    {
+      "name": "الريلز",
+      "short_name": "الريلز",
+      "description": "شاهد أحدث الريلز",
+      "url": "/reels",
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "سلة المشتريات",
       "short_name": "السلة",
       "description": "عرض سلة المشتريات",
       "url": "/cart",
-      "icons": [
-        {
-          "src": "/static/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
       "name": "المفضلة",
       "short_name": "المفضلة",
       "description": "منتجاتك المفضلة",
       "url": "/favorites",
-      "icons": [
-        {
-          "src": "/static/icons/icon-192.png",
-          "sizes": "192x192",
-          "type": "image/png"
-        }
-      ]
+      "icons": [{ "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
-  ],
-  "prefer_related_applications": false
+  ]
 }

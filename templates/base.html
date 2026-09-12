@@ -152,6 +152,106 @@
         padding: 10px;
         font-weight: 600;
     }
+
+    /* ============ PWA Banners (install / update) ============ */
+    .pwa-banner {
+      position: fixed;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      z-index: 9999;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      padding: 12px;
+      animation: slideUp 0.3s ease;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    body.dark-mode .pwa-banner {
+      background: #1e1e1e;
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    .pwa-banner-content {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .pwa-banner-content img {
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+    .pwa-banner-text {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .pwa-banner-text strong {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    .pwa-banner-text span {
+      font-size: 0.8rem;
+      color: #6c757d;
+    }
+    body.dark-mode .pwa-banner-text span {
+      color: #adb5bd;
+    }
+    .pwa-banner-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .pwa-btn {
+      border: none;
+      border-radius: 20px;
+      padding: 8px 14px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    .pwa-btn-primary {
+      background: var(--primary, #2e5d34);
+      color: #fff;
+    }
+    .pwa-btn-primary:hover {
+      opacity: 0.9;
+    }
+    body.dark-mode .pwa-btn-primary {
+      background: var(--accent, #d4af37);
+      color: #000;
+    }
+    .pwa-btn-secondary {
+      background: rgba(0,0,0,0.05);
+      color: inherit;
+    }
+    body.dark-mode .pwa-btn-secondary {
+      background: rgba(255,255,255,0.1);
+    }
+    .pwa-banner-update {
+      background: linear-gradient(135deg, #2e5d34, #4a8051);
+      color: #fff;
+    }
+    .pwa-banner-update .pwa-banner-text span {
+      color: rgba(255,255,255,0.85);
+    }
+    .pwa-banner-update .pwa-btn-primary {
+      background: #fff;
+      color: #2e5d34;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+    @media (max-width: 480px) {
+      .pwa-banner-actions { flex-direction: column; align-items: stretch; }
+      .pwa-btn { padding: 6px 12px; font-size: 0.8rem; }
+    }
   </style>
   {% block head %}{% endblock %}
 </head>
@@ -750,6 +850,95 @@
       return outputArray;
     }
 
+    // ============ PWA: Service Worker Registration + Update Detection ============
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(reg => {
+          // افحص التحديثات كل ساعة
+          setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+
+          // اكتشف SW جديد قيد التثبيت
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            if (!newWorker) return;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                showUpdateBanner(newWorker);
+              }
+            });
+          });
+        }).catch(err => console.warn('SW register failed:', err));
+      });
+    }
+
+    function showUpdateBanner(newWorker) {
+      const banner = document.getElementById('pwaUpdateBanner');
+      if (!banner) return;
+      banner.style.display = 'block';
+      const btn = document.getElementById('pwaUpdateNow');
+      if (btn && !btn.dataset.bound) {
+        btn.dataset.bound = '1';
+        btn.addEventListener('click', () => {
+          btn.disabled = true;
+          btn.textContent = 'جاري التحديث...';
+          newWorker.postMessage({ type: 'SKIP_WAITING' });
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            window.location.reload();
+          }, { once: true });
+        });
+      }
+    }
+
+    // ============ PWA: Install Prompt ============
+    let deferredInstallPrompt = null;
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      if (localStorage.getItem('pwa_install_dismissed') === 'true') return;
+      setTimeout(() => {
+        const banner = document.getElementById('pwaInstallBanner');
+        if (banner) banner.style.display = 'block';
+      }, 3000);
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredInstallPrompt = null;
+      const banner = document.getElementById('pwaInstallBanner');
+      if (banner) banner.style.display = 'none';
+      if (typeof showToast === 'function') showToast('تم تثبيت التطبيق بنجاح', 'success');
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const acceptBtn = document.getElementById('pwaInstallAccept');
+      const dismissBtn = document.getElementById('pwaInstallDismiss');
+
+      if (acceptBtn) {
+        acceptBtn.addEventListener('click', async () => {
+          const banner = document.getElementById('pwaInstallBanner');
+          if (!deferredInstallPrompt) {
+            if (banner) banner.style.display = 'none';
+            return;
+          }
+          deferredInstallPrompt.prompt();
+          const { outcome } = await deferredInstallPrompt.userChoice;
+          deferredInstallPrompt = null;
+          if (banner) banner.style.display = 'none';
+          if (outcome === 'accepted' && typeof showToast === 'function') {
+            showToast('شكراً لتثبيت التطبيق', 'success');
+          }
+        });
+      }
+
+      if (dismissBtn) {
+        dismissBtn.addEventListener('click', () => {
+          const banner = document.getElementById('pwaInstallBanner');
+          if (banner) banner.style.display = 'none';
+          localStorage.setItem('pwa_install_dismissed', 'true');
+        });
+      }
+    });
+
     window.enablePushNotifications = async function() {
       try {
         const registration = await navigator.serviceWorker.ready;
@@ -854,6 +1043,35 @@
       });
     }
   </script>
+
+  <!-- PWA: Install banner -->
+  <div id="pwaInstallBanner" class="pwa-banner" style="display: none;">
+    <div class="pwa-banner-content">
+      <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="تثبيت" width="48" height="48">
+      <div class="pwa-banner-text">
+        <strong>تثبيت سوق الحسينية</strong>
+        <span>تجربة أسرع بدون متصفح</span>
+      </div>
+      <div class="pwa-banner-actions">
+        <button id="pwaInstallAccept" class="pwa-btn pwa-btn-primary" type="button">تثبيت</button>
+        <button id="pwaInstallDismiss" class="pwa-btn pwa-btn-secondary" type="button">لاحقاً</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PWA: Update banner -->
+  <div id="pwaUpdateBanner" class="pwa-banner pwa-banner-update" style="display: none;">
+    <div class="pwa-banner-content">
+      <i class="bi bi-arrow-clockwise" style="font-size: 1.7rem;"></i>
+      <div class="pwa-banner-text">
+        <strong>تحديث متاح</strong>
+        <span>نسخة جديدة من التطبيق جاهزة</span>
+      </div>
+      <div class="pwa-banner-actions">
+        <button id="pwaUpdateNow" class="pwa-btn pwa-btn-primary" type="button">تحديث الآن</button>
+      </div>
+    </div>
+  </div>
 
   {% block scripts %}{% endblock %}
 </body>
