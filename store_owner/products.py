@@ -161,6 +161,12 @@ def new_product(store_id):
             db.session.add(reel)
 
         db.session.commit()
+        if is_offer:
+            try:
+                from shared.services.notification_service import NotificationService
+                NotificationService.notify_new_offer(product)
+            except Exception:
+                pass
         flash('تم إضافة المنتج')
         return redirect(url_for('store.store_products', store_id=store.id))
 

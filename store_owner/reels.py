@@ -100,6 +100,11 @@ def new_reel(store_id):
         db.session.add(reel)
         db.session.commit()
 
+        try:
+            from shared.services.notification_service import NotificationService
+            NotificationService.notify_new_reel(reel)
+        except Exception:
+            pass
         flash('تم إضافة الريل بنجاح', 'success')
         return redirect(url_for('store.store_reels', store_id=store.id))
 
