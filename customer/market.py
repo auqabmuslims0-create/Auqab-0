@@ -186,7 +186,18 @@ def market():
 
     active_shoppers_count = _get_active_shoppers_count()
 
+    # ===== بناء كل الروابط في Python (تفادي قيود Jinja2 على {**dict}) =====
     filter_params = _build_filter_params(q, category_id, store_id, min_price, max_price)
+
+    sort_urls = {}
+    for key in ('views', 'newest', 'price_asc', 'price_desc'):
+        params_with_sort = dict(filter_params)
+        params_with_sort['sort'] = key
+        sort_urls[key] = url_for('market.market', **params_with_sort)
+
+    # معاملات الترقيم (تشمل الترتيب الحالي + الفلاتر)
+    pagination_params = dict(filter_params)
+    pagination_params['sort'] = sort
 
     return render_template('customer/market.html',
                            open_stores=open_stores,
@@ -202,4 +213,6 @@ def market():
                            q=q,
                            current_sort=sort,
                            filter_params=filter_params,
+                           sort_urls=sort_urls,
+                           pagination_params=pagination_params,
                            active_shoppers_count=active_shoppers_count)
