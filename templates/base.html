@@ -407,7 +407,6 @@
     window.isAuthenticated = {{ 'true' if current_user else 'false' }};
 
     // ===== إرسال النماذج المميزة بـ data-ajax-replace عبر AJAX =====
-    // الميزة: لا يُضاف إدخال جديد في تاريخ التصفح → زر الرجوع يعود للصفحة السابقة مباشرةً
     document.addEventListener('submit', async function(e) {
       const form = e.target.closest('form[data-ajax-replace]');
       if (!form) return;
@@ -431,7 +430,6 @@
 
         if (response.ok && data.status === 'success') {
           if (data.message && typeof showToast === 'function') showToast(data.message, 'success');
-          // إعادة تحميل نفس الصفحة (لا يُضاف إدخال في التاريخ) → تظهر الحالة الحديثة
           setTimeout(() => { window.location.reload(); }, 250);
         } else {
           if (submitBtn) {
@@ -446,18 +444,16 @@
           submitBtn.disabled = false;
           submitBtn.innerHTML = originalLabel;
         }
-        // fallback: إرسال تقليدي
         form.submit();
       }
     });
 
-    // U9: توست موحّد — يستبدل أي توست سابق بدل تكديسه
+    // U9: توست موحّد
     function showToast(message, type = 'info', image = null) {
       if (type === 'danger') type = 'error';
       const container = document.getElementById('toastContainerTop');
       if (!container) return;
 
-      // إزالة كل التوستات السابقة (لمنع التكديس أو التوست المزدوج)
       container.querySelectorAll('.toast').forEach(t => {
         const inst = bootstrap.Toast.getInstance(t);
         if (inst) inst.hide();
@@ -787,7 +783,6 @@
       .then(res => res.json())
       .then(data => {
         const unreadCount = data.unread_notifications || 0;
-        // v1: selector محدد — لا يلتقط badge حالة الطلب
         const unreadBadge = document.querySelector('.nav-badge-notifications[data-notif-badge]');
         const dot = document.getElementById('navNotificationDot');
         if (unreadCount > 0) {
@@ -850,30 +845,111 @@
       return outputArray;
     }
 
-    // ============ PWA: Service Worker Registration + Update Detection ============
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js', { scope: '/' }).then(reg => {
-          // افحص التحديثات كل ساعة
-          setInterval(() => reg.update().catch(() => {}), 60 * 60 * 1000);
+    // ====================================================================
+    // PWA: Service Worker — Silent Auto-Update
+    // ====================================================================
+    // عند نشر SW جديد:
+    //   1. يُثبَّت تلقائياً (skipWaiting في sw.js)
+    //   2. يستلم السيطرة (clients.claim)
+    //   3. controllerchange يُطلَق → auto-reload صامت
+    //
+    // الحمايات:
+    //   - لا reload عند أول تثبيت (hadController)
+    //   - لا reload إن كان المستخدم يكتب في حقل (تأجيل حتى يتركه، أو 30 ثانية حد أقصى)
+    //   - منع reload مزدوج (isReloading)
+    //   - fallback: إذا فشل auto-reload بعد 8 ثوانٍ → يظهر البانر
+    // ====================================================================
+    (function() {
+      if (!('serviceWorker' in navigator)) return;
 
-          // اكتشف SW جديد قيد التثبيت
+      let isReloading = false;
+      const hadController = !!navigator.serviceWorker.controller;
+
+      // auto-reload صامت عند تفعيل SW جديد
+      navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (isReloading) return;
+        if (!hadController) return; // أول تثبيت — لا reload
+        isReloading = true;
+
+        // افحص إن كان المستخدم يكتب
+        const active = document.activeElement;
+        const isTyping = active && (
+          active.tagName === 'INPUT' ||
+          active.tagName === 'TEXTAREA' ||
+          active.isContentEditable
+        );
+
+        if (isTyping) {
+          // أجّل الـ reload حتى يترك الحقل
+          let timeoutId = null;
+          const waitForBlur = () => {
+            const a = document.activeElement;
+            const stillTyping = a && (
+              a.tagName === 'INPUT' ||
+              a.tagName === 'TEXTAREA' ||
+              a.isContentEditable
+            );
+            if (!stillTyping) {
+              if (timeoutId) clearTimeout(timeoutId);
+              window.location.reload();
+            }
+          };
+          document.addEventListener('focusout', waitForBlur, true);
+          // fallback: reload بعد 30 ثانية على أي حال
+          timeoutId = setTimeout(() => window.location.reload(), 30 * 1000);
+          return;
+        }
+
+        // لا يكتب → reload فوري
+        window.location.reload();
+      });
+
+      window.addEventListener('load', async () => {
+        try {
+          const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+
+          // افحص التحديث فوراً عند كل تحميل (يتجاوز حماية 24 ساعة للمتصفح)
+          reg.update().catch(() => {});
+
+          // فحص دوري كل 15 دقيقة
+          setInterval(() => reg.update().catch(() => {}), 15 * 60 * 1000);
+
+          // فحص عند عودة التطبيق للمقدمة
+          document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+              reg.update().catch(() => {});
+            }
+          });
+
+          // fallback: إن فشل auto-reload (SW stuck في waiting)
+          // → يظهر البانر بعد 8 ثوانٍ
           reg.addEventListener('updatefound', () => {
             const newWorker = reg.installing;
             if (!newWorker) return;
+
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                showUpdateBanner(newWorker);
+                // SW مُثبَّت لكن لم يُفعَّل بعد
+                setTimeout(() => {
+                  // إن كان لا يزال waiting → اعرض البانر
+                  if (newWorker.state === 'installed') {
+                    showUpdateBanner(newWorker);
+                  }
+                }, 8000);
               }
             });
           });
-        }).catch(err => console.warn('SW register failed:', err));
+        } catch (err) {
+          console.warn('SW register failed:', err);
+        }
       });
-    }
+    })();
 
+    // fallback banner: يظهر فقط إذا فشل auto-reload
     function showUpdateBanner(newWorker) {
       const banner = document.getElementById('pwaUpdateBanner');
       if (!banner) return;
+      if (banner.style.display === 'block') return; // ممنوع التكرار
       banner.style.display = 'block';
       const btn = document.getElementById('pwaUpdateNow');
       if (btn && !btn.dataset.bound) {
@@ -882,9 +958,7 @@
           btn.disabled = true;
           btn.textContent = 'جاري التحديث...';
           newWorker.postMessage({ type: 'SKIP_WAITING' });
-          navigator.serviceWorker.addEventListener('controllerchange', () => {
-            window.location.reload();
-          }, { once: true });
+          // controllerchange سيتولى reload
         });
       }
     }
@@ -1059,7 +1133,7 @@
     </div>
   </div>
 
-  <!-- PWA: Update banner -->
+  <!-- PWA: Update banner (fallback فقط — يظهر إذا فشل auto-reload) -->
   <div id="pwaUpdateBanner" class="pwa-banner pwa-banner-update" style="display: none;">
     <div class="pwa-banner-content">
       <i class="bi bi-arrow-clockwise" style="font-size: 1.7rem;"></i>
