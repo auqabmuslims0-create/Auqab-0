@@ -783,6 +783,60 @@
       .then(res => res.json())
       .then(data => {
         const unreadCount = data.unread_notifications || 0;
+
+        // === Phase 3: كشف المحتوى الجديد (لا يقفز الصفحة) ===
+        try {
+          const latestNotifId   = data.latest_notification_id   || 0;
+          const latestOrderId   = data.latest_new_order_id      || 0;
+          const latestProductId = data.latest_market_product_id || 0;
+          const bannerEl = document.getElementById('newContentBanner');
+
+          if (!window._lastLatestIds) {
+            window._lastLatestIds = {
+              notif: latestNotifId,
+              order: latestOrderId,
+              product: latestProductId
+            };
+          } else {
+            const prev = window._lastLatestIds;
+            const newOrders   = latestOrderId   > prev.order;
+            const newProducts = latestProductId > prev.product;
+            const path = window.location.pathname;
+            let showMsg = '';
+            if (newOrders && path.startsWith('/store/')) {
+              showMsg = 'لديك طلب جديد — اضغط للتحديث';
+            } else if (newProducts && path.startsWith('/market')) {
+              showMsg = 'منتجات جديدة — اضغط للتحديث';
+            }
+            if (showMsg && bannerEl) {
+              bannerEl.querySelector('span').textContent = showMsg;
+              const wasHidden = bannerEl.style.display !== 'flex';
+              bannerEl.style.display = 'flex';
+              if (wasHidden && !window._bannerVibrated) {
+                window._bannerVibrated = true;
+                if (navigator.vibrate) {
+                  try { navigator.vibrate([150, 80, 150]); } catch (_) {}
+                }
+              }
+            }
+            window._lastLatestIds = {
+              notif: latestNotifId,
+              order: latestOrderId,
+              product: latestProductId
+            };
+          }
+
+          // اهتزاز عند وصول إشعار غير مقروء جديد (نمط مميز)
+          const unreadNow = data.unread_notifications || 0;
+          if (window._lastUnreadForVibrate === undefined) {
+            window._lastUnreadForVibrate = unreadNow;
+          } else if (unreadNow > window._lastUnreadForVibrate) {
+            if (navigator.vibrate) {
+              try { navigator.vibrate([200, 100, 200, 100, 200]); } catch (_) {}
+            }
+            window._lastUnreadForVibrate = unreadNow;
+          }
+        } catch (_) { /* صامت */ }
         const unreadBadge = document.querySelector('.nav-badge-notifications[data-notif-badge]');
         const dot = document.getElementById('navNotificationDot');
         if (unreadCount > 0) {
@@ -1146,6 +1200,48 @@
       </div>
     </div>
   </div>
+
+
+  <!-- Phase 3: زر "محتوى جديد" العائم -->
+  <style>
+    .new-content-banner {
+      position: fixed;
+      top: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1500;
+      background: linear-gradient(135deg, #2e5d34, #4a8051);
+      color: #fff;
+      border: none;
+      border-radius: 25px;
+      padding: 10px 20px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      display: none;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+      cursor: pointer;
+      animation: newContentSlideDown 0.3s ease;
+      font-family: inherit;
+    }
+    body.dark-mode .new-content-banner {
+      background: linear-gradient(135deg, #d4af37, #b8951f);
+      color: #000;
+    }
+    .new-content-banner:hover { opacity: 0.95; }
+    .new-content-banner i { font-size: 1.1rem; }
+    @keyframes newContentSlideDown {
+      from { transform: translate(-50%, -20px); opacity: 0; }
+      to   { transform: translate(-50%, 0);    opacity: 1; }
+    }
+  </style>
+
+  <button id="newContentBanner" class="new-content-banner" type="button"
+          onclick="window.location.reload()" aria-live="polite">
+    <i class="bi bi-arrow-clockwise"></i>
+    <span>محتوى جديد — اضغط للتحديث</span>
+  </button>
 
   {% block scripts %}{% endblock %}
 </body>
