@@ -47,3 +47,11 @@ templates.bak.*
 customer.bak.infinite/
 templates/customer.bak.infinite/
 blueprints/*.bak.*
+
+# Local backups
+*.bak
+*.bak.*
+*.backup
+*.backup.*
+*.infinite
+*.bak.*.infinite
