@@ -254,6 +254,40 @@
     }
   </style>
   {% block head %}{% endblock %}
+
+  {# ===== منع تحديد النصوص والضغط المطوّل (يوضع بعد block head لضمان التفوق) ===== #}
+  <style>
+    *,
+    *::before,
+    *::after {
+      -webkit-user-select: none !important;
+      -moz-user-select: none !important;
+      -ms-user-select: none !important;
+      user-select: none !important;
+      -webkit-touch-callout: none !important;
+      -webkit-tap-highlight-color: transparent !important;
+    }
+    input,
+    textarea,
+    select,
+    [contenteditable="true"],
+    [contenteditable=""] {
+      -webkit-user-select: text !important;
+      -moz-user-select: text !important;
+      -ms-user-select: text !important;
+      user-select: text !important;
+      -webkit-touch-callout: default !important;
+    }
+    /* للسماح بالتحديد في عناصر محدّدة أضف class="allow-select" */
+    .allow-select,
+    .allow-select * {
+      -webkit-user-select: text !important;
+      -moz-user-select: text !important;
+      -ms-user-select: text !important;
+      user-select: text !important;
+      -webkit-touch-callout: default !important;
+    }
+  </style>
 </head>
 <body class="{% if show_bottom_nav %}with-bottom-nav{% else %}no-bottom-nav{% endif %}">
   <script>
@@ -328,11 +362,11 @@
               <li><a href="{{ url_for('market.market') }}" class="sidebar-menu-item"><i class="bi bi-shop ms-1"></i> السوق</a></li>
               <li><a href="{{ url_for('cart.cart') }}" class="sidebar-menu-item"><i class="bi bi-cart ms-1"></i> سلة المشتريات</a></li>
               <li><a href="{{ url_for('account.favorites') }}" class="sidebar-menu-item"><i class="bi bi-heart ms-1"></i> المفضلة</a></li>
-              <li><a href="{{ url_for('notifications.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1 nav-badge-notifications" data-notif-badge>{{ unread_notifications }}</span>>{% endif %}</a></li>
+              <li><a href="{{ url_for('notifications.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1 nav-badge-notifications" data-notif-badge>{{ unread_notifications }}</span>{% endif %}</a></li>
               <li><a href="{{ url_for('auth.account') }}" class="sidebar-menu-item"><i class="bi bi-gear ms-1"></i> الإعدادات</a></li>
             {% else %}
               <li><a href="{{ url_for('auth.account') }}" class="sidebar-menu-item"><i class="bi bi-gear ms-1"></i> الإعدادات</a></li>
-              <li><a href="{{ url_for('notifications.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1 nav-badge-notifications" data-notif-badge>{{ unread_notifications }}</span>>{% endif %}</a></li>
+              <li><a href="{{ url_for('notifications.notifications') }}" class="sidebar-menu-item"><i class="bi bi-bell ms-1"></i> الإشعارات{% if unread_notifications > 0 %}<span class="badge bg-warning text-dark ms-1 nav-badge-notifications" data-notif-badge>{{ unread_notifications }}</span>{% endif %}</a></li>
             {% endif %}
           {% else %}
             <li><a href="{{ url_for('auth.login') }}" class="sidebar-menu-item"><i class="bi bi-box-arrow-in-right ms-1"></i> تسجيل الدخول</a></li>
@@ -402,6 +436,26 @@
   <script src="{{ url_for('static', filename='js/navigation.js') }}"></script>
 
   <script>
+    // ===== منع قائمة الضغط المطوّل (نسخ/بحث/مشاركة) خارج حقول الإدخال =====
+    document.addEventListener('contextmenu', function(e) {
+      var t = e.target;
+      if (!t) return;
+      var tag = (t.tagName || '').toUpperCase();
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || t.isContentEditable) return;
+      if (t.closest && t.closest('.allow-select')) return;
+      e.preventDefault();
+    }, { capture: true });
+
+    // ===== منع النسخ عبر Ctrl+C / Cmd+C خارج حقول الإدخال =====
+    document.addEventListener('copy', function(e) {
+      var t = e.target;
+      if (!t) return;
+      var tag = (t.tagName || '').toUpperCase();
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || t.isContentEditable) return;
+      if (t.closest && t.closest('.allow-select')) return;
+      e.preventDefault();
+    });
+
     var csrfToken = "{{ csrf_token }}";
     window.csrfToken = csrfToken;
     window.isAuthenticated = {{ 'true' if current_user else 'false' }};
@@ -784,7 +838,6 @@
       .then(data => {
         const unreadCount = data.unread_notifications || 0;
 
-        // === Phase 3: كشف المحتوى الجديد (لا يقفز الصفحة) ===
         try {
           const latestNotifId   = data.latest_notification_id   || 0;
           const latestOrderId   = data.latest_new_order_id      || 0;
@@ -826,7 +879,6 @@
             };
           }
 
-          // اهتزاز عند وصول إشعار غير مقروء جديد (نمط مميز)
           const unreadNow = data.unread_notifications || 0;
           if (window._lastUnreadForVibrate === undefined) {
             window._lastUnreadForVibrate = unreadNow;
@@ -902,30 +954,17 @@
     // ====================================================================
     // PWA: Service Worker — Silent Auto-Update
     // ====================================================================
-    // عند نشر SW جديد:
-    //   1. يُثبَّت تلقائياً (skipWaiting في sw.js)
-    //   2. يستلم السيطرة (clients.claim)
-    //   3. controllerchange يُطلَق → auto-reload صامت
-    //
-    // الحمايات:
-    //   - لا reload عند أول تثبيت (hadController)
-    //   - لا reload إن كان المستخدم يكتب في حقل (تأجيل حتى يتركه، أو 30 ثانية حد أقصى)
-    //   - منع reload مزدوج (isReloading)
-    //   - fallback: إذا فشل auto-reload بعد 8 ثوانٍ → يظهر البانر
-    // ====================================================================
     (function() {
       if (!('serviceWorker' in navigator)) return;
 
       let isReloading = false;
       const hadController = !!navigator.serviceWorker.controller;
 
-      // auto-reload صامت عند تفعيل SW جديد
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (isReloading) return;
-        if (!hadController) return; // أول تثبيت — لا reload
+        if (!hadController) return;
         isReloading = true;
 
-        // افحص إن كان المستخدم يكتب
         const active = document.activeElement;
         const isTyping = active && (
           active.tagName === 'INPUT' ||
@@ -934,7 +973,6 @@
         );
 
         if (isTyping) {
-          // أجّل الـ reload حتى يترك الحقل
           let timeoutId = null;
           const waitForBlur = () => {
             const a = document.activeElement;
@@ -949,12 +987,10 @@
             }
           };
           document.addEventListener('focusout', waitForBlur, true);
-          // fallback: reload بعد 30 ثانية على أي حال
           timeoutId = setTimeout(() => window.location.reload(), 30 * 1000);
           return;
         }
 
-        // لا يكتب → reload فوري
         window.location.reload();
       });
 
@@ -962,30 +998,23 @@
         try {
           const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
 
-          // افحص التحديث فوراً عند كل تحميل (يتجاوز حماية 24 ساعة للمتصفح)
           reg.update().catch(() => {});
 
-          // فحص دوري كل 15 دقيقة
           setInterval(() => reg.update().catch(() => {}), 15 * 60 * 1000);
 
-          // فحص عند عودة التطبيق للمقدمة
           document.addEventListener('visibilitychange', () => {
             if (!document.hidden) {
               reg.update().catch(() => {});
             }
           });
 
-          // fallback: إن فشل auto-reload (SW stuck في waiting)
-          // → يظهر البانر بعد 8 ثوانٍ
           reg.addEventListener('updatefound', () => {
             const newWorker = reg.installing;
             if (!newWorker) return;
 
             newWorker.addEventListener('statechange', () => {
               if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                // SW مُثبَّت لكن لم يُفعَّل بعد
                 setTimeout(() => {
-                  // إن كان لا يزال waiting → اعرض البانر
                   if (newWorker.state === 'installed') {
                     showUpdateBanner(newWorker);
                   }
@@ -999,11 +1028,10 @@
       });
     })();
 
-    // fallback banner: يظهر فقط إذا فشل auto-reload
     function showUpdateBanner(newWorker) {
       const banner = document.getElementById('pwaUpdateBanner');
       if (!banner) return;
-      if (banner.style.display === 'block') return; // ممنوع التكرار
+      if (banner.style.display === 'block') return;
       banner.style.display = 'block';
       const btn = document.getElementById('pwaUpdateNow');
       if (btn && !btn.dataset.bound) {
@@ -1012,7 +1040,6 @@
           btn.disabled = true;
           btn.textContent = 'جاري التحديث...';
           newWorker.postMessage({ type: 'SKIP_WAITING' });
-          // controllerchange سيتولى reload
         });
       }
     }
@@ -1200,7 +1227,6 @@
       </div>
     </div>
   </div>
-
 
   <!-- Phase 3: زر "محتوى جديد" العائم -->
   <style>
