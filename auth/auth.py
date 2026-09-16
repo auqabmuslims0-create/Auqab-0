@@ -1,5 +1,5 @@
 import os
-from flask import render_template, request, redirect, url_for, session, flash
+from flask import render_template, request, redirect, url_for, session, flash, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from database import db
 from models import User
@@ -139,12 +139,8 @@ def show_public_id():
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
-    if 'user_id' in session:
-        user = db.session.get(User, session['user_id'])
-        if user:
-            from flask import g
-            g.user = user
-            return redirect(url_for('auth.dashboard'))
+    if 'user_id' in session and g.user:
+        return redirect(url_for('auth.dashboard'))
 
     login_error = None
     if request.method == 'POST':

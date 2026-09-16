@@ -43,6 +43,11 @@ from notifications import notifications_bp
 app = Flask(__name__)
 app.config['WTF_CSRF_SSL_STRICT'] = False
 
+# ═════ تحديد بيئة التشغيل ═════
+# FLASK_ENV=production → HTTPS صارم + Secure cookies
+# أي قيمة أخرى (development) → HTTP عادي (للتطوير المحلي)
+IS_PRODUCTION = os.environ.get('FLASK_ENV', 'development').lower() == 'production'
+
 if os.environ.get('TRUST_PROXY_HEADERS', '0') == '1':
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
@@ -56,7 +61,7 @@ limiter = Limiter(
 
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['SESSION_COOKIE_SECURE'] = os.environ.get('FLASK_DEBUG', 'False').lower() != 'true'
+app.config['SESSION_COOKIE_SECURE'] = IS_PRODUCTION
 app.config['SESSION_COOKIE_DOMAIN'] = None
 app.config['SESSION_COOKIE_PATH'] = '/'
 
@@ -74,7 +79,7 @@ csp_policy = (
     "worker-src 'self'; "
     "frame-src 'self'"
 )
-Talisman(app, content_security_policy=csp_policy, force_https=os.environ.get('FLASK_DEBUG', 'False').lower() != 'true')
+Talisman(app, content_security_policy=csp_policy, force_https=IS_PRODUCTION)
 
 csrf = CSRFProtect(app)
 for bp in [api_bp, social_bp, reels_bp, delivery_bp]:
@@ -85,7 +90,7 @@ def get_secret_key():
     key = os.environ.get('SECRET_KEY')
     if key:
         return key
-    if os.environ.get('FLASK_DEBUG', 'False').lower() == 'true':
+    if not IS_PRODUCTION:
         key_file = os.path.join(app.instance_path, '.secret_key')
         if os.path.exists(key_file):
             with open(key_file, 'r') as f:
@@ -106,7 +111,7 @@ def get_jwt_secret_key():
     key = os.environ.get('JWT_SECRET_KEY')
     if key:
         return key
-    if os.environ.get('FLASK_DEBUG', 'False').lower() == 'true':
+    if not IS_PRODUCTION:
         key_file = os.path.join(app.instance_path, '.jwt_secret_key')
         if os.path.exists(key_file):
             with open(key_file, 'r') as f:
