@@ -28,8 +28,16 @@ def home():
         return redirect(url_for('market.market'))
 
 
+import time as _time_module
+_active_shoppers_cache = {'count': 0, 'timestamp': 0.0}
+_ACTIVE_SHOPPERS_CACHE_TTL = 30  # ثانية
+
+
 def _get_active_shoppers_count():
-    """حساب عدد المستخدمين النشطين خلال آخر 30 ثانية."""
+    """حساب عدد المستخدمين النشطين خلال آخر 30 ثانية (مع cache داخلي)."""
+    now_ts = _time_module.time()
+    if now_ts - _active_shoppers_cache['timestamp'] < _ACTIVE_SHOPPERS_CACHE_TTL:
+        return _active_shoppers_cache['count']
     try:
         now = current_time()
         active_interval = timedelta(seconds=30)
@@ -41,9 +49,11 @@ def _get_active_shoppers_count():
                 User.is_active == True
             ) \
             .distinct().count()
+        _active_shoppers_cache['count'] = count
+        _active_shoppers_cache['timestamp'] = now_ts
         return count
     except Exception:
-        return 0
+        return _active_shoppers_cache.get('count', 0)
 
 
 @market_bp.route('/api/active-shoppers')
@@ -177,8 +187,13 @@ def market():
     # ===== استجابة AJAX: أرجِع فقط HTML fragment للبطاقات =====
     if _wants_json():
         user_reaction_map_ajax = {}
-        if 'user_id' in session:
-            for r in ProductReaction.query.filter_by(user_id=session['user_id']).all():
+        if 'user_id' in session and products_pagination.items:
+            product_ids = [p.id for p in products_pagination.items]
+            rows = ProductReaction.query.filter(
+                ProductReaction.user_id == session['user_id'],
+                ProductReaction.product_id.in_(product_ids)
+            ).all()
+            for r in rows:
                 user_reaction_map_ajax[r.product_id] = r.reaction_type
         html = render_template('customer/_product_cards.html',
                                products=products_pagination.items,
@@ -204,8 +219,12 @@ def market():
     cart_product_ids = set(cart.keys())
 
     user_reaction_map = {}
-    if 'user_id' in session:
-        user_reactions = ProductReaction.query.filter_by(user_id=session['user_id']).all()
+    if 'user_id' in session and products_pagination.items:
+        product_ids = [p.id for p in products_pagination.items]
+        user_reactions = ProductReaction.query.filter(
+            ProductReaction.user_id == session['user_id'],
+            ProductReaction.product_id.in_(product_ids)
+        ).all()
         for r in user_reactions:
             user_reaction_map[r.product_id] = r.reaction_type
 

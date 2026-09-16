@@ -1,9 +1,10 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, abort
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 from database import db
 from models import Product, CartItem, Store, Order, OrderItem, OrderStatusHistory, Payment, User
 from shared.time_utils import current_time
 from datetime import timedelta
+from sqlalchemy import or_, and_
 from shared.utils import safe_redirect_target, is_store_active, get_setting
 from shared.decorators import login_required
 from shared.services.order_service import OrderService
@@ -22,34 +23,49 @@ def _merge_cart_with_db(user_id, session_cart):
     if not user_id:
         return session_cart
 
+    # استعلام واحد لجلب كل cart items
     db_items = CartItem.query.filter_by(user_id=user_id).all()
-    db_cart = {str(item.product_id): item.quantity for item in db_items}
+    db_item_map = {item.product_id: item for item in db_items}
 
+    # توحيد session_cart مع db_cart
+    merged = {}
     for pid, qty in session_cart.items():
-        if pid in db_cart:
-            db_cart[pid] = max(db_cart[pid], qty)
-        else:
-            db_cart[pid] = qty
+        try:
+            merged[int(pid)] = int(qty)
+        except (ValueError, TypeError):
+            continue
+    for pid, item in db_item_map.items():
+        merged[pid] = max(merged.get(pid, 0), item.quantity)
 
-    for pid, qty in db_cart.items():
-        product_id = int(pid)
-        product = db.session.get(Product, product_id)
+    if not merged:
+        session['cart'] = {}
+        return {}
+
+    # استعلام واحد لجلب كل المنتجات
+    product_map = {
+        p.id: p for p in
+        Product.query.filter(Product.id.in_(merged.keys())).all()
+    }
+
+    for product_id, qty in merged.items():
+        product = product_map.get(product_id)
         if not product:
             continue
-        existing = CartItem.query.filter_by(
-            user_id=user_id, product_id=product_id
-        ).first()
+        new_qty = min(qty, product.stock_quantity)
+        existing = db_item_map.get(product_id)
         if existing:
-            existing.quantity = min(qty, product.stock_quantity)
+            existing.quantity = new_qty
         else:
             db.session.add(CartItem(
                 user_id=user_id,
                 product_id=product_id,
                 store_id=product.store_id,
-                quantity=min(qty, product.stock_quantity)
+                quantity=new_qty
             ))
 
-    updated_cart = {str(item.product_id): item.quantity for item in CartItem.query.filter_by(user_id=user_id).all()}
+    # نستخدم merged بدل إعادة الاستعلام — لا حاجة لقراءة الـ DB مرة أخرى
+    updated_cart = {str(pid): min(merged[pid], product_map[pid].stock_quantity)
+                    for pid in merged if pid in product_map}
     session['cart'] = updated_cart
     return updated_cart
 
@@ -94,18 +110,24 @@ def cart():
         user = db.session.get(User, session['user_id'])
         if user:
             cutoff = current_time() - timedelta(hours=24)
-            all_orders = Order.query.filter_by(customer_id=user.id).options(
-                joinedload(Order.store),
-                joinedload(Order.items).joinedload(OrderItem.product),
-                joinedload(Order.delivery_person)
+            # فلترة في SQL: كل الطلبات غير المُسلّمة + المُسلّمة خلال آخر 24 ساعة
+            orders = Order.query.filter(
+                Order.customer_id == user.id,
+                or_(
+                    Order.status != 'delivered',
+                    and_(
+                        Order.status == 'delivered',
+                        or_(
+                            Order.delivered_at >= cutoff,
+                            and_(Order.delivered_at.is_(None), Order.created_at >= cutoff)
+                        )
+                    )
+                )
+            ).options(
+                selectinload(Order.store),
+                selectinload(Order.items).selectinload(OrderItem.product),
+                selectinload(Order.delivery_person)
             ).order_by(Order.created_at.desc()).all()
-
-            for order in all_orders:
-                if order.status == 'delivered':
-                    delivered_time = order.delivered_at or order.created_at
-                    if delivered_time < cutoff:
-                        continue
-                orders.append(order)
 
     return render_template('customer/cart.html', grouped=grouped, orders=orders)
 
@@ -127,26 +149,45 @@ def sync_cart():
 
     if 'user_id' in session:
         user_id = session['user_id']
-        CartItem.query.filter_by(user_id=user_id).delete()
+
+        # 1) جهّز قائمة نظيفة (product_id → quantity)
+        clean_items = {}
         for pid_str, qty in local_cart.items():
             try:
-                product_id = int(pid_str)
-                qty = int(qty)
-                if qty < 1:
-                    continue
-                product = db.session.get(Product, product_id)
-                if not product:
-                    continue
-                db.session.add(CartItem(
-                    user_id=user_id,
-                    product_id=product_id,
-                    store_id=product.store_id,
-                    quantity=min(qty, product.stock_quantity)
-                ))
+                pid = int(pid_str)
+                q = int(qty)
+                if q >= 1:
+                    clean_items[pid] = q
             except (ValueError, TypeError):
                 continue
+
+        # 2) استعلام واحد لكل المنتجات
+        product_map = {}
+        if clean_items:
+            product_map = {
+                p.id: p for p in
+                Product.query.filter(Product.id.in_(clean_items.keys())).all()
+            }
+
+        # 3) احذف القديم ثم أضف الجديد
+        CartItem.query.filter_by(user_id=user_id).delete()
+
+        new_cart = {}
+        for pid, qty in clean_items.items():
+            product = product_map.get(pid)
+            if not product:
+                continue
+            final_qty = min(qty, product.stock_quantity)
+            db.session.add(CartItem(
+                user_id=user_id,
+                product_id=pid,
+                store_id=product.store_id,
+                quantity=final_qty
+            ))
+            new_cart[str(pid)] = final_qty
+
         db.session.commit()
-        session['cart'] = {str(item.product_id): item.quantity for item in CartItem.query.filter_by(user_id=user_id).all()}
+        session['cart'] = new_cart
         session.modified = True
     else:
         session['cart'] = {str(k): int(v) for k, v in local_cart.items() if int(v) > 0}
@@ -304,15 +345,21 @@ def clear_store_cart(store_id):
     if not cart:
         return redirect(url_for('cart.cart'))
 
-    products = Product.query.filter(Product.store_id == store_id).all()
-    for product in products:
-        cart.pop(str(product.id), None)
-        if 'user_id' in session:
-            CartItem.query.filter_by(
-                user_id=session['user_id'], product_id=product.id
-            ).delete()
+    # 1) احذف من الـ DB باستعلام واحد
     if 'user_id' in session:
+        CartItem.query.join(Product, CartItem.product_id == Product.id).filter(
+            CartItem.user_id == session['user_id'],
+            Product.store_id == store_id
+        ).delete(synchronize_session=False)
         db.session.commit()
+
+    # 2) احذف من session cart (استعلام واحد لقائمة product_ids لهذا المتجر)
+    product_ids = [
+        str(pid) for (pid,) in
+        db.session.query(Product.id).filter(Product.store_id == store_id).all()
+    ]
+    for pid in product_ids:
+        cart.pop(pid, None)
 
     _save_session_cart(cart)
     flash('تم مسح منتجات هذا المتجر من السلة', 'success')
