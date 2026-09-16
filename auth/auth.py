@@ -45,7 +45,7 @@ def register():
             session['reg_data'] = {
                 'username': username,
                 'email': email,
-                'phone': '+963' + phone if phone else ''
+                'phone': '+963' + phone if phone else None
             }
             return redirect(url_for('auth.register', step=2))
 
@@ -142,6 +142,8 @@ def login():
     if 'user_id' in session:
         user = db.session.get(User, session['user_id'])
         if user:
+            from flask import g
+            g.user = user
             return redirect(url_for('auth.dashboard'))
 
     login_error = None
@@ -191,7 +193,8 @@ def logout():
 @auth_bp.route('/dashboard')
 @login_required
 def dashboard():
-    user = db.session.get(User, session['user_id'])
+    from flask import g
+    user = g.user
     if not user:
         session.clear()
         return redirect(url_for('auth.login'))

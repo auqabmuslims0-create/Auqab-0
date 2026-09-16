@@ -55,6 +55,9 @@
     }
 
     function getCsrfToken() {
+        // نأخذ التوكن من meta tag مباشرة (أحدث من window.csrfToken عند cache)
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta && meta.content) return meta.content;
         return window.csrfToken || '';
     }
 

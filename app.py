@@ -133,6 +133,16 @@ else:
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# ضبط pool الاتصالات لـ PostgreSQL (Railway يقطع الاتصالات الخاملة بعد ~5 دقائق)
+# لـ SQLite لا نضبط pool لأنها لا تدعمها
+if database_url.startswith('postgresql'):
+    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+        'pool_pre_ping': True,
+        'pool_recycle': 280,
+        'pool_size': 5,
+        'max_overflow': 10,
+    }
 app.config['UPLOAD_FOLDER'] = os.path.join(app.root_path, 'static', 'uploads')
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 
@@ -377,12 +387,10 @@ def inject_show_bottom_nav():
 # بعد POST/PRG، يحتفظ المتصفح بنسخة قديمة من الصفحة السابقة في bfcache.
 # عند زر الرجوع، يعرض المتصفح تلك النسخة القديمة (بدون تحديثات POST).
 # `no-store` يجبر المتصفح على إعادة الجلب من السيرفر → عرض الحالة الحديثة.
+# ملاحظة مهمة: لا نضع هنا أي صفحة تحتوي على CSRF token أو بيانات جلسة.
+# الصفحات الديناميكية يجب أن تحصل على no-store لتفادي مشاكل "stale CSRF token".
 CACHEABLE_ENDPOINTS = frozenset({
     'static',
-    'auth.login', 'auth.register', 'auth.forgot_password',
-    'auth.confirm_identity', 'auth.reset_password', 'auth.show_public_id',
-    'services.services_page', 'services.contact',
-    'onboarding',
 })
 
 CACHEABLE_PATH_PREFIXES = ('/static/', '/api/', '/.well-known/')
