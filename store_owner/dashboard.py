@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, flash, abort, session
+from flask import render_template, request, redirect, url_for, flash, abort, session, g
 from database import db
 from models import User, Store, Product, Order, Category, Reel, Subscription, Review, ProductComment, ProductReaction
 from sqlalchemy import func
@@ -32,7 +32,7 @@ def _attach_days_remaining(stores):
 @store_bp.route('/my_stores')
 @role_required('owner')
 def my_stores():
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     from shared.services.subscription_service import SubscriptionService
     SubscriptionService.check_expiring_subscriptions()
 
@@ -44,7 +44,7 @@ def my_stores():
 @store_bp.route('/store/new', methods=['GET', 'POST'])
 @role_required('owner')
 def new_store():
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     step = request.args.get('step', 1, type=int)
 
     if request.method == 'POST':
@@ -69,7 +69,7 @@ def new_store():
             session['store_temp'] = {
                 'name': name,
                 'description': description,
-                'phone': '+963' + phone if phone else '',
+                'phone': '+963' + phone if phone else None,
                 'logo_url': logo_filename
             }
             return redirect(url_for('store.new_store', step=2))

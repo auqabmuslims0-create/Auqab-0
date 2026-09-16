@@ -1,4 +1,4 @@
-from flask import render_template, request, session, redirect, url_for, flash
+from flask import render_template, request, session, redirect, url_for, flash, g
 from datetime import timedelta
 from collections import defaultdict
 from database import db
@@ -27,7 +27,7 @@ RANGE_LABELS = {
 @store_bp.route('/store/stats')
 @role_required('owner')
 def store_stats():
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user:
         return redirect(url_for('auth.login'))
 

@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, session, flash, abort
+from flask import render_template, request, redirect, url_for, session, flash, abort, g
 from sqlalchemy import func, or_
 from database import db
 from models import User, Order, Store, Favorite, Review, ProductComment
@@ -79,7 +79,7 @@ def admin_users():
 @admin_bp.route('/admin/users/<int:user_id>/toggle', methods=['POST'])
 @role_required('admin')
 def admin_toggle_user(user_id):
-    admin_user = db.session.get(User, session['user_id'])
+    admin_user = g.user
     success, msg, _ = UserService.toggle_user_status(user_id, admin_user_id=admin_user.id)
     flash(msg, 'success' if success else 'error')
     return redirect(url_for('admin.admin_users'))
@@ -98,7 +98,7 @@ def admin_reset_password(user_id):
 @admin_bp.route('/admin/users/<int:user_id>/delete', methods=['POST'])
 @role_required('admin')
 def admin_delete_user(user_id):
-    admin_user = db.session.get(User, session['user_id'])
+    admin_user = g.user
     success, msg = UserService.delete_user_fully(user_id, admin_user_id=admin_user.id)
     flash(msg, 'success' if success else 'error')
     return redirect(url_for('admin.admin_users'))

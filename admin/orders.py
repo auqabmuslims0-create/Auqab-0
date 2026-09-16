@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, flash, session
+from flask import render_template, request, redirect, url_for, flash, session, g
 from sqlalchemy import or_
 from sqlalchemy.orm import selectinload
 from database import db
@@ -74,7 +74,7 @@ def admin_update_order_status(order_id):
     updated, error = OrderService.update_order_status_by_admin(
         order,
         new_status,
-        actor_id=session.get('user_id')
+        actor_id=g.user.id if g.user else None
     )
     if error:
         flash(error, 'error')

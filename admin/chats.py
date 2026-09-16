@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, session, flash
+from flask import render_template, request, redirect, url_for, session, flash, g
 from sqlalchemy import func, and_, or_
 from database import db
 from models import User, ChatMessage
@@ -10,7 +10,7 @@ from datetime import datetime
 @admin_bp.route('/admin/chats')
 @role_required('admin')
 def admin_chats():
-    admin_user = db.session.get(User, session['user_id'])
+    admin_user = g.user
 
     all_messages = ChatMessage.query.filter(
         (ChatMessage.sender_id == admin_user.id) | (ChatMessage.receiver_id == admin_user.id)
@@ -49,7 +49,7 @@ def admin_chats():
 @admin_bp.route('/admin/chats/<int:user_id>')
 @role_required('admin')
 def admin_chat_view(user_id):
-    admin_user = db.session.get(User, session['user_id'])
+    admin_user = g.user
     target_user = User.query.get_or_404(user_id)
 
     messages = ChatMessage.query.filter(
@@ -69,7 +69,7 @@ def admin_chat_view(user_id):
 @admin_bp.route('/admin/chats/send', methods=['POST'])
 @role_required('admin')
 def admin_send_message():
-    admin_user = db.session.get(User, session['user_id'])
+    admin_user = g.user
 
     user_id = request.form.get('user_id', type=int)
     message = request.form.get('message', '').strip()
