@@ -4,7 +4,7 @@
 // قاعدة ذهبية: لا نعترض cross-origin requests (Cloudinary, OSM, Fonts CDN...)
 // ============================================================
 
-const CACHE_VERSION = 16;
+const CACHE_VERSION = 17;
 
 const STATIC_CACHE = `husayniyyah-static-v${CACHE_VERSION}`;
 const HTML_CACHE   = `husayniyyah-html-v${CACHE_VERSION}`;
@@ -133,40 +133,21 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // ===== 4. صفحات HTML — Stale-While-Revalidate =====
+  // ===== 4. صفحات HTML — Network-First (بدون تخزين) =====
+  // لا نخزّن HTML نهائياً: يحتوي على CSRF tokens وبيانات مستخدم.
+  // عند فشل الشبكة نعرض offline.html فقط.
   if (request.mode === 'navigate') {
     event.respondWith((async () => {
-      const cache = await caches.open(HTML_CACHE);
-      const cached = await cache.match(request);
-
-      // ابدأ طلب الشبكة في الخلفية (لا تنتظره إن كان هناك cache)
-      const networkPromise = fetch(request)
-        .then(response => {
-          if (response.ok && response.type !== 'opaqueredirect') {
-            cache.put(request, response.clone());
-            trimCache(HTML_CACHE, MAX_HTML_ENTRIES);
-          }
-          return response;
-        })
-        .catch(() => null);
-
-      // إن كانت النسخة المخزّنة متاحة → أعطها فوراً
-      if (cached) {
-        return cached;
+      try {
+        return await fetch(request);
+      } catch (_) {
+        const offline = await caches.match('/static/offline.html');
+        if (offline) return offline;
+        return new Response('<h1>غير متصل</h1>', {
+          status: 503,
+          headers: { 'Content-Type': 'text/html; charset=utf-8' }
+        });
       }
-
-      // لا يوجد cache → انتظر الشبكة
-      const fresh = await networkPromise;
-      if (fresh) return fresh;
-
-      // فشل الاتصال → صفحة offline
-      const offline = await caches.match('/static/offline.html');
-      if (offline) return offline;
-
-      return new Response('<h1>غير متصل</h1>', {
-        status: 503,
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
-      });
     })());
     return;
   }
