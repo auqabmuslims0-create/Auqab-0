@@ -1,4 +1,4 @@
-from flask import session, redirect, url_for, abort, flash
+from flask import session, redirect, url_for, abort, flash, g
 from database import db
 from models import User, Store
 
@@ -6,14 +6,9 @@ def check_store_access(store_id):
     """التحقق من أن المستخدم الحالي هو صاحب المتجر وأنه نشط.
     يرجع (user, store) أو (None, redirect_response) في حال الخطأ.
     """
-    if 'user_id' not in session:
-        flash('يجب تسجيل الدخول أولاً', 'error')
-        return None, redirect(url_for('auth.login'))
-
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user:
-        session.clear()
-        flash('الجلسة غير صالحة، يرجى تسجيل الدخول مرة أخرى', 'error')
+        flash('يجب تسجيل الدخول أولاً', 'error')
         return None, redirect(url_for('auth.login'))
 
     if not user.is_active:
