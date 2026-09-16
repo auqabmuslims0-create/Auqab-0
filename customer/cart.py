@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, abort
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, abort, g
 from sqlalchemy.orm import joinedload, selectinload
 from database import db
 from models import Product, CartItem, Store, Order, OrderItem, OrderStatusHistory, Payment, User
@@ -107,7 +107,7 @@ def cart():
 
     orders = []
     if 'user_id' in session:
-        user = db.session.get(User, session['user_id'])
+        user = g.user
         if user:
             cutoff = current_time() - timedelta(hours=24)
             # فلترة في SQL: كل الطلبات غير المُسلّمة + المُسلّمة خلال آخر 24 ساعة
@@ -368,7 +368,7 @@ def clear_store_cart(store_id):
 @cart_bp.route('/cart/checkout/<int:store_id>', methods=['GET'])
 @login_required
 def checkout(store_id):
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user or not user.is_active:
         flash('الحساب محظور')
         return redirect(url_for('auth.login'))
@@ -421,7 +421,7 @@ def checkout(store_id):
 @cart_bp.route('/cart/checkout/<int:store_id>', methods=['POST'])
 @login_required
 def place_order(store_id):
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user or not user.is_active:
         if request.is_json:
             return jsonify({'message': 'الحساب محظور'}), 403
@@ -534,7 +534,7 @@ def place_order(store_id):
 @cart_bp.route('/cart/buy/<int:product_id>', methods=['GET'])
 @login_required
 def buy_product(product_id):
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user or not user.is_active:
         flash('الحساب محظور')
         return redirect(url_for('auth.login'))
@@ -582,7 +582,7 @@ def cancel_order(order_id):
 @cart_bp.route('/cart/order/<int:order_id>/delete', methods=['POST'])
 @login_required
 def delete_order(order_id):
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     order = Order.query.get_or_404(order_id)
 
     if order.customer_id != user.id:

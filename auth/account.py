@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, session, flash, jsonify
+from flask import render_template, request, redirect, url_for, session, flash, jsonify, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from database import db
 from models import User
@@ -13,7 +13,7 @@ import os
 @auth_bp.route('/account')
 @login_required
 def account():
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user:
         session.clear()
         return redirect(url_for('auth.login'))
@@ -22,7 +22,7 @@ def account():
 @auth_bp.route('/account/theme', methods=['POST'])
 @login_required
 def update_theme_preference():
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user:
         return jsonify({'status': 'error', 'message': 'غير مسموح'}), 401
 
@@ -46,7 +46,7 @@ def update_theme_preference():
 @auth_bp.route('/api/profile/sync', methods=['POST'])
 @login_required
 def profile_sync():
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user:
         return jsonify({'status': 'error', 'message': 'غير مسموح'}), 401
 
@@ -89,7 +89,7 @@ def profile_sync():
 @auth_bp.route('/account/unlock', methods=['POST'])
 @login_required
 def account_unlock():
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user:
         session.clear()
         return redirect(url_for('auth.login'))
@@ -112,7 +112,7 @@ def account_lock():
 @auth_bp.route('/account/update', methods=['POST'])
 @login_required
 def account_update():
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user:
         session.clear()
         return redirect(url_for('auth.login'))
@@ -174,7 +174,7 @@ def account_update():
 @auth_bp.route('/account/change_password', methods=['POST'])
 @login_required
 def account_change_password():
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user:
         session.clear()
         return redirect(url_for('auth.login'))
@@ -208,7 +208,7 @@ def account_change_password():
 @auth_bp.route('/account/delete', methods=['POST'])
 @login_required
 def account_delete():
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user:
         session.clear()
         return redirect(url_for('auth.login'))

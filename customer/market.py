@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, make_response
+from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, make_response, g
 from sqlalchemy.orm import selectinload
 from datetime import timedelta
 from database import db
@@ -14,7 +14,7 @@ market_bp = Blueprint('market', __name__)
 def home():
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user:
         session.clear()
         return redirect(url_for('auth.login'))

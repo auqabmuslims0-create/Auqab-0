@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, abort, jsonify, current_app
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, abort, jsonify, current_app, g
 from database import db
 from models import User, Order, OrderItem, Store, Notification
 from sqlalchemy import func
@@ -28,7 +28,7 @@ delivery_bp = Blueprint('delivery', __name__)
 @delivery_bp.route('/delivery')
 @role_required('delivery')
 def delivery_dashboard():
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user:
         session.clear()
         return redirect(url_for('auth.login'))
@@ -131,7 +131,7 @@ def delivery_dashboard():
 @role_required('delivery')
 def delivery_claim_order(order_id):
     """E1: المندوب يستلم طلباً متاحاً من المدينة بنفسه."""
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user:
         return redirect(url_for('auth.login'))
 
@@ -207,7 +207,7 @@ def delivery_claim_order(order_id):
 @role_required('delivery')
 def delivery_order_start(order_id):
     """S13: بدء التسليم يتطلب كود الاستلام من المتجر."""
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user:
         return redirect(url_for('auth.login'))
 
@@ -233,7 +233,7 @@ def delivery_order_start(order_id):
 @role_required('delivery')
 def delivery_order_deliver(order_id):
     """تأكيد التسليم النهائي للزبون عبر delivery_code."""
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user:
         return redirect(url_for('auth.login'))
 
@@ -258,7 +258,7 @@ def delivery_order_deliver(order_id):
 @delivery_bp.route('/delivery/availability', methods=['POST'])
 @role_required('delivery')
 def update_availability():
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user:
         return redirect(url_for('auth.login'))
 
@@ -366,12 +366,10 @@ def delivery_claim_order_api(current_user, order_id):
 @delivery_bp.route('/api/delivery/notifications', methods=['GET'])
 @api_login_required
 def delivery_notifications_api():
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'message': 'غير مسموح'}), 401
-    user = db.session.get(User, user_id)
+    user = g.user
     if not user or user.role != 'delivery':
         return jsonify({'message': 'غير مسموح'}), 403
+    user_id = user.id
     notifs = NotificationRepository.get_user_notifications(user_id, limit=5, filter_read=False)
     data = [{'title': n.title, 'message': n.message} for n in notifs]
     return jsonify({'status': 'success', 'notifications': data}), 200
