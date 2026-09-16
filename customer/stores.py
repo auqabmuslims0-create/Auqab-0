@@ -153,16 +153,24 @@ def store_public(store_id):
     store_videos = Product.query.filter(
         Product.store_id == store.id,
         Product.video.isnot(None)
-    ).options(joinedload(Product.store), joinedload(Product.category)).all()
+    ).options(
+        joinedload(Product.store),
+        joinedload(Product.category)
+    ).all()
 
     is_favorite = False
     if 'user_id' in session:
-        existing_fav = Favorite.query.filter_by(user_id=session['user_id'], store_id=store.id).first()
-        if existing_fav:
-            is_favorite = True
+        is_favorite = db.session.query(
+            Favorite.query.filter_by(
+                user_id=session['user_id'], store_id=store.id
+            ).exists()
+        ).scalar()
 
     open_status = is_store_open(store)
-    featured_products = Product.query.filter_by(store_id=store.id).order_by(Product.views.desc()).limit(5).all()
+    # featured_products يمكن أن يكون من products_pagination.items إن كان أقل من 5،
+    # لكن نبقي الاستعلام للترتيب حسب views
+    featured_products = Product.query.filter_by(store_id=store.id) \
+        .order_by(Product.views.desc()).limit(5).all()
 
     return render_template(
         'customer/store_public.html',

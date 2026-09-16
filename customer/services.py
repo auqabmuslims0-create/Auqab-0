@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash
+from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, flash, g
 from database import db
 from models import User, ChatMessage
 from shared.decorators import login_required
@@ -30,7 +30,7 @@ def contact():
 @services_bp.route('/contact/send', methods=['POST'])
 @login_required
 def send_contact_message():
-    user = db.session.get(User, session['user_id'])
+    user = g.user
     if not user:
         if _is_ajax():
             return jsonify({'status': 'error', 'message': 'جلسة غير صالحة'}), 401
@@ -75,7 +75,7 @@ def send_contact_message():
 @services_bp.route('/contact/messages')
 @login_required
 def fetch_contact_messages():
-    user_id = session['user_id']
+    user_id = g.user.id
     admin = User.query.filter_by(role='admin', is_active=True).first()
     if not admin:
         return jsonify({'status': 'success', 'messages': []})

@@ -217,7 +217,7 @@ def ensure_admin():
 
 # v1: cache لتقليل ضغط الكتابة على user_activity (يمنع SQLite lock)
 _user_activity_cache = {}
-_ACTIVITY_UPDATE_INTERVAL_SECONDS = 60  # حدّث آخر ظهور كل دقيقة كحد أقصى
+_ACTIVITY_UPDATE_INTERVAL_SECONDS = 300  # حدّث آخر ظهور كل 5 دقائق كحد أقصى
 
 
 @app.before_request

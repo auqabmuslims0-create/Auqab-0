@@ -40,7 +40,7 @@ def _get_active_shoppers_count():
         return _active_shoppers_cache['count']
     try:
         now = current_time()
-        active_interval = timedelta(seconds=30)
+        active_interval = timedelta(seconds=330)  # 5.5 دقيقة (يطابق فاصل تحديث last_seen)
         count = db.session.query(UserActivity.user_id) \
             .join(User, User.id == UserActivity.user_id) \
             .filter(

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, abort, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, abort, jsonify, g
 from sqlalchemy.orm import joinedload
 from database import db
 from models import User, Product, Store, Favorite, Review
@@ -57,26 +57,37 @@ def toggle_favorite_general():
 def sync_favorites():
     data = request.get_json(silent=True) or {}
     favs = data.get('favorites', {})
-    user_id = session['user_id']
-    products = favs.get('products', [])
-    stores = favs.get('stores', [])
+    user_id = g.user.id
 
+    # 1) تنظيف المدخلات
+    try:
+        product_ids = {int(p) for p in favs.get('products', []) if p}
+        store_ids = {int(s) for s in favs.get('stores', []) if s}
+    except (ValueError, TypeError):
+        return jsonify({'status': 'error', 'message': 'بيانات غير صالحة'}), 400
+
+    # 2) التحقق من الصلاحية باستعلام واحد لكل نوع
+    valid_product_ids = set()
+    if product_ids:
+        valid_product_ids = {
+            pid for (pid,) in
+            db.session.query(Product.id).filter(Product.id.in_(product_ids)).all()
+        }
+    valid_store_ids = set()
+    if store_ids:
+        valid_store_ids = {
+            sid for (sid,) in
+            db.session.query(Store.id).filter(Store.id.in_(store_ids)).all()
+        }
+
+    # 3) احذف وأضف في عملية واحدة
     Favorite.query.filter_by(user_id=user_id).delete()
-    for pid in products:
-        try:
-            pid_int = int(pid)
-            if Product.query.get(pid_int):
-                db.session.add(Favorite(user_id=user_id, product_id=pid_int))
-        except (ValueError, TypeError):
-            continue
-    for sid in stores:
-        try:
-            sid_int = int(sid)
-            if Store.query.get(sid_int):
-                db.session.add(Favorite(user_id=user_id, store_id=sid_int))
-        except (ValueError, TypeError):
-            continue
+    for pid in valid_product_ids:
+        db.session.add(Favorite(user_id=user_id, product_id=pid))
+    for sid in valid_store_ids:
+        db.session.add(Favorite(user_id=user_id, store_id=sid))
     db.session.commit()
+
     return jsonify({'status': 'success'})
 
 @account_bp.route('/favorites')
