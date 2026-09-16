@@ -77,7 +77,7 @@ csp_policy = (
 Talisman(app, content_security_policy=csp_policy, force_https=os.environ.get('FLASK_DEBUG', 'False').lower() != 'true')
 
 csrf = CSRFProtect(app)
-for bp in [api_bp, social_bp, reels_bp, delivery_bp, notifications_bp]:
+for bp in [api_bp, social_bp, reels_bp, delivery_bp]:
     csrf.exempt(bp)
 
 
@@ -262,17 +262,21 @@ CACHE_TIMEOUT = 30
 @app.context_processor
 def inject_notifications_count():
     if request.path.startswith('/api/') or request.path.startswith('/static/'):
+        g.unread_notifications = 0
         return dict(unread_notifications=0)
     if g.user is None:
+        g.unread_notifications = 0
         return dict(unread_notifications=0)
     user_id = g.user.id
     current_ts = time.time()
     cached = _notifications_cache.get(user_id)
     if cached and (current_ts - cached['timestamp'] < CACHE_TIMEOUT):
+        g.unread_notifications = cached['count']
         return dict(unread_notifications=cached['count'])
     from shared.services.notification_service import NotificationService
     unread_count = NotificationService.get_unread_count(user_id)
     _notifications_cache[user_id] = {'count': unread_count, 'timestamp': current_ts}
+    g.unread_notifications = unread_count
     return dict(unread_notifications=unread_count)
 
 

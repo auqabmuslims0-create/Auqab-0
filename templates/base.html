@@ -804,7 +804,7 @@
         if (form.method && form.method.toLowerCase() === 'post' && !form.querySelector('input[name="csrf_token"]')) {
           const input = document.createElement('input');
           input.type = 'hidden';
-          input.name = '_csrf_token';
+          input.name = 'csrf_token';
           input.value = csrfToken;
           form.appendChild(input);
         }

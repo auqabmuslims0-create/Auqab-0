@@ -79,13 +79,13 @@ def register():
             if role not in ['customer', 'owner']:
                 role = 'customer'
 
-            session['reg_data']['password'] = password
+            session['reg_data']['password_hash'] = generate_password_hash(password)
             session['reg_data']['role'] = role
             session.modified = True
             return redirect(url_for('auth.register', step=3))
 
         elif step == 3:
-            if 'reg_data' not in session or 'password' not in session['reg_data']:
+            if 'reg_data' not in session or 'password_hash' not in session['reg_data']:
                 flash('يرجى إكمال الخطوات السابقة', 'error')
                 return redirect(url_for('auth.register', step=1))
 
@@ -105,7 +105,7 @@ def register():
                 username=reg['username'],
                 email=reg['email'],
                 phone=reg.get('phone'),
-                password_hash=generate_password_hash(reg['password']),
+                password_hash=reg['password_hash'],
                 role=reg['role'],
                 public_id=generate_public_id(),
                 avatar=avatar_url,
@@ -119,12 +119,12 @@ def register():
             session['user_id'] = user.id
             session['role'] = user.role
             session['new_public_id'] = user.public_id
-            session.permanent = True  # جعل الجلسة دائمة
+            session.permanent = True
             return redirect(url_for('auth.show_public_id'))
 
     if step == 2 and 'reg_data' not in session:
         return redirect(url_for('auth.register', step=1))
-    if step == 3 and ('reg_data' not in session or 'password' not in session['reg_data']):
+    if step == 3 and ('reg_data' not in session or 'password_hash' not in session['reg_data']):
         return redirect(url_for('auth.register', step=1))
 
     return render_template('auth/register.html', step=step)
@@ -170,7 +170,7 @@ def login():
             session.clear()
             session['user_id'] = user.id
             session['role'] = user.role
-            session.permanent = True  # جعل الجلسة دائمة دائمًا (تجاهل remember_me)
+            session.permanent = True
             clear_login_attempts(ip)
 
             flash('تم تسجيل الدخول', 'success')
