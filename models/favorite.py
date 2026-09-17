@@ -25,4 +25,4 @@ class Favorite(db.Model):
 
     user = db.relationship('User', back_populates='favorites')
     product = db.relationship('Product', back_populates='favorites')
-    store = db.relationship('Store')
+    store = db.relationship('Store', back_populates='favorites')

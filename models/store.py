@@ -41,6 +41,7 @@ class Store(db.Model):
     cart_items = db.relationship('CartItem', back_populates='store', cascade="all, delete-orphan")
     payments = db.relationship('Payment', back_populates='store')
     reels = db.relationship('Reel', back_populates='store', cascade="all, delete-orphan")
+    favorites = db.relationship('Favorite', back_populates='store', cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<Store {self.name}>'
