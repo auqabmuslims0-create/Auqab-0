@@ -7,8 +7,11 @@ from shared.validators import is_valid_email, is_valid_phone_syrian, is_strong_p
 from shared.security import (
     record_login_attempt,
     get_login_attempts,
+    get_login_attempts_for_user,
     clear_login_attempts,
     get_client_ip,
+    encrypt_session_secret,
+    decrypt_session_secret,
 )
 from shared.utils import generate_public_id, save_image
 from shared.decorators import login_required
@@ -84,7 +87,11 @@ def register():
             if role not in ['customer', 'owner']:
                 role = 'customer'
 
-            session['reg_data']['password_hash'] = generate_password_hash(password)
+            # تشفير password_hash قبل وضعه في الجلسة — Flask sessions
+            # غير مشفّرة افتراضياً، فتخزين الهاش صريحاً يعرّضه لأي XSS.
+            session['reg_data']['password_hash'] = encrypt_session_secret(
+                generate_password_hash(password)
+            )
             session['reg_data']['role'] = role
             session.modified = True
             return redirect(url_for('auth.register', step=3))
@@ -95,6 +102,14 @@ def register():
                 return redirect(url_for('auth.register', step=1))
 
             reg = session['reg_data']
+
+            # فك تشفير password_hash (مع دعم الجلسات القديمة غير المشفّرة)
+            password_hash = decrypt_session_secret(reg.get('password_hash'))
+            if not password_hash:
+                flash('انتهت صلاحية جلسة التسجيل، يرجى البدء من جديد', 'error')
+                session.pop('reg_data', None)
+                return redirect(url_for('auth.register', step=1))
+
             avatar_file = request.files.get('avatar')
             bio = request.form.get('bio', '').strip()
 
@@ -110,7 +125,7 @@ def register():
                 username=reg['username'],
                 email=reg['email'],
                 phone=reg.get('phone'),
-                password_hash=reg['password_hash'],
+                password_hash=password_hash,
                 role=reg['role'],
                 public_id=generate_public_id(),
                 avatar=avatar_url,
@@ -119,11 +134,8 @@ def register():
             db.session.add(user)
             db.session.commit()
 
-            # إزالة بيانات التسجيل فقط — لا نمسح الجلسة كاملة حفاظاً على csrf_token
-            session.pop('reg_data', None)
-            session.pop('user_id', None)
-            session.pop('role', None)
-            session.pop('new_public_id', None)
+            # إعادة توليد الجلسة بعد التسجيل — يمنع أي fixation (نفس سلوك login)
+            session.clear()
             session['user_id'] = user.id
             session['role'] = user.role
             session['new_public_id'] = user.public_id
@@ -160,6 +172,7 @@ def login():
 
         ip = get_client_ip()
 
+        # القيد الأول: 5 محاولات لكل IP خلال 5 دقائق (يحمي شبكات NAT المشتركة)
         if get_login_attempts(ip) >= 5:
             flash('تم تجاوز عدد المحاولات المسموح، حاول بعد 5 دقائق', 'danger')
             return render_template('auth/login.html', login_error=None)
@@ -167,6 +180,12 @@ def login():
         user = User.query.filter(
             (User.username == login_id) | (User.email == login_id)
         ).first()
+
+        # القيد الثاني: 15 محاولة لهذا المستخدم عبر جميع الـ IPs
+        # يحمي من هجمات IP rotation على حساب محدد
+        if user and get_login_attempts_for_user(user.id) >= 15:
+            flash('تم تجاوز عدد المحاولات المسموح لهذا الحساب، حاول بعد 15 دقيقة', 'danger')
+            return render_template('auth/login.html', login_error=None)
 
         if user and check_password_hash(user.password_hash, password):
             if not user.is_active:
@@ -182,7 +201,8 @@ def login():
             flash('تم تسجيل الدخول', 'success')
             return redirect(url_for('auth.dashboard'))
         else:
-            record_login_attempt(ip)
+            # ربط المحاولة بـ user_id إن وُجد — يُمكّن القيد الثاني أعلاه
+            record_login_attempt(ip, user_id=user.id if user else None)
             return render_template('auth/login.html', login_error='بيانات الدخول غير صحيحة، يرجى التحقق والمحاولة مرة أخرى.')
 
     return render_template('auth/login.html', login_error=login_error)

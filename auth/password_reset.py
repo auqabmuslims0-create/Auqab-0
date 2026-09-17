@@ -3,8 +3,6 @@ from werkzeug.security import generate_password_hash
 from database import db
 from models import User, PasswordReset
 from shared.repositories.user_repository import UserRepository
-import secrets
-import hashlib
 from datetime import timedelta
 from shared.validators import is_strong_password
 from shared.security import (
@@ -12,6 +10,8 @@ from shared.security import (
     get_reset_attempts_by_email,
     get_reset_attempts_by_ip,
     get_client_ip,
+    generate_secure_token,
+    hash_token,
 )
 from shared.time_utils import current_time
 from . import auth_bp
@@ -52,6 +52,18 @@ def confirm_identity():
         return redirect(url_for('auth.forgot_password'))
 
     if request.method == 'POST':
+        ip = get_client_ip()
+
+        # Rate limit: منع تخمين بيانات الهوية بالقوة الغاشمة.
+        # القيد أدق من forgot_password لأن بيانات الهوية الأربعة أكثر تعقيداً.
+        if get_reset_attempts_by_email(email) >= 5:
+            flash('تم تجاوز عدد المحاولات المسموح، حاول بعد 15 دقيقة', 'error')
+            return redirect(url_for('auth.forgot_password'))
+
+        if get_reset_attempts_by_ip(ip) >= 10:
+            flash('تم تجاوز عدد المحاولات من هذا الجهاز، حاول بعد 15 دقيقة', 'error')
+            return redirect(url_for('auth.forgot_password'))
+
         username = request.form.get('username', '').strip()
         phone = request.form.get('phone', '').strip()
         public_id = request.form.get('public_id', '').strip()
@@ -64,6 +76,8 @@ def confirm_identity():
         user = UserRepository.get_by_email(email)
         expected_phone = '+963' + phone if phone else ''
         if not user or user.username != username or user.phone != expected_phone or user.public_id != public_id or user.role != role:
+            # تسجيل المحاولة الفاشلة — بدون هذا كان المسار بلا حد
+            record_reset_attempt(email, ip)
             flash('بيانات الهوية غير صحيحة', 'error')
             return redirect(url_for('auth.confirm_identity'))
 
@@ -71,11 +85,12 @@ def confirm_identity():
             # حذف أي رموز سابقة لنفس المستخدم
             PasswordReset.query.filter_by(user_id=user.id).delete()
 
-            token = secrets.token_hex(20)
-            hashed_token = hashlib.sha256(token.encode()).hexdigest()
+            # نفس مستوى العشوائية السابق: 20 بايت = 160 بت
+            token = generate_secure_token(20)
+            hashed = hash_token(token)
             reset = PasswordReset(
                 user_id=user.id,
-                token=hashed_token,
+                token=hashed,
                 expires_at=current_time() + timedelta(hours=1)
             )
             db.session.add(reset)
@@ -97,8 +112,8 @@ def confirm_identity():
 def reset_password(token=None):
     reset = None
     if token:
-        hashed_token = hashlib.sha256(token.encode()).hexdigest()
-        reset = PasswordReset.query.filter_by(token=hashed_token).first()
+        hashed = hash_token(token)
+        reset = PasswordReset.query.filter_by(token=hashed).first()
         if not reset or reset.expires_at < current_time():
             flash('الرابط غير صالح أو منتهي', 'error')
             return redirect(url_for('auth.forgot_password'))
