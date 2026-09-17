@@ -4,12 +4,11 @@ import secrets
 import time
 import signal
 from datetime import timedelta
-from urllib.parse import urlparse, urlunparse
 from dotenv import load_dotenv
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from flask import Flask, render_template, request, redirect, url_for, session, flash, abort, g
+from flask import Flask, render_template, request, redirect, url_for, session, flash, g
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
@@ -20,6 +19,8 @@ import models
 from werkzeug.security import generate_password_hash
 from flask_wtf.csrf import CSRFProtect
 from shared.time_utils import current_time
+from sqlalchemy.exc import IntegrityError
+from shared.utils import generate_public_id
 
 load_dotenv()
 
@@ -51,6 +52,11 @@ IS_PRODUCTION = os.environ.get('FLASK_ENV', 'development').lower() == 'productio
 if os.environ.get('TRUST_PROXY_HEADERS', '0') == '1':
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
+# ملاحظة: gunicorn يُشغّل --workers 1 + --threads 4 (انظر Procfile).
+# RATELIMIT_STORAGE_URI=memory:// (عدّاد واحد داخل العملية الواحدة).
+# الفعلي في الإنتاج = القيم المعلنة (1000/يوم و100/ساعة لكل IP).
+# النقاط الحرجة (login/register/password/unlock) محمية بشكل مستقل
+# عبر DB-based rate limiting في shared.security.
 app.config['RATELIMIT_STORAGE_URI'] = 'memory://'
 limiter = Limiter(
     app=app,
@@ -211,7 +217,7 @@ def ensure_admin():
                 password_hash=generate_password_hash(admin_password),
                 role='admin',
                 is_active=True,
-                public_id=secrets.token_hex(4).upper()
+                public_id=generate_public_id()
             )
             db.session.add(admin)
             db.session.commit()
@@ -245,7 +251,11 @@ def before_request_checks():
                     else:
                         activity = models.UserActivity(user_id=user.id, last_seen=now)
                         db.session.add(activity)
-                    db.session.commit()
+                    try:
+                        db.session.commit()
+                    except IntegrityError:
+                        # Race condition: طلب متزامن أنشأ الصف أولاً — نتجاهل
+                        db.session.rollback()
                     _user_activity_cache[user.id] = now
             except Exception as e:
                 db.session.rollback()
@@ -257,10 +267,10 @@ def before_request_checks():
         return
     public_endpoints = [
         'auth.login', 'auth.register', 'auth.forgot_password', 'auth.confirm_identity',
-        'auth.reset_password', 'auth.show_public_id', 'static',
-        'market.home', 'market.market', 'market.search', 'market.search_suggestions',
+        'auth.reset_password', 'auth.show_public_id', 'static', 'service_worker', 'assetlinks',
+        'market.home', 'market.market', 'market.search_suggestions',
         'stores.stores_page', 'stores.store_public', 'stores.product_public',
-        'offers.offers_page', 'reels.reels_page', 'services.services_page', 'services.contact',
+        'offers.offers_page', 'reels.reels_page', 'services.services_page',
         'onboarding'
     ]
     if g.user is None:
