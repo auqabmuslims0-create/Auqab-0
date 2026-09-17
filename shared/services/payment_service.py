@@ -15,6 +15,7 @@ class PaymentService:
         if not user_id:
             return None, 'معرف المستخدم مطلوب'
 
+        # PaymentRepository.create يُنفّذ db.session.add بالفعل — لا نكرره
         payment = PaymentRepository.create({
             'user_id': user_id,
             'order_id': order_id,
@@ -27,7 +28,6 @@ class PaymentService:
             'proof_image': proof_image,
             'notes': notes
         })
-        db.session.add(payment)
         return payment, None
 
     @staticmethod

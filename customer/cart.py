@@ -1,17 +1,21 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, abort, g
 from sqlalchemy.orm import joinedload, selectinload
 from database import db
-from models import Product, CartItem, Store, Order, OrderItem, Payment, User
+from models import Product, Store, Order, OrderItem
 from shared.time_utils import current_time
 from datetime import timedelta
 from sqlalchemy import or_, and_
-from shared.utils import safe_redirect_target, is_store_active, get_setting
+from shared.utils import safe_redirect_target, is_store_active
 from shared.decorators import login_required
 from shared.services.order_service import OrderService
+from shared.services.cart_service import CartService
 
 cart_bp = Blueprint('cart', __name__)
 
 
+# ═══════════════════════════════════════════════════════════════
+# أدوات الجلسة (HTTP-specific — تبقى في الـ blueprint)
+# ═══════════════════════════════════════════════════════════════
 def _get_session_cart():
     return session.get('cart', {})
 
@@ -21,70 +25,31 @@ def _save_session_cart(cart):
     session.modified = True
 
 
-def _merge_cart_with_db(user_id, session_cart):
-    """دمج سلة الجلسة مع سلة قاعدة البيانات، دون commit (يترك للمتصل)."""
-    if not user_id:
-        return session_cart
-
-    # استعلام واحد لجلب كل cart items
-    db_items = CartItem.query.filter_by(user_id=user_id).all()
-    db_item_map = {item.product_id: item for item in db_items}
-
-    # توحيد session_cart مع db_cart
-    merged = {}
-    for pid, qty in session_cart.items():
-        try:
-            merged[int(pid)] = int(qty)
-        except (ValueError, TypeError):
-            continue
-    for pid, item in db_item_map.items():
-        merged[pid] = max(merged.get(pid, 0), item.quantity)
-
-    if not merged:
-        session['cart'] = {}
-        return {}
-
-    # استعلام واحد لجلب كل المنتجات
-    product_map = {
-        p.id: p for p in
-        Product.query.filter(Product.id.in_(merged.keys())).all()
-    }
-
-    for product_id, qty in merged.items():
-        product = product_map.get(product_id)
-        if not product:
-            continue
-        new_qty = min(qty, product.stock_quantity)
-        existing = db_item_map.get(product_id)
-        if existing:
-            existing.quantity = new_qty
-        else:
-            db.session.add(CartItem(
-                user_id=user_id,
-                product_id=product_id,
-                store_id=product.store_id,
-                quantity=new_qty
-            ))
-
-    # نستخدم merged بدل إعادة الاستعلام — لا حاجة لقراءة الـ DB مرة أخرى
-    updated_cart = {str(pid): min(merged[pid], product_map[pid].stock_quantity)
-                    for pid in merged if pid in product_map}
-    session['cart'] = updated_cart
-    return updated_cart
-
-
 def _is_ajax():
     return request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.accept_json
 
 
+def _load_active_stores():
+    """B1: قائمة المتاجر النشطة ذات إحداثيات — لعرض الخريطة في checkout."""
+    return Store.query.filter(
+        Store.subscription_status == 'active',
+        Store.latitude.isnot(None),
+        Store.longitude.isnot(None)
+    ).all()
+
+
+# ═══════════════════════════════════════════════════════════════
+# عرض السلة والطلبات
+# ═══════════════════════════════════════════════════════════════
 @cart_bp.route('/cart')
 def cart():
     if 'user_id' in session:
         user_id = session['user_id']
-        session_cart = _get_session_cart()
-        _merge_cart_with_db(user_id, session_cart)
+        merged = CartService.merge_session_with_db(user_id, _get_session_cart())
         if db.session.dirty or db.session.new:
             db.session.commit()
+        session['cart'] = merged
+        session.modified = True
 
     cart = _get_session_cart()
     grouped = {}
@@ -106,7 +71,7 @@ def cart():
             store_id = item['product'].store_id
             if store_id not in grouped:
                 grouped[store_id] = {'store': item['product'].store, 'cart_items': [], 'total': 0}
-            effective_price = OrderService.get_effective_price(item['product'])
+            effective_price = item['product'].effective_price
             grouped[store_id]['cart_items'].append(item)
             grouped[store_id]['total'] += effective_price * item['quantity']
 
@@ -115,7 +80,6 @@ def cart():
         user = g.user
         if user:
             cutoff = current_time() - timedelta(hours=24)
-            # فلترة في SQL: كل الطلبات غير المُسلّمة + المُسلّمة خلال آخر 24 ساعة
             orders = Order.query.filter(
                 Order.customer_id == user.id,
                 or_(
@@ -140,9 +104,11 @@ def cart():
 @cart_bp.route('/cart/count')
 def cart_count():
     if 'user_id' in session:
-        _merge_cart_with_db(session['user_id'], _get_session_cart())
+        merged = CartService.merge_session_with_db(session['user_id'], _get_session_cart())
         if db.session.dirty or db.session.new:
             db.session.commit()
+        session['cart'] = merged
+        session.modified = True
     cart = _get_session_cart()
     return jsonify({'cart_count': sum(cart.values())})
 
@@ -156,54 +122,21 @@ def sync_cart():
 
     if 'user_id' in session:
         user_id = session['user_id']
-
-        # 1) جهّز قائمة نظيفة (product_id → quantity)
-        clean_items = {}
-        for pid_str, qty in local_cart.items():
-            try:
-                pid = int(pid_str)
-                q = int(qty)
-                if q >= 1:
-                    clean_items[pid] = q
-            except (ValueError, TypeError):
-                continue
-
-        # 2) استعلام واحد لكل المنتجات
-        product_map = {}
-        if clean_items:
-            product_map = {
-                p.id: p for p in
-                Product.query.filter(Product.id.in_(clean_items.keys())).all()
-            }
-
-        # 3) احذف القديم ثم أضف الجديد
-        CartItem.query.filter_by(user_id=user_id).delete()
-
-        new_cart = {}
-        for pid, qty in clean_items.items():
-            product = product_map.get(pid)
-            if not product:
-                continue
-            final_qty = min(qty, product.stock_quantity)
-            db.session.add(CartItem(
-                user_id=user_id,
-                product_id=pid,
-                store_id=product.store_id,
-                quantity=final_qty
-            ))
-            new_cart[str(pid)] = final_qty
-
+        new_cart = CartService.sync_from_client(user_id, local_cart)
         db.session.commit()
         session['cart'] = new_cart
-        session.modified = True
     else:
-        session['cart'] = {str(k): int(v) for k, v in local_cart.items() if int(v) > 0}
-        session.modified = True
+        clean = CartService.sanitize_client_cart(local_cart)
+        session['cart'] = {str(k): v for k, v in clean.items()}
+    session.modified = True
 
     cart = _get_session_cart()
     return jsonify({'status': 'success', 'cart_count': sum(cart.values())})
 
 
+# ═══════════════════════════════════════════════════════════════
+# إضافة / تعديل / إزالة
+# ═══════════════════════════════════════════════════════════════
 @cart_bp.route('/cart/add/<int:product_id>', methods=['POST'])
 def add_to_cart(product_id):
     product = db.get_or_404(Product, product_id)
@@ -222,27 +155,13 @@ def add_to_cart(product_id):
         return redirect(request.referrer or url_for('market.market'))
 
     cart[str(product_id)] = current_qty + quantity
-    _save_session_cart(cart)
 
     if 'user_id' in session:
-        user_id = session['user_id']
-        existing = CartItem.query.filter_by(
-            user_id=user_id, product_id=product_id
-        ).first()
-        if existing:
-            existing.quantity = min(existing.quantity + quantity, product.stock_quantity)
-        else:
-            db.session.add(CartItem(
-                user_id=user_id,
-                product_id=product_id,
-                store_id=product.store_id,
-                quantity=min(quantity, product.stock_quantity)
-            ))
-        db.session.commit()
-        db_items = CartItem.query.filter_by(user_id=user_id).all()
-        session['cart'] = {str(item.product_id): item.quantity for item in db_items}
+        # مزامنة DB وإعادة بناء السلة من DB — نفس سلوك الكود السابق
+        cart = CartService.add_to_db_cart(session['user_id'], product, quantity)
 
-    cart = _get_session_cart()
+    _save_session_cart(cart)
+
     if is_ajax:
         return jsonify({'status': 'success', 'message': 'تمت الإضافة إلى السلة', 'cart_count': sum(cart.values())})
     flash('تمت الإضافة إلى السلة')
@@ -259,58 +178,38 @@ def update_cart(product_id):
     cart = _get_session_cart()
     pid_str = str(product_id)
     is_ajax = _is_ajax()
+    stock_error = False
 
     if action == 'remove':
         cart.pop(pid_str, None)
         if 'user_id' in session:
-            CartItem.query.filter_by(
-                user_id=session['user_id'], product_id=product_id
-            ).delete()
-            db.session.commit()
+            CartService.remove_from_db_cart(session['user_id'], product_id)
     else:
         new_qty = request.form.get('quantity', 1, type=int) or 1
         if new_qty < 1:
             cart.pop(pid_str, None)
             if 'user_id' in session:
-                CartItem.query.filter_by(
-                    user_id=session['user_id'], product_id=product_id
-                ).delete()
-                db.session.commit()
+                CartService.remove_from_db_cart(session['user_id'], product_id)
         elif new_qty > product.stock_quantity:
             cart[pid_str] = product.stock_quantity
+            stock_error = True
             if 'user_id' in session:
-                existing = CartItem.query.filter_by(
-                    user_id=session['user_id'], product_id=product_id
-                ).first()
-                if existing:
-                    existing.quantity = product.stock_quantity
-                    db.session.commit()
-            _save_session_cart(cart)
-            if is_ajax:
-                return jsonify({'status': 'error', 'message': 'المخزون غير كافٍ', 'cart_count': sum(cart.values())}), 400
-            flash('المخزون غير كافٍ', 'error')
-            return redirect(request.referrer or url_for('cart.cart'))
+                CartService.set_quantity(session['user_id'], product, product.stock_quantity)
         else:
             cart[pid_str] = new_qty
             if 'user_id' in session:
-                existing = CartItem.query.filter_by(
-                    user_id=session['user_id'], product_id=product_id
-                ).first()
-                if existing:
-                    existing.quantity = new_qty
-                else:
-                    db.session.add(CartItem(
-                        user_id=session['user_id'],
-                        product_id=product_id,
-                        store_id=product.store_id,
-                        quantity=new_qty
-                    ))
-                db.session.commit()
+                CartService.set_quantity(session['user_id'], product, new_qty)
 
     _save_session_cart(cart)
 
     if is_ajax:
-        effective_price = OrderService.get_effective_price(product)
+        if stock_error:
+            return jsonify({
+                'status': 'error',
+                'message': 'المخزون غير كافٍ',
+                'cart_count': sum(cart.values())
+            }), 400
+        effective_price = product.effective_price
         item_total = effective_price * cart.get(pid_str, 0)
         return jsonify({
             'status': 'success',
@@ -318,6 +217,9 @@ def update_cart(product_id):
             'item_total': item_total,
             'quantity': cart.get(pid_str, 0)
         })
+
+    if stock_error:
+        flash('المخزون غير كافٍ', 'error')
     return redirect(request.referrer or url_for('cart.cart'))
 
 
@@ -330,10 +232,7 @@ def remove_from_cart(product_id):
     _save_session_cart(cart)
 
     if 'user_id' in session:
-        CartItem.query.filter_by(
-            user_id=session['user_id'], product_id=product_id
-        ).delete()
-        db.session.commit()
+        CartService.remove_from_db_cart(session['user_id'], product_id)
 
     if _is_ajax():
         return jsonify({'status': 'success', 'message': 'تمت إزالة المنتج من السلة', 'cart_count': sum(cart.values())})
@@ -345,8 +244,7 @@ def remove_from_cart(product_id):
 def clear_cart():
     session.pop('cart', None)
     if 'user_id' in session:
-        CartItem.query.filter_by(user_id=session['user_id']).delete()
-        db.session.commit()
+        CartService.clear_user_cart(session['user_id'])
     flash('تم مسح السلة بالكامل', 'success')
     return redirect(url_for('cart.cart'))
 
@@ -357,19 +255,10 @@ def clear_store_cart(store_id):
     if not cart:
         return redirect(url_for('cart.cart'))
 
-    # 1) احذف من الـ DB باستعلام واحد
     if 'user_id' in session:
-        CartItem.query.join(Product, CartItem.product_id == Product.id).filter(
-            CartItem.user_id == session['user_id'],
-            Product.store_id == store_id
-        ).delete(synchronize_session=False)
-        db.session.commit()
+        CartService.clear_store_cart(session['user_id'], store_id)
 
-    # 2) احذف من session cart (استعلام واحد لقائمة product_ids لهذا المتجر)
-    product_ids = [
-        str(pid) for (pid,) in
-        db.session.query(Product.id).filter(Product.store_id == store_id).all()
-    ]
+    product_ids = CartService.get_store_product_ids(store_id)
     for pid in product_ids:
         cart.pop(pid, None)
 
@@ -378,6 +267,9 @@ def clear_store_cart(store_id):
     return redirect(url_for('cart.cart'))
 
 
+# ═══════════════════════════════════════════════════════════════
+# الدفع
+# ═══════════════════════════════════════════════════════════════
 @cart_bp.route('/cart/checkout/<int:store_id>', methods=['GET'])
 @login_required
 def checkout(store_id):
@@ -413,22 +305,15 @@ def checkout(store_id):
         flash('لا توجد منتجات لهذا المتجر في السلة')
         return redirect(url_for('cart.cart'))
 
-    product_total = sum(OrderService.get_effective_price(item['product']) * item['quantity'] for item in items)
-    delivery_fee = float(get_setting('delivery_fee', 100)) if store.has_delivery else 0.0
-    grand_total = product_total + delivery_fee
-
-    all_stores = Store.query.filter(
-        Store.subscription_status == 'active',
-        Store.latitude.isnot(None),
-        Store.longitude.isnot(None)
-    ).all()
+    totals = OrderService.compute_order_totals(store, items)
+    all_stores = _load_active_stores()
 
     return render_template('customer/checkout.html',
                            store=store,
                            items=items,
-                           total=product_total,
-                           delivery_fee=delivery_fee,
-                           grand_total=grand_total,
+                           total=totals['product_total'],
+                           delivery_fee=totals['delivery_fee'],
+                           grand_total=totals['grand_total'],
                            all_stores=all_stores)
 
 
@@ -519,13 +404,12 @@ def place_order(store_id):
         )
         if not request.is_json:
             cart = _get_session_cart()
+            removed_ids = []
             for item in cart_items:
                 cart.pop(str(item['product'].id), None)
-                if 'user_id' in session:
-                    CartItem.query.filter_by(
-                        user_id=session['user_id'], product_id=item['product'].id
-                    ).delete()
+                removed_ids.append(item['product'].id)
             if 'user_id' in session:
+                CartService.remove_products_from_db_cart(session['user_id'], removed_ids)
                 db.session.commit()
             _save_session_cart(cart)
             flash('تم تقديم الطلب بنجاح')
@@ -567,26 +451,21 @@ def buy_product(product_id):
         quantity = product.stock_quantity
 
     items = [{'product': product, 'quantity': quantity, 'options_selected': None}]
-    product_total = OrderService.get_effective_price(product) * quantity
-    delivery_fee = float(get_setting('delivery_fee', 100)) if store.has_delivery else 0.0
-    grand_total = product_total + delivery_fee
-
-    # B1: القالب (checkout.html) يحتاج all_stores لعرض الخريطة
-    all_stores = Store.query.filter(
-        Store.subscription_status == 'active',
-        Store.latitude.isnot(None),
-        Store.longitude.isnot(None)
-    ).all()
+    totals = OrderService.compute_order_totals(store, items)
+    all_stores = _load_active_stores()
 
     return render_template('customer/checkout.html',
                            store=store,
                            items=items,
-                           total=product_total,
-                           delivery_fee=delivery_fee,
-                           grand_total=grand_total,
+                           total=totals['product_total'],
+                           delivery_fee=totals['delivery_fee'],
+                           grand_total=totals['grand_total'],
                            all_stores=all_stores)
 
 
+# ═══════════════════════════════════════════════════════════════
+# إدارة الطلبات (إلغاء / حذف)
+# ═══════════════════════════════════════════════════════════════
 @cart_bp.route('/cart/order/<int:order_id>/cancel', methods=['POST'])
 @login_required
 def cancel_order(order_id):
@@ -613,18 +492,13 @@ def delete_order(order_id):
     user = g.user
     order = db.get_or_404(Order, order_id)
 
-    if order.customer_id != user.id:
-        abort(403)
-
-    if order.status not in ['delivered', 'cancelled']:
-        flash('لا يمكن حذف هذا الطلب في حالته الحالية', 'error')
-        return redirect(url_for('cart.cart'))
-
-    # cascade على Order يتولى: items, payments, status_history
     try:
-        db.session.delete(order)
-        db.session.commit()
+        OrderService.delete_order(user, order)
         flash('تم حذف الطلب بنجاح', 'success')
+    except PermissionError as e:
+        flash(str(e), 'error')
+    except ValueError as e:
+        flash(str(e), 'error')
     except Exception:
         db.session.rollback()
         flash('تعذر حذف الطلب، حاول مرة أخرى', 'error')

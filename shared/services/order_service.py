@@ -58,14 +58,28 @@ class OrderService:
         """E8: النص العربي لحالة الطلب."""
         return OrderService.STATUS_LABELS.get(status, status)
 
+    # ═══════════════════════════════════════════════════════════════
+    # حساب المجاميع — مصدر واحد للحقيقة
+    # ═══════════════════════════════════════════════════════════════
     @staticmethod
-    def get_effective_price(product):
+    def compute_order_totals(store, items):
         """
-        ⚠️ واجهة عامة متوافقة مع الخلف (legacy).
-        استُخدمت تاريخياً من customer/cart.py. المنطق الفعلي في Product.effective_price.
-        يُفضَّل استخدام product.effective_price في الكود الجديد.
+        حساب إجماليات الطلب — يُستخدم في صفحة checkout وفي create_order
+        لضمان تطابق السعر المعروض مع السعر المُسجَّل.
+
+        items: قائمة dicts بالشكل {'product': Product, 'quantity': int}
+        يعيد: {'product_total': float, 'delivery_fee': float, 'grand_total': float}
         """
-        return product.effective_price
+        product_total = sum(
+            item['product'].effective_price * item['quantity']
+            for item in items
+        )
+        delivery_fee = float(get_setting('delivery_fee', 100)) if store.has_delivery else 0.0
+        return {
+            'product_total': product_total,
+            'delivery_fee': delivery_fee,
+            'grand_total': product_total + delivery_fee,
+        }
 
     @staticmethod
     def _check_store_active(store):
@@ -128,9 +142,13 @@ class OrderService:
                 f'المنتجات التالية حصراً من المتجر ولا يمكن طلبها أونلاين: {names}'
             )
 
-        product_total = sum(product.effective_price * qty for product, qty, _ in order_items)
-        delivery_fee = float(get_setting('delivery_fee', 100)) if store.has_delivery else 0.0
-        grand_total = product_total + delivery_fee
+        # H1: استخدام مصدر واحد للحقيقة في حساب المجاميع
+        totals = OrderService.compute_order_totals(
+            store,
+            [{'product': p, 'quantity': q} for p, q, _ in order_items]
+        )
+        grand_total = totals['grand_total']
+        delivery_fee = totals['delivery_fee']
 
         if store.has_delivery:
             if not delivery_address:
@@ -154,7 +172,8 @@ class OrderService:
         })
         db.session.flush()
 
-        PaymentService.create_payment(
+        # H3: التحقق من نجاح إنشاء سجل الدفع — طلب بدون دفع = بيانات فاسدة
+        payment, payment_error = PaymentService.create_payment(
             user_id=user.id,
             amount=grand_total,
             method=payment_method,
@@ -164,6 +183,9 @@ class OrderService:
             proof_image=None,
             notes='طلب جديد'
         )
+        if payment_error:
+            db.session.rollback()
+            raise ValueError(f'فشل إنشاء سجل الدفع: {payment_error}')
 
         for product, qty, options_selected in order_items:
             product.stock_quantity -= qty
@@ -247,6 +269,33 @@ class OrderService:
                 logger.error(f'فشل إرسال إشعار إلغاء الطلب: {str(e)}')
 
         return order
+
+    @staticmethod
+    def delete_order(user, order):
+        """
+        H2: حذف طلب نهائياً.
+
+        يسمح فقط للزبون صاحب الطلب، وفقط للطلبات في حالة delivered أو cancelled.
+        cascade على Order يتولى حذف: items, payments, status_history.
+
+        يرفع:
+          - PermissionError إذا لم يكن المستخدم صاحب الطلب.
+          - ValueError إذا كانت حالة الطلب لا تسمح بالحذف.
+          - أي استثناء آخر عند فشل commit.
+        """
+        if order.customer_id != user.id:
+            raise PermissionError('غير مسموح بحذف هذا الطلب')
+        if order.status not in ['delivered', 'cancelled']:
+            raise ValueError('لا يمكن حذف هذا الطلب في حالته الحالية')
+
+        try:
+            db.session.delete(order)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            raise ValueError('تعذر حذف الطلب، حاول مرة أخرى')
+
+        return True
 
     @staticmethod
     def start_delivery(delivery_user, order, pickup_code=None):
@@ -499,7 +548,7 @@ class OrderService:
             return updated, None
         except ValueError as e:
             return None, str(e)
-        except Exception as e:
+        except Exception:
             logger.exception('خطأ في update_order_status_by_store')
             return None, 'حدث خطأ غير متوقع'
 
@@ -515,6 +564,6 @@ class OrderService:
             return updated, None
         except ValueError as e:
             return None, str(e)
-        except Exception as e:
+        except Exception:
             logger.exception('خطأ في update_order_status_by_admin')
             return None, 'حدث خطأ غير متوقع'
