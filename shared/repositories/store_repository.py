@@ -1,6 +1,8 @@
 from database import db
-from models import Store, Product, Order, OrderItem, Category, Subscription, Payment, Favorite, ProductReaction, ProductComment, Review
-from sqlalchemy import func
+from models import Store
+from shared.repositories.order_repository import OrderRepository
+from shared.repositories.product_repository import ProductRepository
+
 
 class StoreRepository:
     @staticmethod
@@ -27,23 +29,21 @@ class StoreRepository:
 
     @staticmethod
     def delete(store):
-        # حذف جميع المنتجات والطلبات والتصنيفات والاشتراكات والمدفوعات والمفضلات
-        # ملاحظة: يتم تنفيذ الحذف المتسلسل على مستوى قاعدة البيانات، لكن يمكن حذف يدوي للعلاقات غير المرتبطة بـ cascade
-        # سنترك المنطق الكامل للخدمة، هنا فقط حذف المتجر نفسه
+        # حذف المتجر نفسه. العلاقات (منتجات، طلبات، تصنيفات، اشتراكات، مدفوعات، مفضلات)
+        # تُدار على مستوى قاعدة البيانات (cascade) أو عبر StoreService إذا لزم.
         db.session.delete(store)
 
     @staticmethod
     def get_store_orders(store_id, page=1, per_page=20, status=None):
-        query = Order.query.filter_by(store_id=store_id)
-        if status:
-            query = query.filter(Order.status == status)
-        return query.order_by(Order.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+        """تفويض إلى OrderRepository (مصدر واحد للحقيقة)."""
+        return OrderRepository.get_orders_by_store(
+            store_id, page=page, per_page=per_page, status=status
+        )
 
     @staticmethod
     def get_products(store_id, page=1, per_page=20, category_id=None, search=None):
-        query = Product.query.filter_by(store_id=store_id)
-        if category_id:
-            query = query.filter(Product.category_id == category_id)
-        if search:
-            query = query.filter(Product.name.ilike(f'%{search}%'))
-        return query.order_by(Product.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+        """تفويض إلى ProductRepository (مصدر واحد للحقيقة)."""
+        return ProductRepository.get_by_store(
+            store_id, page=page, per_page=per_page,
+            category_id=category_id, search=search
+        )

@@ -180,6 +180,14 @@ def send_web_push(subscription_info, payload):
 
 
 def send_to_user(user_id, notification):
+    """
+    إرسال push لمستخدم واحد.
+
+    ⚠️ ملاحظة مهمة: يُفترض أن تُستدعى هذه الدالة من thread معزول
+    (انظر NotificationService._send_push_async) وليس مباشرة من request context،
+    لأنها تستدعي db.session.remove() لتحرير SQLite lock قبل التواصل الشبكي.
+    استدعاؤها من request context سيؤدي إلى فقدان أي تغييرات غير محفوظة في الجلسة.
+    """
     if not is_push_enabled():
         return 0
 
@@ -195,6 +203,7 @@ def send_to_user(user_id, notification):
         for s in subs
     ]
 
+    # إزالة الجلسة قبل استدعاء الشبكة لتجنب احتجاز SQLite lock أثناء الإرسال
     db.session.remove()
 
     payload = {
@@ -244,11 +253,18 @@ def send_to_users(user_ids, notification):
 
 
 def cleanup_invalid_subscriptions():
-    subs = PushSubscription.query.all()
-    invalid_ids = []
-    for sub in subs:
-        if not sub.endpoint.startswith('http'):
-            invalid_ids.append(sub.id)
-    if invalid_ids:
-        PushSubscription.query.filter(PushSubscription.id.in_(invalid_ids)).delete(synchronize_session=False)
+    """
+    حذف الاشتراكات ذات endpoint غير صالح (لا يبدأ بـ http).
+
+    قبل: PushSubscription.query.all() ثم حلقة Python.
+    الآن: SQL filter مباشر — يوفر الذاكرة عند وجود آلاف الصفوف.
+    إرجاع: عدد الصفوف المحذوفة.
+    """
+    deleted = (
+        PushSubscription.query
+        .filter(~PushSubscription.endpoint.startswith('http'))
+        .delete(synchronize_session=False)
+    )
+    if deleted:
         db.session.commit()
+    return deleted

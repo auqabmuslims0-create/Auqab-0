@@ -1,6 +1,6 @@
 from database import db
 from flask import url_for
-from models import User, Order, OrderItem, Product, Payment, OrderStatusHistory
+from models import User, Order, Product, Payment
 from shared.repositories.order_repository import OrderRepository
 from shared.repositories.product_repository import ProductRepository
 from shared.repositories.store_repository import StoreRepository
@@ -10,7 +10,7 @@ from shared.services.payment_service import PaymentService
 from shared.utils import get_setting, is_store_active, is_store_open
 from shared.delivery_utils import is_delivery_available
 from shared.time_utils import current_time
-import random
+import secrets
 import logging
 
 logger = logging.getLogger(__name__)
@@ -40,13 +40,18 @@ class OrderService:
     }
 
     @staticmethod
+    def _generate_6_digit_code():
+        """توليد كود مكوّن من 6 أرقام باستخدام PRNG مشفّر (secrets)."""
+        return ''.join(secrets.choice('0123456789') for _ in range(6))
+
+    @staticmethod
     def generate_delivery_code():
-        return ''.join(random.choices('0123456789', k=6))
+        return OrderService._generate_6_digit_code()
 
     @staticmethod
     def generate_pickup_code():
         """S13: كود استلام من المتجر (6 أرقام)."""
-        return ''.join(random.choices('0123456789', k=6))
+        return OrderService._generate_6_digit_code()
 
     @staticmethod
     def status_label(status):
@@ -55,7 +60,12 @@ class OrderService:
 
     @staticmethod
     def get_effective_price(product):
-        return product.offer_price if product.is_offer and product.offer_price is not None else product.price
+        """
+        ⚠️ واجهة عامة متوافقة مع الخلف (legacy).
+        استُخدمت تاريخياً من customer/cart.py. المنطق الفعلي في Product.effective_price.
+        يُفضَّل استخدام product.effective_price في الكود الجديد.
+        """
+        return product.effective_price
 
     @staticmethod
     def _check_store_active(store):
@@ -118,7 +128,7 @@ class OrderService:
                 f'المنتجات التالية حصراً من المتجر ولا يمكن طلبها أونلاين: {names}'
             )
 
-        product_total = sum(OrderService.get_effective_price(product) * qty for product, qty, _ in order_items)
+        product_total = sum(product.effective_price * qty for product, qty, _ in order_items)
         delivery_fee = float(get_setting('delivery_fee', 100)) if store.has_delivery else 0.0
         grand_total = product_total + delivery_fee
 
@@ -162,7 +172,7 @@ class OrderService:
                 order_id=order.id,
                 product_id=product.id,
                 quantity=qty,
-                price=OrderService.get_effective_price(product),
+                price=product.effective_price,
                 options_selected=options_selected
             )
 
@@ -383,7 +393,6 @@ class OrderService:
             if person.role != 'delivery':
                 raise ValueError('المستخدم المحدد ليس مندوب توصيل')
 
-            # S12: منع تغيير المندوب بعد الإسناد
             if order.delivery_person_id is not None and order.delivery_person_id != person.id:
                 raise ValueError('لا يمكن تغيير المندوب بعد إسناد الطلب إليه')
 
@@ -392,7 +401,6 @@ class OrderService:
             if not order.store.has_delivery:
                 raise ValueError('هذا المتجر لا يوفر خدمة توصيل')
 
-            # أول إسناد: توليد pickup_code + احتساب رسوم التوصيل (إن لم تكن محسوبة)
             if order.delivery_person_id is None:
                 if not order.delivery_fee or order.delivery_fee == 0:
                     order.delivery_fee = float(get_setting('delivery_fee', 100))
@@ -401,7 +409,6 @@ class OrderService:
                     order.pickup_code = OrderService.generate_pickup_code()
                 order.delivery_person_id = person.id
         else:
-            # لا يوجد مندوب — إعادة تعيين (فقط لو ما زال غير مُسند)
             if order.delivery_person_id is None:
                 if not order.delivery_address:
                     order.delivery_fee = 0.0

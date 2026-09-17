@@ -1,6 +1,6 @@
 from database import db
 from models import Notification
-from sqlalchemy import func
+from shared.time_utils import current_time
 
 class NotificationRepository:
     @staticmethod
@@ -23,13 +23,13 @@ class NotificationRepository:
     @staticmethod
     def mark_as_read(notification):
         notification.is_read = True
-        notification.read_at = func.now()
+        notification.read_at = current_time()
         db.session.add(notification)
 
     @staticmethod
     def mark_all_as_read(user_id):
         Notification.query.filter_by(user_id=user_id, is_read=False).update(
-            {'is_read': True, 'read_at': func.now()}
+            {'is_read': True, 'read_at': current_time()}
         )
 
     @staticmethod
@@ -79,7 +79,7 @@ class NotificationRepository:
     def delete_expired():
         Notification.query.filter(
             Notification.expires_at.isnot(None),
-            Notification.expires_at < func.now()
+            Notification.expires_at < current_time()
         ).delete(synchronize_session=False)
 
     @staticmethod

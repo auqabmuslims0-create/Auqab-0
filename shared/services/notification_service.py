@@ -1,6 +1,7 @@
 import os
 import json
 import threading
+from types import SimpleNamespace
 from flask import current_app
 from database import db
 from models import User, Notification
@@ -47,7 +48,7 @@ class NotificationService:
                 try:
                     from shared.services.push_service import send_to_user as push_send_to_user
                     # نبني كائن بسيط من الـ snapshot
-                    n = type('NotificationSnapshot', (), notif_snapshot)()
+                    n = SimpleNamespace(**notif_snapshot)
                     push_send_to_user(user_id, n)
                 except Exception as e:
                     app.logger.error(f"Async push failed for user {user_id}: {e}")
@@ -250,8 +251,10 @@ class NotificationService:
     def send_to_all_users(message, title=None, link=None, type_=None, priority=None, icon=None,
                           extra_data=None, send_push=True, expires_at=None,
                           entity_type=None, entity_id=None):
-        users = User.query.filter_by(is_active=True).all()
-        user_ids = [u.id for u in users]
+        # استعلام ID فقط (بدون تحميل كائنات User كاملة إلى الذاكرة)
+        user_ids = [
+            uid for (uid,) in db.session.query(User.id).filter_by(is_active=True).all()
+        ]
         return NotificationService._send_to_many(
             user_ids, message, title=title, link=link, type_=type_ or NotificationService.TYPE_INFO,
             priority=priority, icon=icon, extra_data=extra_data,

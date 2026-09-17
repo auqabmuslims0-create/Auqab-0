@@ -1,8 +1,6 @@
-from sqlalchemy.orm import joinedload
 from database import db
-from models import Reel, ReelReaction, Store
+from models import Reel, ReelReaction
 from shared.repositories.reel_repository import ReelRepository, DEFAULT_SORT
-from shared.time_utils import current_time
 
 
 class ReelService:

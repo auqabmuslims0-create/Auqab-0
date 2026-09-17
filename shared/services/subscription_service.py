@@ -12,6 +12,12 @@ from shared.services.payment_service import PaymentService
 from shared.services.notification_service import NotificationService
 from shared.utils import save_image, get_upload_path, get_setting
 from shared.time_utils import current_time
+from shared.security import (
+    get_client_ip,
+    get_login_attempts,
+    record_login_attempt,
+    clear_login_attempts,
+)
 from flask import url_for
 
 logger = logging.getLogger(__name__)
@@ -632,6 +638,11 @@ class SubscriptionService:
 
     @staticmethod
     def verify_manual_confirmation(user, sub_id, code):
+        # rate limit بـ IP قبل أي معالجة (حماية ضد brute force على الكود)
+        ip = get_client_ip()
+        if get_login_attempts(ip) >= 5:
+            return False, 'تم تجاوز عدد المحاولات المسموح من هذا الجهاز، حاول بعد 5 دقائق'
+
         sub = SubscriptionRepository.get_by_id(sub_id)
         if not sub:
             return False, 'الاشتراك غير موجود'
@@ -648,6 +659,7 @@ class SubscriptionService:
         if sub.confirmation_expiry and sub.confirmation_expiry < current_time():
             return False, 'انتهت صلاحية كود التأكيد. يرجى إعادة الطلب.'
         if sub.confirmation_code != code.strip():
+            record_login_attempt(ip)
             sub.confirmation_attempts += 1
             db.session.add(sub)
             db.session.commit()
@@ -656,4 +668,6 @@ class SubscriptionService:
                 return False, 'تم تجاوز الحد الأقصى للمحاولات. يرجى التواصل مع الإدارة.'
             return False, f'كود التأكيد غير صحيح. تبقى {remaining} محاولات.'
 
+        # نجاح: تنظيف محاولات IP
+        clear_login_attempts(ip)
         return SubscriptionService._activate_subscription(sub)

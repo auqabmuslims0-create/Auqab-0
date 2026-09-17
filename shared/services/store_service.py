@@ -1,16 +1,14 @@
 from database import db
-from models import Store, Order, OrderItem, Product, Category, Subscription, Payment, Favorite
-import models
+from models import Store, Order, Product, Category, Subscription, Payment, User
 from shared.repositories.store_repository import StoreRepository
-from shared.repositories.notification_repository import NotificationRepository
 from shared.services.notification_service import NotificationService
-from shared.utils import get_upload_path, is_store_active, get_setting, delete_local_file
+from shared.utils import is_store_active, get_setting, delete_local_file
 from shared.time_utils import current_time
 from datetime import timedelta
-import os
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 class StoreService:
     @staticmethod
@@ -69,7 +67,7 @@ class StoreService:
             db.session.commit()
 
             if store.owner_id:
-                owner = db.session.get(models.User, store.owner_id)
+                owner = db.session.get(User, store.owner_id)
                 if owner:
                     NotificationService.send_to_user(
                         user_id=owner.id,
@@ -88,24 +86,34 @@ class StoreService:
 
     @staticmethod
     def delete_store(store_id):
+        """
+        حذف المتجر وكل بياناته.
+
+        الاعتماد على cascade:
+          - Store.products       : cascade → يحذف المنتجات وتوابعها
+          - Store.categories     : cascade → يحذف التصنيفات
+          - Store.cart_items     : cascade
+          - Store.reels          : cascade
+          - Store.favorites      : cascade (m-2 B2) → يحذف مفضلات المتجر
+          - Order.items/payments/status_history: cascade
+
+        الحذف اليدوي المطلوب (بلا cascade على Store):
+          - ملفات الوسائط (القرص)
+          - Store.orders          : بلا cascade (store_id NOT NULL)
+          - Store.payments        : بلا cascade
+          - Subscription.payments : بلا cascade (يجب حذف الدفعات قبل الاشتراكات)
+
+        ⚠️ ترتيب الحذف مهم في PostgreSQL:
+          payments المرتبطة بـ subscription_id يجب حذفها قبل subscriptions.
+        """
         store = StoreRepository.get_by_id(store_id)
         if not store:
             return False, 'المتجر غير موجود'
         try:
-            # حذف شعار المتجر
+            # 1) حذف ملفات الوسائط
             if store.logo_url:
                 delete_local_file(store.logo_url)
-
-            # حذف الطلبات وعناصرها
-            orders = Order.query.filter_by(store_id=store.id).all()
-            for order in orders:
-                OrderItem.query.filter_by(order_id=order.id).delete()
-                db.session.delete(order)
-
-            # حذف المنتجات وملفاتها
-            products = Product.query.filter_by(store_id=store.id).all()
-            for product in products:
-                # حذف الصور
+            for product in (store.products or []):
                 if product.main_image:
                     delete_local_file(product.main_image)
                 if product.sub_images:
@@ -116,25 +124,32 @@ class StoreService:
                 if product.video:
                     delete_local_file(product.video)
 
-                # حذف الريلز المرتبطة بالمنتج
-                models.Reel.query.filter_by(product_id=product.id).delete()
+            # 2) حذف الطلبات (cascade على Order يتولى items/payments/history)
+            orders = Order.query.filter_by(store_id=store.id).all()
+            for order in orders:
+                db.session.delete(order)
 
-                # حذف العلاقات المرتبطة بالمنتج
-                models.ProductReaction.query.filter_by(product_id=product.id).delete()
-                models.ProductComment.query.filter_by(product_id=product.id).delete()
-                models.Favorite.query.filter_by(product_id=product.id).delete()
-                models.Review.query.filter_by(product_id=product.id).delete()
-                db.session.delete(product)
+            db.session.flush()
 
-            # حذف الريلز المتبقية المرتبطة بالمتجر
-            models.Reel.query.filter_by(store_id=store.id).delete()
+            # 3) حذف الدفعات المرتبطة بالمتجر مباشرة
+            Payment.query.filter_by(store_id=store.id).delete(synchronize_session=False)
 
-            # حذف التصنيفات والاشتراكات والمدفوعات والمفضلات
-            Category.query.filter_by(store_id=store.id).delete()
-            Subscription.query.filter_by(store_id=store.id).delete()
-            Payment.query.filter_by(store_id=store.id).delete()
-            Favorite.query.filter_by(store_id=store.id).delete()
+            # 4) حذف دفعات اشتراكات المتجر (احتياطي)
+            store_sub_ids = [
+                s_id for (s_id,) in db.session.query(Subscription.id)
+                .filter_by(store_id=store.id).all()
+            ]
+            if store_sub_ids:
+                Payment.query.filter(
+                    Payment.subscription_id.in_(store_sub_ids)
+                ).delete(synchronize_session=False)
 
+            db.session.flush()
+
+            # 5) حذف الاشتراكات
+            Subscription.query.filter_by(store_id=store.id).delete(synchronize_session=False)
+
+            # 6) حذف المتجر — cascade يتولى الباقي
             StoreRepository.delete(store)
             db.session.commit()
             return True, 'تم حذف المتجر بنجاح'

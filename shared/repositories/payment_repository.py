@@ -1,5 +1,6 @@
 from database import db
 from models import Payment
+from shared.time_utils import current_time
 from sqlalchemy.orm import joinedload
 
 class PaymentRepository:
@@ -38,5 +39,5 @@ class PaymentRepository:
     @staticmethod
     def update_status(payment, new_status):
         payment.status = new_status
-        payment.updated_at = db.func.now()
+        payment.updated_at = current_time()
         db.session.add(payment)

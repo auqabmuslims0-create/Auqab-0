@@ -1,6 +1,5 @@
 from database import db
 from models import Order, OrderItem, OrderStatusHistory
-from sqlalchemy import func
 
 class OrderRepository:
     @staticmethod

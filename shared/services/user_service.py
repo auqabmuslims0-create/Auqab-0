@@ -36,15 +36,20 @@ class UserService:
         """
         حذف المستخدم مع كل بياناته المرتبطة.
 
-        معالجة العلاقات التي لا تدعم cascade:
-          - ChatMessage (sender/receiver) → DELETE
-          - OrderStatusHistory.changed_by → NULL
-          - Subscription.user_id → NULL
-          - Order.delivery_person_id → NULL
-          - Order.customer_id (NOT NULL) → DELETE + cascade (items, payments, history)
-          - UserActivity (PK) → DELETE
-          - PasswordReset (NOT NULL) → DELETE
-          - LoginAttempt / PasswordResetAttempt → NULL (نبقي السجل للأمان)
+        ملاحظات cascade:
+          - User.stores: cascade="all, delete-orphan"
+          - Store.products/categories/cart_items/reels/favorites: cascade=all (m-2 B2)
+          - Store.orders/payments/subscriptions: بلا cascade → تُحذف يدوياً هنا
+          - Order.items/payments/status_history: cascade=all
+          - Product.reviews/favorites/reactions/comments/cart_items/reels: cascade=all
+
+        ترتيب الحذف مهم:
+          1. دفعات اشتراكات متاجر المستخدم (قبل الاشتراكات)
+          2. اشتراكات متاجر المستخدم
+          3. دفعات المتاجر مباشرة
+          4. الطلبات (زبون + متاجر)
+          5. باقي العلاقات الخاصة
+          6. حذف المستخدم (cascade)
         """
         target = UserRepository.get_by_id(user_id)
         if not target:
@@ -57,11 +62,13 @@ class UserService:
                 return False, 'لا يمكن حذف آخر مدير نشط'
 
         try:
-            # ===== 1. تنظيف ملفات Cloudinary (لا يُفشل الحذف عند الخطأ) =====
+            # ===== 1. تنظيف ملفات الوسائط =====
             try:
                 if target.avatar:
                     delete_local_file(target.avatar)
                 for store in list(target.stores or []):
+                    if store.logo_url:
+                        delete_local_file(store.logo_url)
                     for product in list(store.products or []):
                         if product.images:
                             for img in product.images.split(','):
@@ -70,20 +77,18 @@ class UserService:
                                     delete_local_file(img)
                         if product.video:
                             delete_local_file(product.video)
-                    if store.logo_url:
-                        delete_local_file(store.logo_url)
             except Exception:
                 pass
 
             # ===== 2. معالجة العلاقات الخاصة =====
 
-            # 2a) ChatMessage: حذف رسائل المستخدم كمرسل أو مستقبل
+            # 2a) ChatMessage (sender/receiver) → DELETE
             ChatMessage.query.filter(
                 (ChatMessage.sender_id == target.id) |
                 (ChatMessage.receiver_id == target.id)
             ).delete(synchronize_session=False)
 
-            # 2b) OrderStatusHistory.changed_by → NULL (نُبقي التاريخ)
+            # 2b) OrderStatusHistory.changed_by → NULL
             OrderStatusHistory.query.filter_by(changed_by=target.id).update(
                 {'changed_by': None}, synchronize_session=False
             )
@@ -98,35 +103,55 @@ class UserService:
                 {'delivery_person_id': None}, synchronize_session=False
             )
 
-            # 2e) Order as customer → DELETE كامل
-            #     cascade على Order يحذف: OrderItem, Payment, OrderStatusHistory
+            # 2e) طلبات المستخدم كزبون → DELETE
             customer_orders = Order.query.filter_by(customer_id=target.id).all()
             for order in customer_orders:
                 db.session.delete(order)
 
-            # 2f) UserActivity (PK) → DELETE إجباري
+            # 2f) ما يخص متاجر المستخدم (سيتم حذف المتاجر عبر cascade على User.stores)
+            #     ترتيب مهم: payments أولاً ثم subscriptions
+            for store in list(target.stores or []):
+                # 2f-1) دفعات المتجر مباشرة
+                Payment.query.filter_by(store_id=store.id).delete(synchronize_session=False)
+
+                # 2f-2) دفعات اشتراكات المتجر (احتياطي)
+                store_sub_ids = [
+                    s_id for (s_id,) in db.session.query(Subscription.id)
+                    .filter_by(store_id=store.id).all()
+                ]
+                if store_sub_ids:
+                    Payment.query.filter(
+                        Payment.subscription_id.in_(store_sub_ids)
+                    ).delete(synchronize_session=False)
+
+                # 2f-3) اشتراكات المتجر
+                Subscription.query.filter_by(store_id=store.id).delete(synchronize_session=False)
+
+                # 2f-4) طلبات المتجر
+                store_orders = Order.query.filter_by(store_id=store.id).all()
+                for order in store_orders:
+                    db.session.delete(order)
+
+            # 2g) UserActivity (PK) → DELETE
             UserActivity.query.filter_by(user_id=target.id).delete(
                 synchronize_session=False
             )
 
-            # 2g) PasswordReset (NOT NULL) → DELETE إجباري
+            # 2h) PasswordReset (NOT NULL) → DELETE
             PasswordReset.query.filter_by(user_id=target.id).delete(
                 synchronize_session=False
             )
 
-            # 2h) LoginAttempt / PasswordResetAttempt → NULL (نبقي السجل)
+            # 2i) LoginAttempt.user_id → NULL
             LoginAttempt.query.filter_by(user_id=target.id).update(
-                {'user_id': None}, synchronize_session=False
-            )
-            PasswordResetAttempt.query.filter_by(user_id=target.id).update(
                 {'user_id': None}, synchronize_session=False
             )
 
             db.session.flush()
 
-            # ===== 3. حذف المستخدم (cascade يتولى: stores, products, reels,
-            #         favorites, reviews, notifications, cart, payments,
-            #         push_subscriptions, reactions, comments) =====
+            # ===== 3. حذف المستخدم (cascade: stores → products/categories/reels/
+            #         cart_items/favorites, favorites, reviews, notifications,
+            #         cart, push_subscriptions, reactions, comments) =====
             UserRepository.delete(target)
             db.session.commit()
 

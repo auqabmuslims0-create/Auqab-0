@@ -63,11 +63,16 @@ class ReelRepository:
 
     @staticmethod
     def get_by_id(reel_id):
-        return Reel.query.options(
-            joinedload(Reel.store),
-            joinedload(Reel.product),
-            joinedload(Reel.reactions),
-        ).get(reel_id)
+        return (
+            Reel.query
+            .options(
+                joinedload(Reel.store),
+                joinedload(Reel.product),
+                joinedload(Reel.reactions),
+            )
+            .filter_by(id=reel_id)
+            .first()
+        )
 
     @staticmethod
     def increment_view(reel):

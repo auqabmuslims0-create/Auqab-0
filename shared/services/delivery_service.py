@@ -1,5 +1,4 @@
 from database import db
-from models import User, Order
 from shared.repositories.delivery_repository import DeliveryRepository
 from shared.repositories.user_repository import UserRepository
 from shared.services.user_service import UserService
