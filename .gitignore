@@ -37,3 +37,37 @@ mise.local.toml
 # Test
 .pytest_cache/
 .coverage
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploads (user generated content - Cloudinary handles these)
+static/uploads/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Termux/local
+mise.local.toml

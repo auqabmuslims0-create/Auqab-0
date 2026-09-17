@@ -45,8 +45,8 @@
 
 1) استنساخ:
 
-    git clone https://github.com/auqabmuslims0-create/Auqab-0.git
-    cd Auqab-0
+    git clone https://github.com/auqabmuslims0-create/husayniyyah_market.git
+    cd husayniyyah_market
 
 2) بيئة Python:
 
@@ -118,7 +118,7 @@
 - CSRF protection
 - Rate limiting (5 login attempts/5min)
 - CSP headers (Talisman)
-- bcrypt passwords
+- Werkzeug scrypt
 - Store ownership checks
 
 ---
