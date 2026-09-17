@@ -1,7 +1,6 @@
 from flask import request, jsonify
 from database import db
 from models import Favorite, Product, Store
-from shared.utils import save_image
 from . import api_bp
 from .helpers import token_required, serialize_product, serialize_store
 
@@ -46,7 +45,7 @@ def toggle_favorite(current_user):
 
     try:
         if fav_type == 'product':
-            product = Product.query.get_or_404(fav_id)
+            product = db.get_or_404(Product, fav_id)
             existing = Favorite.query.filter_by(
                 user_id=current_user.id, product_id=product.id
             ).first()
@@ -60,7 +59,7 @@ def toggle_favorite(current_user):
                 db.session.commit()
                 return jsonify({'message': 'تمت إضافة المنتج إلى المفضلة', 'is_favorite': True}), 200
         else:
-            store = Store.query.get_or_404(fav_id)
+            store = db.get_or_404(Store, fav_id)
             existing = Favorite.query.filter_by(
                 user_id=current_user.id, store_id=store.id
             ).first()

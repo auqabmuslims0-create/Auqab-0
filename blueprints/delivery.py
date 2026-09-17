@@ -1,24 +1,95 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, abort, jsonify, current_app, g
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, abort, jsonify, g
 from database import db
-from models import User, Order, OrderItem, Store, Notification
-from sqlalchemy import func
-from sqlalchemy.orm import joinedload, selectinload
+from models import Order, OrderItem, Store, Notification
+from sqlalchemy.orm import selectinload
 from shared.time_utils import current_time
-from datetime import timedelta
 from shared.services.order_service import OrderService
 from shared.services.notification_service import NotificationService
 from shared.repositories.delivery_repository import DeliveryRepository
 from shared.repositories.notification_repository import NotificationRepository
-from shared.repositories.user_repository import UserRepository
 from shared.delivery_utils import is_delivery_available
-from shared.utils import is_store_active
-from shared.decorators import role_required, login_required, api_login_required
+from shared.utils import is_store_active, get_setting
+from shared.decorators import role_required, api_login_required
 from blueprints.api.helpers import token_required, serialize_order
 import logging
 
 logger = logging.getLogger(__name__)
 
 delivery_bp = Blueprint('delivery', __name__)
+
+
+# ============================================================
+# مساعد: استلام طلب من قائمة المتاحة (ذرّي)
+# ============================================================
+
+def _claim_order_atomic(order_id, user):
+    """
+    محاولة ذرّية لاستلام طلب من قائمة المتاحة.
+
+    يعيد tuple: (success, code, order, error_msg)
+      - success: bool
+      - code: None | 'not_found' | 'already_claimed' | 'wrong_status'
+              | 'store_unavailable' | 'not_available' | 'race_lost' | 'db_error'
+      - order: Order object (أو None إن لم يُوجد)
+      - error_msg: رسالة عربية للعرض
+
+    ضمانة الذرّية:
+      الـ UPDATE يشترط delivery_person_id IS NULL + status == 'ready'
+      → في بيئة متزامنة، مندوبان يحاولان نفس الطلب:
+        الأول ينجح (rowcount=1)، الثاني يفشل (rowcount=0).
+    """
+    order = db.session.get(Order, order_id)
+    if not order:
+        return False, 'not_found', None, 'الطلب غير موجود'
+
+    if order.delivery_person_id is not None:
+        return False, 'already_claimed', order, 'هذا الطلب مسند لمندوب آخر'
+
+    if order.status != 'ready':
+        return False, 'wrong_status', order, 'هذا الطلب ليس جاهزاً للتسليم'
+
+    if not order.store or not order.store.has_delivery:
+        return False, 'store_unavailable', order, 'هذا المتجر لا يوفر خدمة توصيل'
+
+    if not is_store_active(order.store):
+        return False, 'store_unavailable', order, 'المتجر غير نشط حالياً'
+
+    if not is_delivery_available(user):
+        return False, 'not_available', order, 'أنت غير متاح حالياً. تحقق من حالتك وورديتك.'
+
+    # حساب رسوم التوصيل (توحيد السلوك بين view و API)
+    fee_was_zero = not order.delivery_fee or order.delivery_fee == 0
+    default_fee = float(get_setting('delivery_fee', 100))
+    new_fee = default_fee if fee_was_zero else order.delivery_fee
+    new_total = (order.total or 0) + (default_fee if fee_was_zero else 0)
+    pickup_code = order.pickup_code or OrderService.generate_pickup_code()
+
+    # ===== UPDATE ذرّي =====
+    updated = Order.query.filter(
+        Order.id == order_id,
+        Order.delivery_person_id.is_(None),
+        Order.status == 'ready'
+    ).update({
+        'delivery_person_id': user.id,
+        'pickup_code': pickup_code,
+        'delivery_fee': new_fee,
+        'total': new_total,
+        'updated_at': current_time(),
+    }, synchronize_session=False)
+
+    if updated == 0:
+        db.session.rollback()
+        return False, 'race_lost', None, 'تم استلام الطلب من مندوب آخر قبلك'
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception('خطأ أثناء commit استلام الطلب')
+        return False, 'db_error', None, 'حدث خطأ أثناء استلام الطلب'
+
+    db.session.refresh(order)
+    return True, None, order, None
 
 
 # ============================================================
@@ -46,7 +117,6 @@ def delivery_dashboard():
         selectinload(Order.customer),
         selectinload(Order.items).selectinload(OrderItem.product)
     ).order_by(
-        # الأولوية للطلبات قيد التسليم
         db.case((Order.status == 'delivering', 0), else_=1),
         Order.created_at.asc()
     ).all()
@@ -61,9 +131,6 @@ def delivery_dashboard():
     ).order_by(Order.delivered_at.desc().nullslast(), Order.created_at.desc()).limit(10).all()
 
     # ===== الطلبات المتاحة في المدينة =====
-    # - غير مُسندة
-    # - الحالة: ready
-    # - المتجر: active + has_delivery
     available_orders = Order.query.join(Store, Order.store_id == Store.id).filter(
         Order.delivery_person_id.is_(None),
         Order.status == 'ready',
@@ -88,20 +155,17 @@ def delivery_dashboard():
         }
 
     # ===== الخريطة =====
-    # المتاجر النشطة (لها موقع)
     active_stores = Store.query.filter(
         Store.subscription_status == 'active',
         Store.latitude.isnot(None),
         Store.longitude.isnot(None)
     ).all()
 
-    # طلباتي (المسندة إليّ) للموقع
     my_map_orders = [
         o for o in my_orders
         if o.latitude is not None and o.longitude is not None
     ]
 
-    # طلبات متاحة (بدون موقع الزبون - لأنها لم تُسند بعد، لكن نعرض المتجر)
     available_map_orders = [
         o for o in available_orders
         if o.store.latitude is not None and o.store.longitude is not None
@@ -135,44 +199,9 @@ def delivery_claim_order(order_id):
     if not user:
         return redirect(url_for('auth.login'))
 
-    order = Order.query.get_or_404(order_id)
-
-    # تحققات
-    if order.delivery_person_id is not None:
-        flash('هذا الطلب مسند لمندوب آخر', 'error')
-        return redirect(url_for('delivery.delivery_dashboard', tab='available'))
-
-    if order.status != 'ready':
-        flash('هذا الطلب ليس جاهزاً للتسليم', 'error')
-        return redirect(url_for('delivery.delivery_dashboard', tab='available'))
-
-    if not order.store or not order.store.has_delivery:
-        flash('هذا المتجر لا يوفر خدمة توصيل', 'error')
-        return redirect(url_for('delivery.delivery_dashboard', tab='available'))
-
-    if not is_store_active(order.store):
-        flash('المتجر غير نشط حالياً', 'error')
-        return redirect(url_for('delivery.delivery_dashboard', tab='available'))
-
-    if not is_delivery_available(user):
-        flash('أنت غير متاح حالياً. تحقق من حالتك وورديتك.', 'error')
-        return redirect(url_for('delivery.delivery_dashboard', tab='available'))
-
-    try:
-        order.delivery_person_id = user.id
-        if not order.pickup_code:
-            order.pickup_code = OrderService.generate_pickup_code()
-        if not order.delivery_fee or order.delivery_fee == 0:
-            from shared.utils import get_setting
-            order.delivery_fee = float(get_setting('delivery_fee', 100))
-            order.total = (order.total or 0) + order.delivery_fee
-        order.updated_at = current_time()
-        db.session.add(order)
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        logger.exception('خطأ في استلام الطلب من قبل المندوب')
-        flash('حدث خطأ أثناء استلام الطلب', 'error')
+    success, code, order, err = _claim_order_atomic(order_id, user)
+    if not success:
+        flash(err, 'error')
         return redirect(url_for('delivery.delivery_dashboard', tab='available'))
 
     # إشعار صاحب المتجر
@@ -211,7 +240,7 @@ def delivery_order_start(order_id):
     if not user:
         return redirect(url_for('auth.login'))
 
-    order = Order.query.get_or_404(order_id)
+    order = db.get_or_404(Order, order_id)
     pickup_code = request.form.get('pickup_code', '').strip()
 
     try:
@@ -221,7 +250,7 @@ def delivery_order_start(order_id):
         abort(403, description=str(e))
     except ValueError as e:
         flash(str(e), 'error')
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         logger.exception('خطأ في بدء التسليم')
         flash('حدث خطأ أثناء بدء التسليم', 'error')
@@ -237,7 +266,7 @@ def delivery_order_deliver(order_id):
     if not user:
         return redirect(url_for('auth.login'))
 
-    order = Order.query.get_or_404(order_id)
+    order = db.get_or_404(Order, order_id)
     delivery_code = request.form.get('delivery_code', '').strip()
 
     try:
@@ -247,7 +276,7 @@ def delivery_order_deliver(order_id):
         abort(403, description=str(e))
     except ValueError as e:
         flash(str(e), 'error')
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         logger.exception('خطأ في تأكيد التسليم')
         flash('حدث خطأ أثناء تأكيد التسليم', 'error')
@@ -289,7 +318,7 @@ def delivery_get_orders(current_user):
 def delivery_start_order_api(current_user, order_id):
     if current_user.role != 'delivery':
         return jsonify({'message': 'غير مسموح'}), 403
-    order = Order.query.get_or_404(order_id)
+    order = db.get_or_404(Order, order_id)
     data = request.get_json(silent=True) or {}
     pickup_code = data.get('pickup_code')
     try:
@@ -309,7 +338,7 @@ def delivery_start_order_api(current_user, order_id):
 def delivery_deliver_order_api(current_user, order_id):
     if current_user.role != 'delivery':
         return jsonify({'message': 'غير مسموح'}), 403
-    order = Order.query.get_or_404(order_id)
+    order = db.get_or_404(Order, order_id)
     data = request.get_json(silent=True) or {}
     code = data.get('delivery_code')
     try:
@@ -343,24 +372,13 @@ def delivery_available_orders_api(current_user):
 def delivery_claim_order_api(current_user, order_id):
     if current_user.role != 'delivery':
         return jsonify({'message': 'غير مسموح'}), 403
-    order = Order.query.get_or_404(order_id)
-    if order.delivery_person_id is not None:
-        return jsonify({'message': 'الطلب مسند لمندوب آخر'}), 400
-    if order.status != 'ready':
-        return jsonify({'message': 'الطلب ليس جاهزاً للتسليم'}), 400
-    if not is_delivery_available(current_user):
-        return jsonify({'message': 'أنت غير متاح حالياً'}), 400
-    try:
-        order.delivery_person_id = current_user.id
-        if not order.pickup_code:
-            order.pickup_code = OrderService.generate_pickup_code()
-        order.updated_at = current_time()
-        db.session.add(order)
-        db.session.commit()
-        return jsonify({'message': 'تم استلام الطلب', 'order': serialize_order(order)}), 200
-    except Exception:
-        db.session.rollback()
-        return jsonify({'message': 'حدث خطأ'}), 500
+
+    success, code, order, err = _claim_order_atomic(order_id, current_user)
+    if not success:
+        http_code = 404 if code == 'not_found' else 400
+        return jsonify({'message': err}), http_code
+
+    return jsonify({'message': 'تم استلام الطلب', 'order': serialize_order(order)}), 200
 
 
 @delivery_bp.route('/api/delivery/notifications', methods=['GET'])

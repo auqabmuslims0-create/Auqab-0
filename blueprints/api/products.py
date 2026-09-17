@@ -1,15 +1,17 @@
 from flask import request, jsonify, abort
-from sqlalchemy.orm import selectinload
+from database import db
 from models import Product, Store
 from . import api_bp
 from .helpers import serialize_product, token_required
 
+
 @api_bp.route('/products/<int:product_id>', methods=['GET'])
 def get_product(product_id):
-    product = Product.query.get_or_404(product_id)
+    product = db.get_or_404(Product, product_id)
     if product.store and product.store.subscription_status != 'active':
         abort(404)
     return jsonify({'product': serialize_product(product, include_store=True)}), 200
+
 
 @api_bp.route('/search', methods=['GET'])
 def search():
@@ -28,9 +30,10 @@ def search():
     products = results_query.all()
     return jsonify({'products': [serialize_product(p) for p in products]}), 200
 
+
 @api_bp.route('/products/<int:product_id>/reviews', methods=['GET'])
 def get_product_reviews(product_id):
-    product = Product.query.get_or_404(product_id)
+    product = db.get_or_404(Product, product_id)
     reviews = []
     for r in product.reviews:
         reviews.append({

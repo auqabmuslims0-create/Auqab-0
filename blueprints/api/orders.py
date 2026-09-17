@@ -5,6 +5,7 @@ from shared.services.order_service import OrderService
 from . import api_bp
 from .helpers import token_required, serialize_order
 
+
 @api_bp.route('/orders', methods=['POST'])
 @token_required
 def create_order(current_user):
@@ -49,24 +50,27 @@ def create_order(current_user):
         db.session.rollback()
         return jsonify({'message': 'حدث خطأ أثناء إنشاء الطلب'}), 500
 
+
 @api_bp.route('/orders', methods=['GET'])
 @token_required
 def get_orders(current_user):
     orders = Order.query.filter_by(customer_id=current_user.id).order_by(Order.created_at.desc()).all()
     return jsonify({'orders': [serialize_order(o) for o in orders]}), 200
 
+
 @api_bp.route('/orders/<int:order_id>', methods=['GET'])
 @token_required
 def get_order(current_user, order_id):
-    order = Order.query.get_or_404(order_id)
+    order = db.get_or_404(Order, order_id)
     if order.customer_id != current_user.id:
         return jsonify({'message': 'غير مسموح'}), 403
     return jsonify({'order': serialize_order(order)}), 200
 
+
 @api_bp.route('/orders/<int:order_id>/cancel', methods=['POST'])
 @token_required
 def cancel_order(current_user, order_id):
-    order = Order.query.get_or_404(order_id)
+    order = db.get_or_404(Order, order_id)
     try:
         OrderService.cancel_order(current_user, order)
         return jsonify({'message': 'تم إلغاء الطلب بنجاح', 'order': serialize_order(order)}), 200

@@ -4,13 +4,25 @@ from database import db
 from models import User
 from shared.validators import is_strong_password, is_valid_email, is_valid_phone_syrian
 from shared.utils import generate_public_id
-from shared.security import record_login_attempt, get_login_attempts, clear_login_attempts
+from shared.security import (
+    record_login_attempt,
+    get_login_attempts,
+    clear_login_attempts,
+    get_client_ip,
+)
 from sqlalchemy import or_
 from . import api_bp
 from .helpers import encode_auth_token, token_required, serialize_user
 
+
 @api_bp.route('/register', methods=['POST'])
 def register():
+    ip = get_client_ip()
+
+    # Rate limit: نفس حد تسجيل الدخول (5 محاولات / 5 دقائق)
+    if get_login_attempts(ip) >= 5:
+        return jsonify({'message': 'تم تجاوز عدد المحاولات المسموح من هذا الجهاز، حاول بعد 5 دقائق'}), 429
+
     data = request.get_json(silent=True) or {}
     if not data:
         return jsonify({'message': 'يجب إرسال البيانات بصيغة JSON'}), 400
@@ -38,9 +50,11 @@ def register():
         return jsonify({'message': 'رقم الهاتف يجب أن يبدأ بـ 9 ويتكون من 9 أرقام'}), 400
 
     if User.query.filter_by(username=username).first():
+        record_login_attempt(ip)
         return jsonify({'message': 'اسم المستخدم موجود مسبقاً'}), 400
 
     if User.query.filter_by(email=email).first():
+        record_login_attempt(ip)
         return jsonify({'message': 'البريد الإلكتروني مستخدم بالفعل'}), 400
 
     full_phone = '+963' + phone if phone else ''
@@ -61,12 +75,14 @@ def register():
         db.session.rollback()
         return jsonify({'message': 'حدث خطأ أثناء إنشاء الحساب'}), 500
 
+    clear_login_attempts(ip)
     token = encode_auth_token(user.id)
     return jsonify({
         'message': 'تم إنشاء الحساب بنجاح',
         'token': token,
         'user': serialize_user(user)
     }), 201
+
 
 @api_bp.route('/login', methods=['POST'])
 def login():
@@ -80,9 +96,7 @@ def login():
     if not login_id or not password:
         return jsonify({'message': 'اسم المستخدم/البريد وكلمة المرور مطلوبان'}), 400
 
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-    if ip:
-        ip = ip.split(',')[0].strip()
+    ip = get_client_ip()
 
     if get_login_attempts(ip) >= 5:
         return jsonify({'message': 'تم تجاوز عدد المحاولات المسموح، حاول بعد 5 دقائق'}), 429
@@ -105,10 +119,12 @@ def login():
         record_login_attempt(ip)
         return jsonify({'message': 'بيانات الدخول غير صحيحة'}), 401
 
+
 @api_bp.route('/me', methods=['GET'])
 @token_required
 def get_me(current_user):
     return jsonify({'user': serialize_user(current_user)}), 200
+
 
 @api_bp.route('/me', methods=['PUT'])
 @token_required
@@ -156,9 +172,14 @@ def update_me(current_user):
         db.session.rollback()
         return jsonify({'message': 'حدث خطأ أثناء تحديث البيانات'}), 500
 
+
 @api_bp.route('/me/change_password', methods=['POST'])
 @token_required
 def change_password(current_user):
+    ip = get_client_ip()
+    if get_login_attempts(ip) >= 5:
+        return jsonify({'message': 'تم تجاوز عدد المحاولات المسموح، حاول بعد 5 دقائق'}), 429
+
     data = request.get_json(silent=True) or {}
     if not data:
         return jsonify({'message': 'يجب إرسال البيانات بصيغة JSON'}), 400
@@ -171,6 +192,7 @@ def change_password(current_user):
         return jsonify({'message': 'جميع الحقول مطلوبة'}), 400
 
     if not check_password_hash(current_user.password_hash, current_password):
+        record_login_attempt(ip)
         return jsonify({'message': 'كلمة المرور الحالية غير صحيحة'}), 400
 
     if new_password != confirm_password:
@@ -183,21 +205,32 @@ def change_password(current_user):
     current_user.password_hash = generate_password_hash(new_password)
     try:
         db.session.commit()
+        clear_login_attempts(ip)
         return jsonify({'message': 'تم تغيير كلمة المرور بنجاح'}), 200
     except Exception:
         db.session.rollback()
         return jsonify({'message': 'حدث خطأ أثناء تغيير كلمة المرور'}), 500
 
+
 @api_bp.route('/me/verify_password', methods=['POST'])
 @token_required
 def verify_password(current_user):
+    ip = get_client_ip()
+    if get_login_attempts(ip) >= 5:
+        return jsonify({'message': 'تم تجاوز عدد المحاولات المسموح، حاول بعد 5 دقائق'}), 429
+
     data = request.get_json(silent=True) or {}
     password = data.get('password', '')
     if not password:
         return jsonify({'message': 'كلمة المرور مطلوبة'}), 400
+
     if check_password_hash(current_user.password_hash, password):
+        clear_login_attempts(ip)
         return jsonify({'message': 'تم التحقق', 'valid': True}), 200
+
+    record_login_attempt(ip)
     return jsonify({'message': 'كلمة المرور غير صحيحة', 'valid': False}), 400
+
 
 @api_bp.route('/me/avatar', methods=['POST'])
 @token_required
@@ -213,9 +246,24 @@ def upload_avatar(current_user):
         return jsonify({'message': 'تم تحديث الصورة الشخصية', 'user': serialize_user(current_user)}), 200
     return jsonify({'message': 'فشل رفع الملف'}), 500
 
+
 @api_bp.route('/me/delete', methods=['POST'])
 @token_required
 def delete_me(current_user):
+    """
+    حذف الحساب نهائياً.
+
+    يتطلب كلمة المرور الحالية لمنع الحذف في حال سرقة الرمز فقط.
+    """
+    data = request.get_json(silent=True) or {}
+    password = data.get('password', '')
+    if not password:
+        return jsonify({'message': 'يجب إرسال كلمة المرور لتأكيد حذف الحساب'}), 400
+
+    if not check_password_hash(current_user.password_hash, password):
+        record_login_attempt(get_client_ip())
+        return jsonify({'message': 'كلمة المرور غير صحيحة'}), 403
+
     from shared.services.user_service import UserService
     try:
         success, msg = UserService.delete_user_fully(current_user.id)

@@ -85,5 +85,9 @@ def api_toggle_reaction(reel_id):
     valid_types = ['like', 'love', 'wow', 'sad', 'angry']
     if reaction_type not in valid_types:
         return jsonify({'message': 'نوع التفاعل غير صالح'}), 400
-    result = ReelService.toggle_reaction(reel_id, session['user_id'], reaction_type)
+    try:
+        result = ReelService.toggle_reaction(reel_id, session['user_id'], reaction_type)
+    except ValueError as e:
+        # الريل غير موجود — نُعيد 404 بدل 500
+        return jsonify({'message': str(e)}), 404
     return jsonify({'message': 'تم تحديث التفاعل', 'result': result}), 200

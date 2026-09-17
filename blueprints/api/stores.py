@@ -1,4 +1,4 @@
-from flask import request, jsonify, abort, url_for
+from flask import request, jsonify, abort
 from database import db
 from models import Store, Category, Product, Subscription
 from shared.utils import save_image, save_video
@@ -6,15 +6,52 @@ from . import api_bp
 from .helpers import token_required, serialize_store, serialize_product, get_image_url
 
 
+DEFAULT_PER_PAGE = 20
+MAX_PER_PAGE = 100
+
+
+def _paginate_args():
+    """قراءة page/per_page بأمان (per_page محدود بين 1 و MAX_PER_PAGE)."""
+    page = request.args.get('page', 1, type=int) or 1
+    if page < 1:
+        page = 1
+    per_page = request.args.get('per_page', DEFAULT_PER_PAGE, type=int) or DEFAULT_PER_PAGE
+    if per_page < 1:
+        per_page = DEFAULT_PER_PAGE
+    if per_page > MAX_PER_PAGE:
+        per_page = MAX_PER_PAGE
+    return page, per_page
+
+
+def _pagination_meta(pagination):
+    return {
+        'page': pagination.page,
+        'per_page': pagination.per_page,
+        'total': pagination.total,
+        'pages': pagination.pages,
+        'has_next': pagination.has_next,
+        'has_prev': pagination.has_prev,
+    }
+
+
 @api_bp.route('/stores', methods=['GET'])
 def get_stores():
-    stores = Store.query.filter(Store.subscription_status == 'active').all()
-    return jsonify({'stores': [serialize_store(s) for s in stores]}), 200
+    page, per_page = _paginate_args()
+    pagination = (
+        Store.query
+        .filter(Store.subscription_status == 'active')
+        .order_by(Store.created_at.desc())
+        .paginate(page=page, per_page=per_page, error_out=False)
+    )
+    return jsonify({
+        'stores': [serialize_store(s) for s in pagination.items],
+        'pagination': _pagination_meta(pagination),
+    }), 200
 
 
 @api_bp.route('/stores/<int:store_id>', methods=['GET'])
 def get_store(store_id):
-    store = Store.query.get_or_404(store_id)
+    store = db.get_or_404(Store, store_id)
     if store.subscription_status != 'active':
         abort(404)
     return jsonify({'store': serialize_store(store)}), 200
@@ -22,7 +59,7 @@ def get_store(store_id):
 
 @api_bp.route('/stores/<int:store_id>/categories', methods=['GET'])
 def get_store_categories(store_id):
-    store = Store.query.get_or_404(store_id)
+    store = db.get_or_404(Store, store_id)
     if store.subscription_status != 'active':
         abort(404)
     categories = Category.query.filter_by(store_id=store.id).all()
@@ -39,15 +76,26 @@ def get_store_categories(store_id):
 
 @api_bp.route('/stores/<int:store_id>/products', methods=['GET'])
 def get_store_products(store_id):
-    store = Store.query.get_or_404(store_id)
+    store = db.get_or_404(Store, store_id)
     if store.subscription_status != 'active':
         abort(404)
+
     category_id = request.args.get('category_id', type=int)
+    page, per_page = _paginate_args()
+
+    query = Product.query.filter_by(store_id=store.id)
     if category_id:
-        products = Product.query.filter_by(store_id=store.id, category_id=category_id).all()
-    else:
-        products = Product.query.filter_by(store_id=store.id).all()
-    return jsonify({'products': [serialize_product(p) for p in products]}), 200
+        query = query.filter_by(category_id=category_id)
+
+    pagination = (
+        query
+        .order_by(Product.created_at.desc())
+        .paginate(page=page, per_page=per_page, error_out=False)
+    )
+    return jsonify({
+        'products': [serialize_product(p) for p in pagination.items],
+        'pagination': _pagination_meta(pagination),
+    }), 200
 
 
 @api_bp.route('/stores/mine', methods=['GET'])
@@ -60,7 +108,7 @@ def get_my_stores(current_user):
 @api_bp.route('/stores/<int:store_id>/upload-images', methods=['POST'])
 @token_required
 def upload_product_images(current_user, store_id):
-    store = Store.query.get_or_404(store_id)
+    store = db.get_or_404(Store, store_id)
     if store.owner_id != current_user.id and current_user.role != 'admin':
         return jsonify({'message': 'غير مسموح'}), 403
     files = request.files.getlist('files')
@@ -78,7 +126,7 @@ def upload_product_images(current_user, store_id):
 @api_bp.route('/stores/<int:store_id>/upload-video', methods=['POST'])
 @token_required
 def upload_product_video(current_user, store_id):
-    store = Store.query.get_or_404(store_id)
+    store = db.get_or_404(Store, store_id)
     if store.owner_id != current_user.id and current_user.role != 'admin':
         return jsonify({'message': 'غير مسموح'}), 403
     file = request.files.get('files')
@@ -93,7 +141,7 @@ def upload_product_video(current_user, store_id):
 @api_bp.route('/stores/<int:store_id>/upload-logo', methods=['POST'])
 @token_required
 def upload_store_logo(current_user, store_id):
-    store = Store.query.get_or_404(store_id)
+    store = db.get_or_404(Store, store_id)
     if store.owner_id != current_user.id and current_user.role != 'admin':
         return jsonify({'message': 'غير مسموح'}), 403
     file = request.files.get('files')
@@ -108,7 +156,7 @@ def upload_store_logo(current_user, store_id):
 @api_bp.route('/stores/<int:store_id>/upload-proof', methods=['POST'])
 @token_required
 def upload_subscription_proof(current_user, store_id):
-    store = Store.query.get_or_404(store_id)
+    store = db.get_or_404(Store, store_id)
     if store.owner_id != current_user.id and current_user.role != 'admin':
         return jsonify({'message': 'غير مسموح'}), 403
     file = request.files.get('files')
@@ -123,7 +171,7 @@ def upload_subscription_proof(current_user, store_id):
 @api_bp.route('/stores/<int:store_id>/subscription', methods=['GET'])
 @token_required
 def get_store_subscription(current_user, store_id):
-    store = Store.query.get_or_404(store_id)
+    store = db.get_or_404(Store, store_id)
     if store.owner_id != current_user.id and current_user.role != 'admin':
         return jsonify({'message': 'غير مسموح'}), 403
     sub = Subscription.query.filter_by(store_id=store.id).order_by(Subscription.start_date.desc()).first()

@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from flask import request, jsonify, url_for
+from flask import request, jsonify
 from sqlalchemy import func, or_
 from database import db
 from models import User, Store, Order, Subscription, ChatMessage
@@ -9,12 +9,15 @@ from shared.services.subscription_service import SubscriptionService
 from shared.services.delivery_service import DeliveryService
 from shared.services.order_service import OrderService
 from . import api_bp
-from .helpers import token_required, serialize_user, serialize_store, serialize_order, get_image_url
+from .helpers import (
+    token_required,
+    is_admin,
+    serialize_user,
+    serialize_store,
+    serialize_order,
+    get_image_url,
+)
 from shared.time_utils import current_time
-
-
-def is_admin(user):
-    return user.role == 'admin'
 
 
 @api_bp.route('/admin/stats', methods=['GET'])
@@ -209,7 +212,7 @@ def admin_get_orders(current_user):
 def admin_update_order_status(current_user, order_id):
     if not is_admin(current_user):
         return jsonify({'message': 'غير مسموح'}), 403
-    order = Order.query.get_or_404(order_id)
+    order = db.get_or_404(Order, order_id)
     data = request.get_json(silent=True) or {}
     new_status = data.get('status')
     if new_status not in ['new', 'confirmed', 'preparing', 'ready', 'delivering', 'delivered', 'cancelled']:
