@@ -208,11 +208,20 @@ class CartService:
     def clear_store_cart(user_id, store_id):
         """
         حذف كل عناصر متجر محدد من سلة المستخدم. يُنفّذ commit.
+
+        ملاحظة تقنية: SQLAlchemy لا يسمح بـ Query.delete() على استعلام
+        يحتوي join() — لذلك نجلب معرّفات المنتجات أولاً في استعلام منفصل،
+        ثم نحذف CartItem بـ IN على الجدول الواحد.
         """
-        CartItem.query.join(Product, CartItem.product_id == Product.id).filter(
-            CartItem.user_id == user_id,
-            Product.store_id == store_id
-        ).delete(synchronize_session=False)
+        product_ids = [
+            pid for (pid,) in
+            db.session.query(Product.id).filter(Product.store_id == store_id).all()
+        ]
+        if product_ids:
+            CartItem.query.filter(
+                CartItem.user_id == user_id,
+                CartItem.product_id.in_(product_ids)
+            ).delete(synchronize_session=False)
         db.session.commit()
 
     @staticmethod

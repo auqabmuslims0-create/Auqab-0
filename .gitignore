@@ -23,7 +23,7 @@ ENV/
 *.log
 logs/
 
-# ═══════════════ Uploads (user-generated content, handled by Cloudinary) ═══════════════
+# ═══════════════ Uploads ═══════════════
 static/uploads/
 
 # ═══════════════ Testing ═══════════════
@@ -38,3 +38,9 @@ htmlcov/
 .DS_Store
 Thumbs.db
 mise.local.toml
+
+# ═══════════════ Backups & temporary files ═══════════════
+*.bak
+*.tmp
+*.orig
+*~
