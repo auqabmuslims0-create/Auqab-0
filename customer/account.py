@@ -1,21 +1,23 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash, abort, jsonify, g
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, g
 from sqlalchemy.orm import joinedload
 from database import db
-from models import User, Product, Store, Favorite, Review
+from models import Product, Store, Favorite, Review
 from shared.utils import safe_redirect_target, safe_referrer
 from shared.decorators import login_required
 
 account_bp = Blueprint('account', __name__)
 
+
 def _is_ajax():
     # نعتمد فقط على X-Requested-With لضمان أن الطلبات AJAX حقيقية
     return request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
 
 @account_bp.route('/favorite/toggle', methods=['POST'])
 @login_required
 def toggle_favorite_general():
     """تبديل المفضلة (منتج أو متجر) عبر JSON أو form."""
-    user_id = session['user_id']
+    user_id = g.user.id
     data = request.get_json(silent=True) or {}
     fav_type = data.get('type') or request.form.get('type')
     fav_id = data.get('id') or request.form.get('id', type=int)
@@ -25,7 +27,7 @@ def toggle_favorite_general():
 
     try:
         if fav_type == 'product':
-            product = Product.query.get_or_404(fav_id)
+            product = db.get_or_404(Product, fav_id)
             existing = Favorite.query.filter_by(user_id=user_id, product_id=product.id).first()
             if existing:
                 db.session.delete(existing)
@@ -37,7 +39,7 @@ def toggle_favorite_general():
                 db.session.commit()
                 return jsonify({'status': 'success', 'message': 'تمت إضافة المنتج إلى المفضلة', 'is_favorite': True})
         else:  # store
-            store = Store.query.get_or_404(fav_id)
+            store = db.get_or_404(Store, fav_id)
             existing = Favorite.query.filter_by(user_id=user_id, store_id=store.id).first()
             if existing:
                 db.session.delete(existing)
@@ -48,9 +50,10 @@ def toggle_favorite_general():
                 db.session.add(fav)
                 db.session.commit()
                 return jsonify({'status': 'success', 'message': 'تمت إضافة المتجر إلى المفضلة', 'is_favorite': True})
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        return jsonify({'status': 'error', 'message': f'حدث خطأ: {str(e)}'}), 500
+        return jsonify({'status': 'error', 'message': 'حدث خطأ أثناء تحديث المفضلة'}), 500
+
 
 @account_bp.route('/api/favorites/sync', methods=['POST'])
 @login_required
@@ -90,20 +93,22 @@ def sync_favorites():
 
     return jsonify({'status': 'success'})
 
+
 @account_bp.route('/favorites')
 @login_required
 def favorites():
-    user_id = session['user_id']
+    user_id = g.user.id
     favs = Favorite.query.filter_by(user_id=user_id).options(
         joinedload(Favorite.product),
         joinedload(Favorite.store)
     ).all()
     return render_template('customer/favorites.html', favs=favs)
 
+
 @account_bp.route('/favorite/toggle/product/<int:product_id>', methods=['POST'])
 @login_required
 def toggle_favorite_product(product_id):
-    user_id = session['user_id']
+    user_id = g.user.id
 
     existing = Favorite.query.filter_by(user_id=user_id, product_id=product_id).first()
     if existing:
@@ -124,10 +129,11 @@ def toggle_favorite_product(product_id):
     next_url = safe_redirect_target(request.form.get('next')) or safe_referrer() or url_for('market.market')
     return redirect(next_url)
 
+
 @account_bp.route('/favorite/toggle/store/<int:store_id>', methods=['POST'])
 @login_required
 def toggle_favorite_store(store_id):
-    user_id = session['user_id']
+    user_id = g.user.id
 
     existing = Favorite.query.filter_by(user_id=user_id, store_id=store_id).first()
     if existing:
@@ -148,12 +154,13 @@ def toggle_favorite_store(store_id):
     next_url = safe_redirect_target(request.form.get('next')) or safe_referrer() or url_for('stores.stores_page')
     return redirect(next_url)
 
+
 @account_bp.route('/product/<int:product_id>/review', methods=['POST'])
 @login_required
 def add_review(product_id):
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-    user_id = session['user_id']
-    product = Product.query.get_or_404(product_id)
+    user_id = g.user.id
+    product = db.get_or_404(Product, product_id)
 
     rating_str = request.form.get('rating', '').strip()
     comment = request.form.get('comment', '').strip()

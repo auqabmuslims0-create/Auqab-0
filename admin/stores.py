@@ -90,7 +90,7 @@ def admin_toggle_store(store_id):
     elif action == 'suspend':
         success, msg, _ = StoreService.toggle_store_status(store_id, force_activate=False)
     else:
-        store = Store.query.get_or_404(store_id)
+        store = db.get_or_404(Store, store_id)
         if store.subscription_status == 'active':
             success, msg, _ = StoreService.toggle_store_status(store_id, force_activate=False)
         else:

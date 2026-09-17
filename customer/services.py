@@ -2,8 +2,10 @@ from flask import Blueprint, render_template, request, jsonify, session, redirec
 from database import db
 from models import User, ChatMessage
 from shared.decorators import login_required
+from shared.services.notification_service import NotificationService
 
 services_bp = Blueprint('services', __name__)
+
 
 def _is_ajax():
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -13,19 +15,23 @@ def _is_ajax():
         return True
     return False
 
+
 @services_bp.route('/services')
 def services_page():
     return render_template('customer/services.html')
+
 
 @services_bp.route('/support')
 @login_required
 def support():
     return render_template('customer/contact.html')
 
+
 @services_bp.route('/contact')
 @login_required
 def contact():
     return redirect(url_for('services.support'))
+
 
 @services_bp.route('/contact/send', methods=['POST'])
 @login_required
@@ -61,16 +67,34 @@ def send_contact_message():
         )
         db.session.add(msg)
         db.session.commit()
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'status': 'success'})
-        flash('تم إرسال رسالتك بنجاح', 'success')
-        return redirect(url_for('services.support'))
     except Exception:
         db.session.rollback()
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        if _is_ajax():
             return jsonify({'status': 'error', 'message': 'حدث خطأ أثناء الإرسال'}), 500
         flash('حدث خطأ أثناء الإرسال، حاول مرة أخرى', 'error')
         return redirect(url_for('services.support'))
+
+    # إشعار كل المديرين النشطين (باستثناء المستخدم نفسه لو كان مديراً)
+    try:
+        preview = message[:80] + ('…' if len(message) > 80 else '')
+        NotificationService.send_to_admins(
+            message=f'من {user.username}: {preview}',
+            title='رسالة دعم جديدة',
+            link=f'/admin/chats/{user.id}',
+            type_=NotificationService.TYPE_MESSAGE,
+            priority=NotificationService.PRIORITY_IMPORTANT,
+            exclude_user_id=user.id
+        )
+    except Exception:
+        # فشل الإشعار لا يُفشل إرسال الرسالة — تسجّل في اللوج فقط
+        from flask import current_app
+        current_app.logger.exception('فشل إرسال إشعار للمديرين عند رسالة دعم جديدة')
+
+    if _is_ajax():
+        return jsonify({'status': 'success'})
+    flash('تم إرسال رسالتك بنجاح', 'success')
+    return redirect(url_for('services.support'))
+
 
 @services_bp.route('/contact/messages')
 @login_required

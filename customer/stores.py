@@ -1,7 +1,7 @@
-from flask import Blueprint, render_template, request, abort, session, jsonify, make_response
+from flask import Blueprint, render_template, request, abort, session, jsonify, make_response, g
 from sqlalchemy.orm import joinedload, selectinload
 from sqlalchemy import or_
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from database import db
 from models import Store, User, Product, Category, Favorite, Review, ProductComment, ProductReaction
 from shared.repositories.product_repository import ProductRepository
@@ -19,7 +19,6 @@ def _wants_json():
 
 
 def _should_count_view(product_id):
-    now_iso = datetime.utcnow().isoformat()
     viewed = session.get('viewed_products', {})
     if not isinstance(viewed, dict):
         viewed = {}
@@ -27,7 +26,7 @@ def _should_count_view(product_id):
     if last_seen:
         try:
             last_dt = datetime.fromisoformat(last_seen)
-            if datetime.utcnow() - last_dt < timedelta(minutes=VIEW_COOLDOWN_MINUTES):
+            if datetime.now(timezone.utc) - last_dt < timedelta(minutes=VIEW_COOLDOWN_MINUTES):
                 return False
         except (ValueError, TypeError):
             pass
@@ -38,7 +37,7 @@ def _mark_viewed(product_id):
     viewed = session.get('viewed_products', {})
     if not isinstance(viewed, dict):
         viewed = {}
-    viewed[str(product_id)] = datetime.utcnow().isoformat()
+    viewed[str(product_id)] = datetime.now(timezone.utc).isoformat()
     if len(viewed) > MAX_TRACKED_VIEWS:
         sorted_items = sorted(viewed.items(), key=lambda kv: kv[1], reverse=True)
         viewed = dict(sorted_items[:MAX_TRACKED_VIEWS])
@@ -159,10 +158,10 @@ def store_public(store_id):
     ).all()
 
     is_favorite = False
-    if 'user_id' in session:
+    if g.user:
         is_favorite = db.session.query(
             Favorite.query.filter_by(
-                user_id=session['user_id'], store_id=store.id
+                user_id=g.user.id, store_id=store.id
             ).exists()
         ).scalar()
 
@@ -207,8 +206,8 @@ def product_public(product_id):
         avg_rating = 0
 
     is_favorite = False
-    if 'user_id' in session:
-        existing_fav = Favorite.query.filter_by(user_id=session['user_id'], product_id=product.id).first()
+    if g.user:
+        existing_fav = Favorite.query.filter_by(user_id=g.user.id, product_id=product.id).first()
         if existing_fav:
             is_favorite = True
 

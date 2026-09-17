@@ -1,10 +1,11 @@
-from flask import render_template, request, redirect, url_for, session, flash, abort, g
+from flask import render_template, request, redirect, url_for, session, flash, g
 from sqlalchemy import func, or_
 from database import db
 from models import User, Order, Store, Favorite, Review, ProductComment
 from shared.services.user_service import UserService
 from shared.decorators import role_required
 from . import admin_bp
+
 
 @admin_bp.route('/admin/users')
 @role_required('admin')
@@ -76,6 +77,7 @@ def admin_users():
                            temp_password=temp_password,
                            user_stats=user_stats)
 
+
 @admin_bp.route('/admin/users/<int:user_id>/toggle', methods=['POST'])
 @role_required('admin')
 def admin_toggle_user(user_id):
@@ -84,16 +86,20 @@ def admin_toggle_user(user_id):
     flash(msg, 'success' if success else 'error')
     return redirect(url_for('admin.admin_users'))
 
+
 @admin_bp.route('/admin/users/<int:user_id>/reset_password', methods=['POST'])
 @role_required('admin')
 def admin_reset_password(user_id):
     success, msg, temp_password = UserService.reset_password(user_id)
     if success:
+        # كلمة المرور المؤقتة تُعرض في القالب (عبر session) وليس في رسالة flash
+        # لتجنب تسربها إلى سجلات wsgi/proxy.
         session['reset_password_temp'] = temp_password
-        flash(f'{msg}. كلمة المرور المؤقتة: {temp_password}', 'success')
+        flash(msg, 'success')
     else:
         flash(msg, 'error')
     return redirect(url_for('admin.admin_users'))
+
 
 @admin_bp.route('/admin/users/<int:user_id>/delete', methods=['POST'])
 @role_required('admin')
@@ -103,10 +109,11 @@ def admin_delete_user(user_id):
     flash(msg, 'success' if success else 'error')
     return redirect(url_for('admin.admin_users'))
 
+
 @admin_bp.route('/admin/users/<int:user_id>/contact', methods=['GET', 'POST'])
 @role_required('admin')
 def admin_contact_user(user_id):
-    target_user = User.query.get_or_404(user_id)
+    target_user = db.get_or_404(User, user_id)
 
     if request.method == 'POST':
         title = request.form.get('title', '').strip()

@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, session, flash, g
+from flask import render_template, request, redirect, url_for, flash, g
 from sqlalchemy import func, and_, or_
 from database import db
 from models import User, ChatMessage
@@ -6,6 +6,7 @@ from shared.services.notification_service import NotificationService
 from shared.decorators import role_required
 from . import admin_bp
 from datetime import datetime
+
 
 @admin_bp.route('/admin/chats')
 @role_required('admin')
@@ -46,11 +47,12 @@ def admin_chats():
 
     return render_template('admin/admin_chats.html', users=users, unread_counts=unread_counts)
 
+
 @admin_bp.route('/admin/chats/<int:user_id>')
 @role_required('admin')
 def admin_chat_view(user_id):
     admin_user = g.user
-    target_user = User.query.get_or_404(user_id)
+    target_user = db.get_or_404(User, user_id)
 
     messages = ChatMessage.query.filter(
         or_(
@@ -65,6 +67,7 @@ def admin_chat_view(user_id):
     db.session.commit()
 
     return render_template('admin/admin_chat_view.html', messages=messages, target_user=target_user, admin_id=admin_user.id)
+
 
 @admin_bp.route('/admin/chats/send', methods=['POST'])
 @role_required('admin')
@@ -85,13 +88,15 @@ def admin_send_message():
     )
     db.session.add(msg)
     try:
-        db.session.commit()
+        # commit=False → نحفظ الرسالة والإشعار معاً في commit واحد
+        # (لو فشل أحدهما، يتراجع كليهما لتفادي حالة "رسالة بدون إشعار").
         NotificationService.send_to_user(
             user_id=user_id,
             title='رسالة جديدة من الدعم',
             message=message,
             link=url_for('services.support'),
-            type_=NotificationService.TYPE_MESSAGE
+            type_=NotificationService.TYPE_MESSAGE,
+            commit=False
         )
         db.session.commit()
     except Exception:

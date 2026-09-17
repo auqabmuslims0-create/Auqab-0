@@ -1,12 +1,12 @@
 from flask import render_template, request, redirect, url_for, flash, abort
 from database import db
 from models import Product, Category, Reel
-import os
 from sqlalchemy.orm import joinedload
 from shared.utils import is_store_active, save_image, save_video, delete_local_file
 from shared.decorators import role_required
 from . import store_bp
 from .common import check_store_access
+
 
 @store_bp.route('/store/<int:store_id>/products')
 @role_required('owner')
@@ -36,6 +36,7 @@ def store_products(store_id):
                            q=q,
                            selected_category=category_id,
                            total_products_value=total_products_value)
+
 
 @store_bp.route('/store/<int:store_id>/products/new', methods=['GET', 'POST'])
 @role_required('owner')
@@ -145,7 +146,6 @@ def new_product(store_id):
             hide_price=hide_price
         )
         db.session.add(product)
-        db.session.add(product)
         db.session.flush()
 
         if video_filename:
@@ -166,12 +166,14 @@ def new_product(store_id):
                 from shared.services.notification_service import NotificationService
                 NotificationService.notify_new_offer(product)
             except Exception:
-                pass
+                import logging
+                logging.getLogger(__name__).exception('notify_new_offer failed')
         flash('تم إضافة المنتج')
         return redirect(url_for('store.store_products', store_id=store.id))
 
     categories = Category.query.filter_by(store_id=store.id).all()
     return render_template('store_owner/product_form.html', store=store, product=None, categories=categories)
+
 
 @store_bp.route('/store/<int:store_id>/products/<int:product_id>/edit', methods=['GET', 'POST'])
 @role_required('owner')
@@ -181,9 +183,9 @@ def edit_product(store_id, product_id):
         return result[1]
     user, store = result
 
-    product = Product.query.get_or_404(product_id)
+    product = db.get_or_404(Product, product_id)
     if product.store_id != store.id:
-        abort(403)
+        abort(404)
 
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
@@ -338,6 +340,7 @@ def edit_product(store_id, product_id):
     categories = Category.query.filter_by(store_id=store.id).all()
     return render_template('store_owner/product_form.html', store=store, product=product, categories=categories)
 
+
 @store_bp.route('/store/<int:store_id>/products/<int:product_id>/delete', methods=['POST'])
 @role_required('owner')
 def delete_product(store_id, product_id):
@@ -346,9 +349,9 @@ def delete_product(store_id, product_id):
         return result[1]
     user, store = result
 
-    product = Product.query.get_or_404(product_id)
+    product = db.get_or_404(Product, product_id)
     if product.store_id != store.id:
-        abort(403)
+        abort(404)
 
     if product.main_image:
         delete_local_file(product.main_image)

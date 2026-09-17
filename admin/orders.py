@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, flash, session, g
+from flask import render_template, request, redirect, url_for, flash, g
 from sqlalchemy import or_
 from sqlalchemy.orm import selectinload
 from database import db
@@ -6,6 +6,7 @@ from models import Order, OrderItem, Store, User
 from shared.services.order_service import OrderService
 from shared.decorators import role_required
 from . import admin_bp
+
 
 @admin_bp.route('/admin/orders')
 @role_required('admin')
@@ -61,10 +62,11 @@ def admin_orders():
                            pagination=pagination, q=q, status_filter=status_filter,
                            allowed_statuses=allowed_statuses)
 
+
 @admin_bp.route('/admin/orders/<int:order_id>/status', methods=['POST'])
 @role_required('admin')
 def admin_update_order_status(order_id):
-    order = Order.query.get_or_404(order_id)
+    order = db.get_or_404(Order, order_id)
     new_status = request.form.get('status')
     allowed_statuses = ['new', 'confirmed', 'preparing', 'ready', 'delivering', 'delivered', 'cancelled']
     if new_status not in allowed_statuses:

@@ -1,6 +1,6 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
+from flask import Blueprint, render_template, request, jsonify, g
 from database import db
-from models import User, Notification, PushSubscription
+from models import PushSubscription
 from shared.decorators import login_required
 from shared.services.notification_service import NotificationService
 from shared.repositories.notification_repository import NotificationRepository
@@ -51,7 +51,7 @@ def notifications():
 @login_required
 def api_get_notifications():
     """يجلب الإشعارات مع فلترة + pagination."""
-    user_id = session.get('user_id')
+    user_id = g.user.id
 
     filter_type = request.args.get('type') or None
     filter_read = request.args.get('read')
@@ -64,8 +64,13 @@ def api_get_notifications():
     else:
         filter_read = None
 
-    page = max(1, int(request.args.get('page', 1)))
-    per_page = min(int(request.args.get('per_page', 20)), 50)
+    # parsing آمن (type=int يرجع الافتراضي عند فشل التحويل بدل رفع استثناء)
+    page = request.args.get('page', 1, type=int) or 1
+    page = max(1, page)
+
+    per_page = request.args.get('per_page', 20, type=int) or 20
+    per_page = min(max(1, per_page), 50)
+
     offset = (page - 1) * per_page
 
     notifs = NotificationService.get_user_notifications(
@@ -97,7 +102,7 @@ def api_get_notifications():
 @login_required
 def api_notification_counts():
     """يُرجع عدد الإشعارات لكل تصنيف (لشارات الفلترة)."""
-    user_id = session.get('user_id')
+    user_id = g.user.id
 
     def _count(**kwargs):
         return NotificationRepository.count_user_notifications(user_id, **kwargs)
@@ -118,14 +123,14 @@ def api_notification_counts():
 @notifications_bp.route('/api/notifications/unread-count')
 @login_required
 def api_unread_count():
-    user_id = session.get('user_id')
+    user_id = g.user.id
     return jsonify({'unread_count': NotificationService.get_unread_count(user_id)})
 
 
 @notifications_bp.route('/api/notifications/<int:notif_id>/read', methods=['POST'])
 @login_required
 def api_mark_read(notif_id):
-    user_id = session.get('user_id')
+    user_id = g.user.id
     if NotificationService.mark_as_read(notif_id, user_id):
         return jsonify({
             'message': 'تم التحديد كمقروء',
@@ -137,7 +142,7 @@ def api_mark_read(notif_id):
 @notifications_bp.route('/api/notifications/read-all', methods=['POST'])
 @login_required
 def api_mark_all_read():
-    user_id = session.get('user_id')
+    user_id = g.user.id
     NotificationService.mark_all_as_read(user_id)
     return jsonify({'message': 'تم تحديد الكل كمقروء', 'unread_count': 0}), 200
 
@@ -145,7 +150,7 @@ def api_mark_all_read():
 @notifications_bp.route('/api/notifications/<int:notif_id>', methods=['DELETE'])
 @login_required
 def api_delete_notification(notif_id):
-    user_id = session.get('user_id')
+    user_id = g.user.id
     if NotificationService.delete(notif_id, user_id):
         return jsonify({
             'message': 'تم الحذف',
@@ -157,7 +162,7 @@ def api_delete_notification(notif_id):
 @notifications_bp.route('/api/notifications/read', methods=['DELETE'])
 @login_required
 def api_delete_read():
-    user_id = session.get('user_id')
+    user_id = g.user.id
     NotificationService.delete_all_read(user_id)
     return jsonify({
         'message': 'تم حذف المقروءة',
@@ -168,7 +173,7 @@ def api_delete_read():
 @notifications_bp.route('/api/notifications/delete-selected', methods=['POST'])
 @login_required
 def api_delete_selected():
-    user_id = session.get('user_id')
+    user_id = g.user.id
     data = request.get_json(silent=True) or {}
     ids = data.get('ids', [])
     if not ids:
@@ -192,6 +197,11 @@ def api_delete_selected():
 
 # ========== Push Subscription ==========
 
+# حدود معقولة لمفاتيح Web Push
+_MAX_P256DH_LEN = 200
+_MAX_AUTH_LEN = 100
+
+
 @notifications_bp.route('/api/notifications/push/vapid_public_key', methods=['GET'])
 def push_vapid_public_key():
     public_key, _ = get_or_create_vapid_keys()
@@ -203,20 +213,30 @@ def push_vapid_public_key():
 def push_subscribe():
     data = request.get_json(silent=True) or {}
     subscription = data.get('subscription')
-    if not subscription:
+    if not subscription or not isinstance(subscription, dict):
         return jsonify({'message': 'بيانات الاشتراك مطلوبة'}), 400
 
     endpoint = subscription.get('endpoint')
     keys = subscription.get('keys', {})
+    if not isinstance(keys, dict):
+        return jsonify({'message': 'بيانات المفاتيح غير صالحة'}), 400
     p256dh = keys.get('p256dh')
     auth = keys.get('auth')
 
     if not endpoint or not p256dh or not auth:
         return jsonify({'message': 'بيانات الاشتراك غير مكتملة'}), 400
 
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'message': 'يجب تسجيل الدخول'}), 401
+    # تحقق من صيغة endpoint — يجب أن يكون https
+    if not isinstance(endpoint, str) or not endpoint.startswith('https://'):
+        return jsonify({'message': 'endpoint غير صالح'}), 400
+
+    # تحقق من أطوال المفاتيح (منع إغراق قاعدة البيانات)
+    if not isinstance(p256dh, str) or len(p256dh) > _MAX_P256DH_LEN:
+        return jsonify({'message': 'مفتاح p256dh غير صالح'}), 400
+    if not isinstance(auth, str) or len(auth) > _MAX_AUTH_LEN:
+        return jsonify({'message': 'مفتاح auth غير صالح'}), 400
+
+    user_id = g.user.id
 
     existing = PushSubscription.query.filter_by(endpoint=endpoint).first()
     if existing:
@@ -253,10 +273,10 @@ def push_subscribe():
 def push_unsubscribe():
     data = request.get_json(silent=True) or {}
     endpoint = data.get('endpoint')
-    if not endpoint:
+    if not endpoint or not isinstance(endpoint, str):
         return jsonify({'message': 'endpoint مطلوب'}), 400
 
-    user_id = session.get('user_id')
+    user_id = g.user.id
     sub = PushSubscription.query.filter_by(endpoint=endpoint, user_id=user_id).first()
     if sub:
         db.session.delete(sub)

@@ -1,8 +1,9 @@
-from flask import render_template, session, redirect, url_for
+from flask import render_template
 from database import db
 from models import User, Store, Order, Subscription, Payment
 from shared.decorators import role_required
 from . import admin_bp
+
 
 @admin_bp.route('/admin')
 @role_required('admin')

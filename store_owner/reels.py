@@ -5,6 +5,9 @@ from shared.utils import is_store_active, save_video, save_image, delete_local_f
 from shared.decorators import role_required
 from . import store_bp
 from .common import check_store_access
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @store_bp.route('/store/<int:store_id>/reels')
@@ -104,7 +107,8 @@ def new_reel(store_id):
             from shared.services.notification_service import NotificationService
             NotificationService.notify_new_reel(reel)
         except Exception:
-            pass
+            logger.exception('notify_new_reel failed for reel %s', reel.id)
+
         flash('تم إضافة الريل بنجاح', 'success')
         return redirect(url_for('store.store_reels', store_id=store.id))
 
@@ -120,9 +124,9 @@ def delete_reel(store_id, reel_id):
         return result[1]
     user, store = result
 
-    reel = Reel.query.get_or_404(reel_id)
+    reel = db.get_or_404(Reel, reel_id)
     if reel.store_id != store.id:
-        abort(403)
+        abort(404)
 
     if reel.video_url:
         delete_local_file(reel.video_url)

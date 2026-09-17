@@ -1,8 +1,8 @@
-from flask import render_template, request, session, redirect, url_for, flash, g
+from flask import render_template, request, redirect, url_for, flash, g
 from datetime import timedelta
 from collections import defaultdict
 from database import db
-from models import User, Store, Product, Order, OrderItem
+from models import Store, Product, Order, OrderItem
 from sqlalchemy import func
 from shared.time_utils import current_time
 from shared.decorators import role_required
@@ -113,6 +113,7 @@ def store_stats():
     weekday_orders = [weekday_stats[i]['orders'] for i in weekday_order]
 
     # ====== Top 10 الأكثر مبيعاً ======
+    # PostgreSQL يتطلب أن تكون كل الأعمدة غير المُجمّعة في GROUP BY
     top_sellers_query = db.session.query(
         Product.id,
         Product.name,
@@ -129,7 +130,7 @@ def store_stats():
     if start_date:
         top_sellers_query = top_sellers_query.filter(Order.created_at >= start_date)
     top_sellers = top_sellers_query \
-        .group_by(Product.id) \
+        .group_by(Product.id, Product.name, Product.main_image, Product.price) \
         .order_by(func.sum(OrderItem.quantity).desc()) \
         .limit(10).all()
 

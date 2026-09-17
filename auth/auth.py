@@ -1,14 +1,19 @@
-import os
 from flask import render_template, request, redirect, url_for, session, flash, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from database import db
 from models import User
 from shared.repositories.user_repository import UserRepository
 from shared.validators import is_valid_email, is_valid_phone_syrian, is_strong_password
-from shared.security import record_login_attempt, get_login_attempts, clear_login_attempts
+from shared.security import (
+    record_login_attempt,
+    get_login_attempts,
+    clear_login_attempts,
+    get_client_ip,
+)
 from shared.utils import generate_public_id, save_image
 from shared.decorators import login_required
 from . import auth_bp
+
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
@@ -114,8 +119,11 @@ def register():
             db.session.add(user)
             db.session.commit()
 
+            # إزالة بيانات التسجيل فقط — لا نمسح الجلسة كاملة حفاظاً على csrf_token
             session.pop('reg_data', None)
-            session.clear()
+            session.pop('user_id', None)
+            session.pop('role', None)
+            session.pop('new_public_id', None)
             session['user_id'] = user.id
             session['role'] = user.role
             session['new_public_id'] = user.public_id
@@ -129,6 +137,7 @@ def register():
 
     return render_template('auth/register.html', step=step)
 
+
 @auth_bp.route('/show_public_id')
 def show_public_id():
     if 'user_id' not in session or 'new_public_id' not in session:
@@ -136,6 +145,7 @@ def show_public_id():
         return redirect(url_for('auth.login'))
     public_id = session.pop('new_public_id')
     return render_template('auth/show_public_id.html', public_id=public_id)
+
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -148,9 +158,7 @@ def login():
         password = request.form.get('password', '')
         remember_me = request.form.get('remember_me') == '1'
 
-        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-        if ip:
-            ip = ip.split(',')[0].strip()
+        ip = get_client_ip()
 
         if get_login_attempts(ip) >= 5:
             flash('تم تجاوز عدد المحاولات المسموح، حاول بعد 5 دقائق', 'danger')
@@ -179,6 +187,7 @@ def login():
 
     return render_template('auth/login.html', login_error=login_error)
 
+
 @auth_bp.route('/logout')
 @login_required
 def logout():
@@ -186,10 +195,10 @@ def logout():
     flash('تم تسجيل الخروج', 'success')
     return redirect(url_for('auth.login'))
 
+
 @auth_bp.route('/dashboard')
 @login_required
 def dashboard():
-    from flask import g
     user = g.user
     if not user:
         session.clear()

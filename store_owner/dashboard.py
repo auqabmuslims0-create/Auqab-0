@@ -1,9 +1,9 @@
 from flask import render_template, request, redirect, url_for, flash, abort, session, g
 from database import db
-from models import User, Store, Product, Order, Category, Reel, Subscription, Review, ProductComment, ProductReaction
+from models import Store, Product, Order, Category, Reel, Subscription, Review, ProductComment, ProductReaction
 from sqlalchemy import func
 from shared.time_utils import current_time
-from shared.utils import is_store_active, save_image, get_setting
+from shared.utils import save_image, get_setting
 from shared.validators import is_valid_phone_syrian
 from shared.decorators import role_required
 from . import store_bp
@@ -64,7 +64,13 @@ def new_store():
                 return redirect(url_for('store.new_store', step=1))
 
             logo_file = request.files.get('logo')
-            logo_filename = save_image(logo_file) if logo_file and logo_file.filename != '' else None
+            logo_filename = None
+            if logo_file and logo_file.filename != '':
+                try:
+                    logo_filename = save_image(logo_file)
+                except ValueError as e:
+                    flash(str(e), 'error')
+                    return redirect(url_for('store.new_store', step=1))
 
             session['store_temp'] = {
                 'name': name,
@@ -153,13 +159,17 @@ def store_manage(store_id):
         Order.status != 'cancelled'
     ).scalar() or 0
 
-    products_ids = [p.id for p in store.products]
+    # B2: نجلب IDs مباشرة (بدون تحميل كائنات Product الكاملة)
+    products_ids = [
+        pid for (pid,) in
+        db.session.query(Product.id).filter(Product.store_id == store.id).all()
+    ]
+
     if products_ids:
         reviews_count = Review.query.filter(Review.product_id.in_(products_ids)).count()
-        comments_count = Review.query.filter(
-            Review.product_id.in_(products_ids),
-            Review.comment.isnot(None),
-            Review.comment != ''
+        # A2: comments_count يحصي ProductComment (وليس Review بـ comment)
+        comments_count = ProductComment.query.filter(
+            ProductComment.product_id.in_(products_ids)
         ).count()
         reactions_count = ProductReaction.query.filter(ProductReaction.product_id.in_(products_ids)).count()
     else:

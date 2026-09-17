@@ -7,17 +7,21 @@ import secrets
 import hashlib
 from datetime import timedelta
 from shared.validators import is_strong_password
-from shared.security import record_reset_attempt, get_reset_attempts_by_email, get_reset_attempts_by_ip
+from shared.security import (
+    record_reset_attempt,
+    get_reset_attempts_by_email,
+    get_reset_attempts_by_ip,
+    get_client_ip,
+)
 from shared.time_utils import current_time
 from . import auth_bp
+
 
 @auth_bp.route('/forgot_password', methods=['GET', 'POST'])
 def forgot_password():
     if request.method == 'POST':
         email = request.form.get('email', '').strip()
-        ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-        if ip:
-            ip = ip.split(',')[0].strip()
+        ip = get_client_ip()
 
         if get_reset_attempts_by_email(email) >= 3:
             flash('تم تجاوز عدد محاولات استعادة كلمة المرور، حاول بعد 15 دقيقة', 'error')
@@ -38,6 +42,7 @@ def forgot_password():
         return redirect(url_for('auth.confirm_identity'))
 
     return render_template('auth/forgot_password.html')
+
 
 @auth_bp.route('/confirm_identity', methods=['GET', 'POST'])
 def confirm_identity():
@@ -62,25 +67,30 @@ def confirm_identity():
             flash('بيانات الهوية غير صحيحة', 'error')
             return redirect(url_for('auth.confirm_identity'))
 
-        # حذف أي رموز سابقة لنفس المستخدم
-        PasswordReset.query.filter_by(user_id=user.id).delete()
-        db.session.commit()  # <-- الإصلاح: إضافة commit
+        try:
+            # حذف أي رموز سابقة لنفس المستخدم
+            PasswordReset.query.filter_by(user_id=user.id).delete()
 
-        token = secrets.token_hex(20)
-        hashed_token = hashlib.sha256(token.encode()).hexdigest()
-        reset = PasswordReset(
-            user_id=user.id,
-            token=hashed_token,
-            expires_at=current_time() + timedelta(hours=1)
-        )
-        db.session.add(reset)
-        db.session.commit()
+            token = secrets.token_hex(20)
+            hashed_token = hashlib.sha256(token.encode()).hexdigest()
+            reset = PasswordReset(
+                user_id=user.id,
+                token=hashed_token,
+                expires_at=current_time() + timedelta(hours=1)
+            )
+            db.session.add(reset)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            flash('تعذر إنشاء رابط الاستعادة، يرجى المحاولة لاحقاً', 'error')
+            return redirect(url_for('auth.forgot_password'))
 
         session.pop('reset_email', None)
         session['reset_user_id'] = user.id
         return redirect(url_for('auth.reset_password', token=token))
 
     return render_template('auth/confirm_identity.html')
+
 
 @auth_bp.route('/reset_password/<token>', methods=['GET', 'POST'])
 @auth_bp.route('/reset_password', methods=['GET', 'POST'])

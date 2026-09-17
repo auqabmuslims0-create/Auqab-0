@@ -3,13 +3,13 @@ from flask import render_template, request, redirect, url_for, flash, abort
 from sqlalchemy.orm import joinedload
 from database import db
 from models import Product, Review
-import os
 from datetime import timedelta
 from shared.time_utils import current_time
-from shared.utils import save_image, get_upload_path, delete_local_file
+from shared.utils import save_image
 from shared.decorators import role_required
 from . import store_bp
 from .common import check_store_access
+
 
 @store_bp.route('/store/<int:store_id>/edit', methods=['GET', 'POST'])
 @role_required('owner')
@@ -20,35 +20,44 @@ def edit_store(store_id):
     user, store = result
 
     if request.method == 'POST':
-        store.name = request.form.get('name', '').strip()
-        store.description = request.form.get('description', '').strip()
-        phone = request.form.get('phone', '').strip()
-        store.address = request.form.get('address', '').strip()
-        opening_time = request.form.get('opening_time', '').strip()
-        closing_time = request.form.get('closing_time', '').strip()
-        has_delivery = request.form.get('has_delivery') == 'yes'
-        store.latitude = request.form.get('latitude', type=float)
-        store.longitude = request.form.get('longitude', type=float)
-
-        if not store.name:
+        name = request.form.get('name', '').strip()
+        if not name:
             flash('اسم المتجر لا يمكن أن يكون فارغاً')
             return redirect(url_for('store.edit_store', store_id=store.id))
 
+        phone = request.form.get('phone', '').strip()
         if phone and not is_valid_phone_syrian(phone):
             flash('رقم الهاتف يجب أن يبدأ بـ 9 ويتكون من 9 أرقام')
             return redirect(url_for('store.edit_store', store_id=store.id))
 
-        store.phone = '+963' + phone if phone else ''
+        opening_time = request.form.get('opening_time', '').strip()
+        closing_time = request.form.get('closing_time', '').strip()
+        has_delivery = request.form.get('has_delivery') == 'yes'
+
+        store.name = name
+        store.description = request.form.get('description', '').strip()
+        store.address = request.form.get('address', '').strip()
+        store.phone = '+963' + phone if phone else None
         store.working_hours = f"{opening_time} - {closing_time}" if opening_time and closing_time else ''
+        store.latitude = request.form.get('latitude', type=float)
+        store.longitude = request.form.get('longitude', type=float)
 
         logo_file = request.files.get('logo')
         if logo_file and logo_file.filename != '':
             old_logo_url = store.logo_url
-            new_logo = save_image(logo_file, old_url=old_logo_url)
+            try:
+                new_logo = save_image(logo_file, old_url=old_logo_url)
+            except ValueError as e:
+                flash(str(e), 'error')
+                return redirect(url_for('store.edit_store', store_id=store.id))
+            except Exception:
+                flash('فشل رفع الشعار، حاول مرة أخرى', 'error')
+                return redirect(url_for('store.edit_store', store_id=store.id))
+
             if new_logo:
                 store.logo_url = new_logo
             else:
-                flash('فشل رفع الشعار', 'error')
+                flash('فشل رفع الشعار، حاول مرة أخرى', 'error')
                 return redirect(url_for('store.edit_store', store_id=store.id))
 
         store.has_delivery = has_delivery
@@ -59,6 +68,7 @@ def edit_store(store_id):
     pending_deletion_at_iso = store.pending_deletion_at.isoformat() if store.pending_deletion_at else None
     return render_template('store_owner/edit_store.html', store=store,
                            pending_deletion_at_iso=pending_deletion_at_iso)
+
 
 @store_bp.route('/store/<int:store_id>/request_delete', methods=['POST'])
 @role_required('owner')
@@ -72,6 +82,7 @@ def request_delete_store(store_id):
     flash('تمت جدولة حذف المتجر خلال 48 ساعة. يمكنك التراجع قبل انتهاء المدة.', 'warning')
     return redirect(url_for('store.edit_store', store_id=store.id))
 
+
 @store_bp.route('/store/<int:store_id>/cancel_delete', methods=['POST'])
 @role_required('owner')
 def cancel_delete_store(store_id):
@@ -83,6 +94,7 @@ def cancel_delete_store(store_id):
     db.session.commit()
     flash('تم إلغاء طلب الحذف.', 'success')
     return redirect(url_for('store.edit_store', store_id=store.id))
+
 
 @store_bp.route('/store/<int:store_id>/comments')
 @role_required('owner')

@@ -8,6 +8,7 @@ from werkzeug.security import generate_password_hash
 from shared.decorators import role_required
 from . import admin_bp
 
+
 @admin_bp.route('/admin/delivery_persons')
 @role_required('admin')
 def admin_delivery_persons():
@@ -59,12 +60,14 @@ def admin_delivery_persons():
 
     return render_template('admin/admin_delivery_persons.html', persons=persons, availability_map=availability_map)
 
+
 @admin_bp.route('/admin/delivery_persons/<int:user_id>/shift', methods=['GET', 'POST'])
 @role_required('admin')
 def admin_delivery_shift_edit(user_id):
-    person = User.query.get_or_404(user_id)
+    person = db.get_or_404(User, user_id)
     if person.role != 'delivery':
-        abort(403)
+        # 404 بدل 403 لتفادي كشف وجود المستخدم (User Enumeration)
+        abort(404)
 
     if request.method == 'POST':
         start_time_str = request.form.get('shift_start_time')
@@ -76,6 +79,7 @@ def admin_delivery_shift_edit(user_id):
         return redirect(url_for('admin.admin_delivery_persons'))
 
     return render_template('admin/admin_delivery_shift_form.html', person=person)
+
 
 @admin_bp.route('/admin/delivery_persons/new', methods=['GET', 'POST'])
 @role_required('admin')
@@ -135,12 +139,14 @@ def admin_delivery_person_new():
 
     return render_template('admin/admin_delivery_person_form.html', person=None)
 
+
 @admin_bp.route('/admin/delivery_persons/<int:user_id>/edit', methods=['GET', 'POST'])
 @role_required('admin')
 def admin_delivery_person_edit(user_id):
-    person = User.query.get_or_404(user_id)
+    person = db.get_or_404(User, user_id)
     if person.role != 'delivery':
-        abort(403)
+        # 404 بدل 403 لتفادي كشف وجود المستخدم (User Enumeration)
+        abort(404)
 
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
@@ -195,12 +201,14 @@ def admin_delivery_person_edit(user_id):
 
     return render_template('admin/admin_delivery_person_form.html', person=person)
 
+
 @admin_bp.route('/admin/delivery_persons/<int:user_id>/toggle', methods=['POST'])
 @role_required('admin')
 def admin_delivery_person_toggle(user_id):
     success, msg, _ = DeliveryService.toggle_delivery_person(user_id)
     flash(msg, 'success' if success else 'error')
     return redirect(url_for('admin.admin_delivery_persons'))
+
 
 @admin_bp.route('/admin/delivery_persons/<int:user_id>/delete', methods=['POST'])
 @role_required('admin')

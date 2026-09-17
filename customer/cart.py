@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, abort, g
 from sqlalchemy.orm import joinedload, selectinload
 from database import db
-from models import Product, CartItem, Store, Order, OrderItem, OrderStatusHistory, Payment, User
+from models import Product, CartItem, Store, Order, OrderItem, Payment, User
 from shared.time_utils import current_time
 from datetime import timedelta
 from sqlalchemy import or_, and_
@@ -11,12 +11,15 @@ from shared.services.order_service import OrderService
 
 cart_bp = Blueprint('cart', __name__)
 
+
 def _get_session_cart():
     return session.get('cart', {})
+
 
 def _save_session_cart(cart):
     session['cart'] = cart
     session.modified = True
+
 
 def _merge_cart_with_db(user_id, session_cart):
     """دمج سلة الجلسة مع سلة قاعدة البيانات، دون commit (يترك للمتصل)."""
@@ -69,8 +72,10 @@ def _merge_cart_with_db(user_id, session_cart):
     session['cart'] = updated_cart
     return updated_cart
 
+
 def _is_ajax():
     return request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.accept_mimetypes.accept_json
+
 
 @cart_bp.route('/cart')
 def cart():
@@ -131,6 +136,7 @@ def cart():
 
     return render_template('customer/cart.html', grouped=grouped, orders=orders)
 
+
 @cart_bp.route('/cart/count')
 def cart_count():
     if 'user_id' in session:
@@ -139,6 +145,7 @@ def cart_count():
             db.session.commit()
     cart = _get_session_cart()
     return jsonify({'cart_count': sum(cart.values())})
+
 
 @cart_bp.route('/api/cart/sync', methods=['POST'])
 def sync_cart():
@@ -196,10 +203,11 @@ def sync_cart():
     cart = _get_session_cart()
     return jsonify({'status': 'success', 'cart_count': sum(cart.values())})
 
+
 @cart_bp.route('/cart/add/<int:product_id>', methods=['POST'])
 def add_to_cart(product_id):
-    product = Product.query.get_or_404(product_id)
-    quantity = int(request.form.get('quantity', 1))
+    product = db.get_or_404(Product, product_id)
+    quantity = request.form.get('quantity', 1, type=int) or 1
     if quantity < 1:
         quantity = 1
 
@@ -243,9 +251,10 @@ def add_to_cart(product_id):
         return redirect(next_url)
     return redirect(request.referrer or url_for('market.market'))
 
+
 @cart_bp.route('/cart/update/<int:product_id>', methods=['POST'])
 def update_cart(product_id):
-    product = Product.query.get_or_404(product_id)
+    product = db.get_or_404(Product, product_id)
     action = request.form.get('action')
     cart = _get_session_cart()
     pid_str = str(product_id)
@@ -259,7 +268,7 @@ def update_cart(product_id):
             ).delete()
             db.session.commit()
     else:
-        new_qty = int(request.form.get('quantity', 1))
+        new_qty = request.form.get('quantity', 1, type=int) or 1
         if new_qty < 1:
             cart.pop(pid_str, None)
             if 'user_id' in session:
@@ -311,6 +320,7 @@ def update_cart(product_id):
         })
     return redirect(request.referrer or url_for('cart.cart'))
 
+
 @cart_bp.route('/cart/remove/<int:product_id>', methods=['POST'])
 def remove_from_cart(product_id):
     """إزالة منتج محدد من السلة (للجلسة وقاعدة البيانات)."""
@@ -330,6 +340,7 @@ def remove_from_cart(product_id):
     flash('تمت إزالة المنتج من السلة', 'success')
     return redirect(request.referrer or url_for('cart.cart'))
 
+
 @cart_bp.route('/cart/clear', methods=['POST'])
 def clear_cart():
     session.pop('cart', None)
@@ -338,6 +349,7 @@ def clear_cart():
         db.session.commit()
     flash('تم مسح السلة بالكامل', 'success')
     return redirect(url_for('cart.cart'))
+
 
 @cart_bp.route('/cart/clear/<int:store_id>', methods=['POST'])
 def clear_store_cart(store_id):
@@ -365,6 +377,7 @@ def clear_store_cart(store_id):
     flash('تم مسح منتجات هذا المتجر من السلة', 'success')
     return redirect(url_for('cart.cart'))
 
+
 @cart_bp.route('/cart/checkout/<int:store_id>', methods=['GET'])
 @login_required
 def checkout(store_id):
@@ -377,7 +390,7 @@ def checkout(store_id):
     if not cart:
         return redirect(url_for('cart.cart'))
 
-    store = Store.query.get_or_404(store_id)
+    store = db.get_or_404(Store, store_id)
 
     if not is_store_active(store):
         flash('هذا المتجر غير نشط حالياً ولا يمكن الطلب منه')
@@ -418,6 +431,7 @@ def checkout(store_id):
                            grand_total=grand_total,
                            all_stores=all_stores)
 
+
 @cart_bp.route('/cart/checkout/<int:store_id>', methods=['POST'])
 @login_required
 def place_order(store_id):
@@ -428,7 +442,7 @@ def place_order(store_id):
         flash('الحساب محظور')
         return redirect(url_for('auth.login'))
 
-    store = Store.query.get_or_404(store_id)
+    store = db.get_or_404(Store, store_id)
 
     if not is_store_active(store):
         if request.is_json:
@@ -448,7 +462,7 @@ def place_order(store_id):
         for item in items_data:
             product_id = item.get('product_id')
             quantity = item.get('quantity', 1)
-            options_selected = item.get('options_selected')  # إضافة دعم الخيارات
+            options_selected = item.get('options_selected')
             product = db.session.get(Product, product_id)
             if product and product.store_id == store.id:
                 cart_items.append({'product': product, 'quantity': quantity, 'options_selected': options_selected})
@@ -531,6 +545,7 @@ def place_order(store_id):
         flash('حدث خطأ أثناء إنشاء الطلب، حاول مرة أخرى', 'error')
         return redirect(url_for('cart.cart'))
 
+
 @cart_bp.route('/cart/buy/<int:product_id>', methods=['GET'])
 @login_required
 def buy_product(product_id):
@@ -539,7 +554,7 @@ def buy_product(product_id):
         flash('الحساب محظور')
         return redirect(url_for('auth.login'))
 
-    product = Product.query.get_or_404(product_id)
+    product = db.get_or_404(Product, product_id)
     store = product.store
     if not is_store_active(store):
         flash('هذا المتجر غير نشط حالياً ولا يمكن الطلب منه')
@@ -556,15 +571,27 @@ def buy_product(product_id):
     delivery_fee = float(get_setting('delivery_fee', 100)) if store.has_delivery else 0.0
     grand_total = product_total + delivery_fee
 
-    return render_template('customer/checkout.html', store=store, items=items,
-                           total=product_total, delivery_fee=delivery_fee, grand_total=grand_total)
+    # B1: القالب (checkout.html) يحتاج all_stores لعرض الخريطة
+    all_stores = Store.query.filter(
+        Store.subscription_status == 'active',
+        Store.latitude.isnot(None),
+        Store.longitude.isnot(None)
+    ).all()
+
+    return render_template('customer/checkout.html',
+                           store=store,
+                           items=items,
+                           total=product_total,
+                           delivery_fee=delivery_fee,
+                           grand_total=grand_total,
+                           all_stores=all_stores)
+
 
 @cart_bp.route('/cart/order/<int:order_id>/cancel', methods=['POST'])
 @login_required
 def cancel_order(order_id):
-    user_id = session.get('user_id')
-    user = db.session.get(User, user_id)
-    order = Order.query.get_or_404(order_id)
+    user = g.user
+    order = db.get_or_404(Order, order_id)
 
     try:
         OrderService.cancel_order(user, order)
@@ -579,11 +606,12 @@ def cancel_order(order_id):
 
     return redirect(url_for('cart.cart'))
 
+
 @cart_bp.route('/cart/order/<int:order_id>/delete', methods=['POST'])
 @login_required
 def delete_order(order_id):
     user = g.user
-    order = Order.query.get_or_404(order_id)
+    order = db.get_or_404(Order, order_id)
 
     if order.customer_id != user.id:
         abort(403)
@@ -592,15 +620,13 @@ def delete_order(order_id):
         flash('لا يمكن حذف هذا الطلب في حالته الحالية', 'error')
         return redirect(url_for('cart.cart'))
 
+    # cascade على Order يتولى: items, payments, status_history
     try:
-        OrderItem.query.filter_by(order_id=order.id).delete()
-        OrderStatusHistory.query.filter_by(order_id=order.id).delete()
-        Payment.query.filter_by(order_id=order.id).delete()
         db.session.delete(order)
         db.session.commit()
         flash('تم حذف الطلب بنجاح', 'success')
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        flash('حدث خطأ أثناء حذف الطلب: ' + str(e), 'error')
+        flash('تعذر حذف الطلب، حاول مرة أخرى', 'error')
 
     return redirect(url_for('cart.cart'))

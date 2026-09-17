@@ -187,9 +187,9 @@ def edit_category(store_id, category_id):
         return result[1]
     user, store = result
 
-    category = Category.query.get_or_404(category_id)
+    category = db.get_or_404(Category, category_id)
     if category.store_id != store.id:
-        abort(403)
+        abort(404)
 
     next_url = _safe_next_url(request.args.get('next', ''))
 
@@ -237,9 +237,9 @@ def delete_category(store_id, category_id):
         return result[1]
     user, store = result
 
-    category = Category.query.get_or_404(category_id)
+    category = db.get_or_404(Category, category_id)
     if category.store_id != store.id:
-        abort(403)
+        abort(404)
 
     if Category.query.filter_by(parent_id=category.id).first():
         flash('لا يمكن حذف هذا التصنيف لوجود تصنيفات فرعية مرتبطة به. احذف التصنيفات الفرعية أولاً.', 'error')

@@ -187,10 +187,10 @@ def market():
     # ===== استجابة AJAX: أرجِع فقط HTML fragment للبطاقات =====
     if _wants_json():
         user_reaction_map_ajax = {}
-        if 'user_id' in session and products_pagination.items:
+        if g.user and products_pagination.items:
             product_ids = [p.id for p in products_pagination.items]
             rows = ProductReaction.query.filter(
-                ProductReaction.user_id == session['user_id'],
+                ProductReaction.user_id == g.user.id,
                 ProductReaction.product_id.in_(product_ids)
             ).all()
             for r in rows:
@@ -219,10 +219,10 @@ def market():
     cart_product_ids = set(cart.keys())
 
     user_reaction_map = {}
-    if 'user_id' in session and products_pagination.items:
+    if g.user and products_pagination.items:
         product_ids = [p.id for p in products_pagination.items]
         user_reactions = ProductReaction.query.filter(
-            ProductReaction.user_id == session['user_id'],
+            ProductReaction.user_id == g.user.id,
             ProductReaction.product_id.in_(product_ids)
         ).all()
         for r in user_reactions:

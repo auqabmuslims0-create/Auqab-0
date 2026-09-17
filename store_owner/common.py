@@ -1,10 +1,16 @@
 from flask import session, redirect, url_for, abort, flash, g
 from database import db
-from models import User, Store
+from models import Store
+
 
 def check_store_access(store_id):
-    """التحقق من أن المستخدم الحالي هو صاحب المتجر وأنه نشط.
+    """
+    التحقق من أن المستخدم الحالي هو صاحب المتجر وأنه نشط.
+
     يرجع (user, store) أو (None, redirect_response) في حال الخطأ.
+
+    ملاحظة أمنية: عند عدم الملكية نُرجع 404 (بدل 403) لتفادي كشف وجود المتجر
+    لمستخدم غير مصرح (User Enumeration).
     """
     user = g.user
     if not user:
@@ -21,6 +27,6 @@ def check_store_access(store_id):
         abort(404)
 
     if store.owner_id != user.id:
-        abort(403)
+        abort(404)
 
     return user, store
