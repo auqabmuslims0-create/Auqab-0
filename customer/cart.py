@@ -1,3 +1,15 @@
+"""
+Customer cart routes.
+
+ملاحظة تصميمية مهمة:
+  كل مسار تحت /cart/* يتطلب تسجيل دخول — يضمنه before_request_checks
+  في app.py (cart.* ليست في public_endpoints). لذا لا حاجة لفحص
+  'user_id' in session داخل الـ views نفسها.
+
+  الاستثناء الوحيد: /api/cart/sync — يبدأ بـ /api/ فيُعفى من الحماية
+  (لأغراض مزامنة localStorage من التطبيقات المحمولة قبل تسجيل الدخول).
+  بعد login، يُدمَج session['cart'] مع DB فورًا (انظر auth.login).
+"""
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify, abort, g
 from sqlalchemy.orm import joinedload, selectinload
 from database import db
@@ -14,7 +26,7 @@ cart_bp = Blueprint('cart', __name__)
 
 
 # ═══════════════════════════════════════════════════════════════
-# أدوات الجلسة (HTTP-specific — تبقى في الـ blueprint)
+# أدوات مساعدة (session + HTTP)
 # ═══════════════════════════════════════════════════════════════
 def _get_session_cart():
     return session.get('cart', {})
@@ -30,7 +42,7 @@ def _is_ajax():
 
 
 def _load_active_stores():
-    """B1: قائمة المتاجر النشطة ذات إحداثيات — لعرض الخريطة في checkout."""
+    """B1: المتاجر النشطة ذات الإحداثيات — لعرض الخريطة في checkout."""
     return Store.query.filter(
         Store.subscription_status == 'active',
         Store.latitude.isnot(None),
@@ -39,30 +51,28 @@ def _load_active_stores():
 
 
 # ═══════════════════════════════════════════════════════════════
-# عرض السلة والطلبات
+# عرض السلة
 # ═══════════════════════════════════════════════════════════════
 @cart_bp.route('/cart')
+@login_required
 def cart():
-    if 'user_id' in session:
-        user_id = session['user_id']
-        merged = CartService.merge_session_with_db(user_id, _get_session_cart())
-        if db.session.dirty or db.session.new:
-            db.session.commit()
-        session['cart'] = merged
-        session.modified = True
+    user = g.user
+    # دمج أي محتوى قديم في session مع DB (مثلاً من جهاز آخر أو ما قبل الـ merge)
+    merged = CartService.merge_session_with_db(user.id, _get_session_cart())
+    if db.session.dirty or db.session.new:
+        db.session.commit()
+    session['cart'] = merged
 
-    cart = _get_session_cart()
     grouped = {}
-
-    if cart:
-        product_ids = [int(pid) for pid in cart.keys()]
+    if merged:
+        product_ids = [int(pid) for pid in merged.keys()]
         products = Product.query.filter(Product.id.in_(product_ids)).options(
             joinedload(Product.store)
         ).all()
         product_map = {p.id: p for p in products}
 
         items = []
-        for pid_str, qty in cart.items():
+        for pid_str, qty in merged.items():
             pid = int(pid_str)
             if pid in product_map:
                 items.append({'product': product_map[pid], 'quantity': qty})
@@ -75,46 +85,49 @@ def cart():
             grouped[store_id]['cart_items'].append(item)
             grouped[store_id]['total'] += effective_price * item['quantity']
 
-    orders = []
-    if 'user_id' in session:
-        user = g.user
-        if user:
-            cutoff = current_time() - timedelta(hours=24)
-            orders = Order.query.filter(
-                Order.customer_id == user.id,
+    # الطلبات النشطة + المُسلَّمة خلال آخر 24 ساعة
+    cutoff = current_time() - timedelta(hours=24)
+    orders = Order.query.filter(
+        Order.customer_id == user.id,
+        or_(
+            Order.status != 'delivered',
+            and_(
+                Order.status == 'delivered',
                 or_(
-                    Order.status != 'delivered',
-                    and_(
-                        Order.status == 'delivered',
-                        or_(
-                            Order.delivered_at >= cutoff,
-                            and_(Order.delivered_at.is_(None), Order.created_at >= cutoff)
-                        )
-                    )
+                    Order.delivered_at >= cutoff,
+                    and_(Order.delivered_at.is_(None), Order.created_at >= cutoff)
                 )
-            ).options(
-                selectinload(Order.store),
-                selectinload(Order.items).selectinload(OrderItem.product),
-                selectinload(Order.delivery_person)
-            ).order_by(Order.created_at.desc()).all()
+            )
+        )
+    ).options(
+        selectinload(Order.store),
+        selectinload(Order.items).selectinload(OrderItem.product),
+        selectinload(Order.delivery_person)
+    ).order_by(Order.created_at.desc()).all()
 
     return render_template('customer/cart.html', grouped=grouped, orders=orders)
 
 
 @cart_bp.route('/cart/count')
+@login_required
 def cart_count():
-    if 'user_id' in session:
-        merged = CartService.merge_session_with_db(session['user_id'], _get_session_cart())
-        if db.session.dirty or db.session.new:
-            db.session.commit()
-        session['cart'] = merged
-        session.modified = True
-    cart = _get_session_cart()
-    return jsonify({'cart_count': sum(cart.values())})
+    merged = CartService.merge_session_with_db(g.user.id, _get_session_cart())
+    if db.session.dirty or db.session.new:
+        db.session.commit()
+    session['cart'] = merged
+    return jsonify({'cart_count': sum(merged.values())})
 
 
+# ═══════════════════════════════════════════════════════════════
+# مزامنة من localStorage (يُسمح للزوار أيضاً — لملء session)
+# ═══════════════════════════════════════════════════════════════
 @cart_bp.route('/api/cart/sync', methods=['POST'])
 def sync_cart():
+    """
+    مزامنة سلة localStorage مع الخادم.
+    - للمسجّلين: تُستبدل سلة DB بالكامل بمحتوى العميل.
+    - للزوار: يُخزَّن في session، ثم يُدمَج مع DB عند login/register.
+    """
     data = request.get_json(silent=True) or {}
     local_cart = data.get('cart', {})
     if not isinstance(local_cart, dict):
@@ -138,6 +151,7 @@ def sync_cart():
 # إضافة / تعديل / إزالة
 # ═══════════════════════════════════════════════════════════════
 @cart_bp.route('/cart/add/<int:product_id>', methods=['POST'])
+@login_required
 def add_to_cart(product_id):
     product = db.get_or_404(Product, product_id)
     quantity = request.form.get('quantity', 1, type=int) or 1
@@ -154,12 +168,7 @@ def add_to_cart(product_id):
         flash('المخزون غير كافٍ', 'error')
         return redirect(request.referrer or url_for('market.market'))
 
-    cart[str(product_id)] = current_qty + quantity
-
-    if 'user_id' in session:
-        # مزامنة DB وإعادة بناء السلة من DB — نفس سلوك الكود السابق
-        cart = CartService.add_to_db_cart(session['user_id'], product, quantity)
-
+    cart = CartService.add_to_db_cart(g.user.id, product, quantity)
     _save_session_cart(cart)
 
     if is_ajax:
@@ -172,6 +181,7 @@ def add_to_cart(product_id):
 
 
 @cart_bp.route('/cart/update/<int:product_id>', methods=['POST'])
+@login_required
 def update_cart(product_id):
     product = db.get_or_404(Product, product_id)
     action = request.form.get('action')
@@ -182,23 +192,19 @@ def update_cart(product_id):
 
     if action == 'remove':
         cart.pop(pid_str, None)
-        if 'user_id' in session:
-            CartService.remove_from_db_cart(session['user_id'], product_id)
+        CartService.remove_from_db_cart(g.user.id, product_id)
     else:
         new_qty = request.form.get('quantity', 1, type=int) or 1
         if new_qty < 1:
             cart.pop(pid_str, None)
-            if 'user_id' in session:
-                CartService.remove_from_db_cart(session['user_id'], product_id)
+            CartService.remove_from_db_cart(g.user.id, product_id)
         elif new_qty > product.stock_quantity:
             cart[pid_str] = product.stock_quantity
             stock_error = True
-            if 'user_id' in session:
-                CartService.set_quantity(session['user_id'], product, product.stock_quantity)
+            CartService.set_quantity(g.user.id, product, product.stock_quantity)
         else:
             cart[pid_str] = new_qty
-            if 'user_id' in session:
-                CartService.set_quantity(session['user_id'], product, new_qty)
+            CartService.set_quantity(g.user.id, product, new_qty)
 
     _save_session_cart(cart)
 
@@ -224,15 +230,14 @@ def update_cart(product_id):
 
 
 @cart_bp.route('/cart/remove/<int:product_id>', methods=['POST'])
+@login_required
 def remove_from_cart(product_id):
-    """إزالة منتج محدد من السلة (للجلسة وقاعدة البيانات)."""
     cart = _get_session_cart()
     pid_str = str(product_id)
     cart.pop(pid_str, None)
     _save_session_cart(cart)
 
-    if 'user_id' in session:
-        CartService.remove_from_db_cart(session['user_id'], product_id)
+    CartService.remove_from_db_cart(g.user.id, product_id)
 
     if _is_ajax():
         return jsonify({'status': 'success', 'message': 'تمت إزالة المنتج من السلة', 'cart_count': sum(cart.values())})
@@ -241,22 +246,22 @@ def remove_from_cart(product_id):
 
 
 @cart_bp.route('/cart/clear', methods=['POST'])
+@login_required
 def clear_cart():
     session.pop('cart', None)
-    if 'user_id' in session:
-        CartService.clear_user_cart(session['user_id'])
+    CartService.clear_user_cart(g.user.id)
     flash('تم مسح السلة بالكامل', 'success')
     return redirect(url_for('cart.cart'))
 
 
 @cart_bp.route('/cart/clear/<int:store_id>', methods=['POST'])
+@login_required
 def clear_store_cart(store_id):
     cart = _get_session_cart()
     if not cart:
         return redirect(url_for('cart.cart'))
 
-    if 'user_id' in session:
-        CartService.clear_store_cart(session['user_id'], store_id)
+    CartService.clear_store_cart(g.user.id, store_id)
 
     product_ids = CartService.get_store_product_ids(store_id)
     for pid in product_ids:
@@ -274,7 +279,7 @@ def clear_store_cart(store_id):
 @login_required
 def checkout(store_id):
     user = g.user
-    if not user or not user.is_active:
+    if not user.is_active:
         flash('الحساب محظور')
         return redirect(url_for('auth.login'))
 
@@ -321,7 +326,7 @@ def checkout(store_id):
 @login_required
 def place_order(store_id):
     user = g.user
-    if not user or not user.is_active:
+    if not user.is_active:
         if request.is_json:
             return jsonify({'message': 'الحساب محظور'}), 403
         flash('الحساب محظور')
@@ -408,9 +413,8 @@ def place_order(store_id):
             for item in cart_items:
                 cart.pop(str(item['product'].id), None)
                 removed_ids.append(item['product'].id)
-            if 'user_id' in session:
-                CartService.remove_products_from_db_cart(session['user_id'], removed_ids)
-                db.session.commit()
+            CartService.remove_products_from_db_cart(user.id, removed_ids)
+            db.session.commit()
             _save_session_cart(cart)
             flash('تم تقديم الطلب بنجاح')
             return redirect(url_for('cart.cart'))
@@ -434,7 +438,7 @@ def place_order(store_id):
 @login_required
 def buy_product(product_id):
     user = g.user
-    if not user or not user.is_active:
+    if not user.is_active:
         flash('الحساب محظور')
         return redirect(url_for('auth.login'))
 
@@ -464,7 +468,7 @@ def buy_product(product_id):
 
 
 # ═══════════════════════════════════════════════════════════════
-# إدارة الطلبات (إلغاء / حذف)
+# إدارة الطلبات
 # ═══════════════════════════════════════════════════════════════
 @cart_bp.route('/cart/order/<int:order_id>/cancel', methods=['POST'])
 @login_required

@@ -304,3 +304,80 @@ def test_cart_count_endpoint(
     r = client.get('/cart/count')
     assert r.status_code == 200
     assert r.get_json()['cart_count'] == 4
+
+
+# ═══════════════════════════════════════════════════════════════
+# دمج سلة الزائر مع DB عند login/register
+# ═══════════════════════════════════════════════════════════════
+def test_login_merges_anonymous_session_cart_to_db(
+    client, app, make_user, make_active_store, make_product
+):
+    """
+    سلة الزائر (من /api/cart/sync) تُدمَج مع DB عند تسجيل الدخول.
+    Regression test: قبل الإصلاح، الدمج كان يحدث فقط عند زيارة /cart،
+    فلا يظهر cart_count في /api/updates ولا في صفحات أخرى.
+    """
+    u = make_user(username='mergeowner', password='MergePass123!@#')
+    s = make_active_store(has_delivery=False)
+    p = make_product(s['id'], stock=10)
+
+    # 1) زائر يزامن سلة من localStorage
+    r = client.post('/api/cart/sync', json={'cart': {str(p['id']): 3}})
+    assert r.status_code == 200
+    with client.session_transaction() as sess:
+        assert sess['cart'][str(p['id'])] == 3
+
+    # 2) يسجّل الدخول
+    r = client.post('/login', data={
+        'login_id': u['username'],
+        'password': u['password'],
+    })
+    assert r.status_code == 302
+
+    # 3) السلة موجودة الآن في DB (بدون زيارة /cart)
+    with app.app_context():
+        item = CartItem.query.filter_by(
+            user_id=u['id'], product_id=p['id']
+        ).first()
+        assert item is not None
+        assert item.quantity == 3
+
+
+def test_register_merges_anonymous_session_cart_to_db(
+    client, app, make_active_store, make_product
+):
+    """
+    سلة الزائر تُدمَج مع DB عند إنشاء حساب جديد (3 خطوات).
+    """
+    s = make_active_store(has_delivery=False)
+    p = make_product(s['id'], stock=10)
+
+    # 1) زائر يزامن سلة
+    r = client.post('/api/cart/sync', json={'cart': {str(p['id']): 2}})
+    assert r.status_code == 200
+
+    # 2) تسجيل كامل عبر 3 خطوات
+    client.post('/register?step=1', data={
+        'step': '1', 'username': 'newmerge',
+        'email': 'newmerge@test.local', 'phone': '977000111',
+    })
+    client.post('/register?step=2', data={
+        'step': '2',
+        'password': 'NewMerge123!@#',
+        'confirm_password': 'NewMerge123!@#',
+        'role': 'customer',
+        'agree': 'on',
+    })
+    r = client.post('/register?step=3', data={'step': '3', 'bio': ''})
+    assert r.status_code == 302
+
+    # 3) السلة في DB
+    with app.app_context():
+        from models import User
+        new_user = User.query.filter_by(username='newmerge').first()
+        assert new_user is not None
+        item = CartItem.query.filter_by(
+            user_id=new_user.id, product_id=p['id']
+        ).first()
+        assert item is not None
+        assert item.quantity == 2

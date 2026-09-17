@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, session, flash, g
+from flask import render_template, request, redirect, url_for, session, flash, g, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
 from database import db
 from models import User
@@ -134,12 +134,30 @@ def register():
             db.session.add(user)
             db.session.commit()
 
+            # حفظ سلة الزائر قبل session.clear() لدمجها مع DB لاحقًا
+            pre_register_cart = session.get('cart', {})
+
             # إعادة توليد الجلسة بعد التسجيل — يمنع أي fixation (نفس سلوك login)
             session.clear()
             session['user_id'] = user.id
             session['role'] = user.role
             session['new_public_id'] = user.public_id
             session.permanent = True
+
+            # دمج سلة الزائر (إن وُجدت) مع DB — كانت مكتسبة من localStorage
+            if pre_register_cart:
+                try:
+                    from shared.services.cart_service import CartService
+                    merged = CartService.merge_session_with_db(user.id, pre_register_cart)
+                    db.session.commit()
+                    if merged:
+                        session['cart'] = merged
+                except Exception as e:
+                    db.session.rollback()
+                    current_app.logger.error(
+                        f'فشل دمج سلة التسجيل للمستخدم {user.id}: {e}'
+                    )
+
             return redirect(url_for('auth.show_public_id'))
 
     if step == 2 and 'reg_data' not in session:
@@ -192,11 +210,28 @@ def login():
                 flash('الحساب محظور، يرجى التواصل مع الإدارة', 'danger')
                 return render_template('auth/login.html', login_error=None)
 
+            # حفظ سلة الزائر قبل session.clear()
+            pre_login_cart = session.get('cart', {})
+
             session.clear()
             session['user_id'] = user.id
             session['role'] = user.role
             session.permanent = True
             clear_login_attempts(ip)
+
+            # دمج سلة الزائر مع DB فورًا — بدل تأجيلها حتى زيارة /cart
+            if pre_login_cart:
+                try:
+                    from shared.services.cart_service import CartService
+                    merged = CartService.merge_session_with_db(user.id, pre_login_cart)
+                    db.session.commit()
+                    if merged:
+                        session['cart'] = merged
+                except Exception as e:
+                    db.session.rollback()
+                    current_app.logger.error(
+                        f'فشل دمج السلة عند تسجيل الدخول للمستخدم {user.id}: {e}'
+                    )
 
             flash('تم تسجيل الدخول', 'success')
             return redirect(url_for('auth.dashboard'))
