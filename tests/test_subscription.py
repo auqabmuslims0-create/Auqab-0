@@ -257,3 +257,92 @@ def test_expire_with_auto_renew_creates_pending(app, make_user, make_store):
         assert pending is not None
         db.session.refresh(store)
         assert store.subscription_status == 'pending'
+
+
+# ═══════════════════════════════════════════════════════════════
+# I1 regression: تأكيد الاشتراك لا يؤثر على تسجيل الدخول
+# ═══════════════════════════════════════════════════════════════
+def test_verify_manual_confirmation_does_not_affect_login(
+    client, app, make_user, login, make_store
+):
+    """
+    خطأ في كود تأكيد الاشتراك 5 مرات يجب ألا يقفل تسجيل الدخول.
+
+    هذا اختبار regression: قبل الإصلاح، كان verify_manual_confirmation
+    يستخدم login_attempts، فأي خطأ في التأكيد يُحسب على login ويقفل
+    IP لمدة 5 دقائق.
+    """
+    # مستخدم + متجر + اشتراك pending
+    u = make_user(username='isolated', password='MyPass123!@#', role='owner')
+    s = make_store(owner_id=u['id'], subscription_status='pending')
+    assert login(u['username'], u['password']).status_code == 302
+
+    with app.app_context():
+        owner = db.session.get(User, u['id'])
+        store = db.session.get(Store, s['id'])
+        _, _, sub = SubscriptionService.submit_subscription_request(
+            owner, store, payment_method='manual_delivery'
+        )
+        sub_id = sub.id
+
+    # 5 محاولات فاشلة في confirm_identity / verify_manual_confirmation
+    # نستخدم verify_manual_confirmation مباشرة عبر الخدمة
+    with app.app_context():
+        owner = db.session.get(User, u['id'])
+        for _ in range(5):
+            SubscriptionService.verify_manual_confirmation(owner, sub_id, '000000')
+
+    # الآن يجب أن يتمكن المستخدم من تسجيل الخروج والدخول مجددًا بنجاح
+    client.get('/logout')
+    r = client.post('/login', data={
+        'login_id': u['username'],
+        'password': u['password'],
+    })
+    assert r.status_code == 302
+    with client.session_transaction() as sess:
+        assert sess['user_id'] == u['id']
+
+
+def test_verify_manual_confirmation_rate_limited_by_ip(
+    client, app, make_user, make_store
+):
+    """
+    تجاوز 10 محاولات تأكيد من نفس IP خلال 15 دقيقة → رفض.
+
+    نتحقق مباشرة عبر الخدمة (بدون HTTP) لتجنب تعقيدات جلسة الاستعادة.
+    """
+    with app.app_context():
+        u = make_user(username='ratelimited', role='owner')
+        s = make_store(owner_id=u['id'], subscription_status='pending')
+        owner = db.session.get(User, u['id'])
+        store = db.session.get(Store, s['id'])
+        _, _, sub = SubscriptionService.submit_subscription_request(
+            owner, store, payment_method='manual_delivery'
+        )
+        sub_id = sub.id
+
+    # استيراد الدالة الداخلية لتصفير العدّاد
+    from shared.services.subscription_service import _sub_verify_attempts
+    _sub_verify_attempts.clear()
+
+    # 10 محاولات → يجب أن تمر (كلها فاشلة بكود خاطئ، لكن الـ IP مسموح)
+    results = []
+    with app.app_context():
+        owner = db.session.get(User, u['id'])
+        for i in range(10):
+            ok, msg = SubscriptionService.verify_manual_confirmation(
+                owner, sub_id, '000000'
+            )
+            results.append(ok)
+
+    # كل الـ 10 الأولى: False (كود خاطئ أو sub attempt limit)
+    assert all(r is False for r in results), results
+
+    # المحاولة الـ 11 من نفس IP → يجب أن تُرفض بسبب IP rate limit
+    with app.app_context():
+        owner = db.session.get(User, u['id'])
+        ok, msg = SubscriptionService.verify_manual_confirmation(
+            owner, sub_id, '000000'
+        )
+    assert ok is False
+    assert 'من هذا الجهاز' in msg

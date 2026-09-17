@@ -1,26 +1,64 @@
 import logging
 import os
 import secrets
+from collections import deque
 from datetime import timedelta
 
 from database import db
 from models import User, Store, Subscription, Payment
 from shared.repositories.subscription_repository import SubscriptionRepository
 from shared.repositories.payment_repository import PaymentRepository
-from shared.repositories.notification_repository import NotificationRepository
 from shared.services.payment_service import PaymentService
 from shared.services.notification_service import NotificationService
 from shared.utils import save_image, get_upload_path, get_setting
 from shared.time_utils import current_time
-from shared.security import (
-    get_client_ip,
-    get_login_attempts,
-    record_login_attempt,
-    clear_login_attempts,
-)
+from shared.security import get_client_ip
 from flask import url_for
 
 logger = logging.getLogger(__name__)
+
+
+# ═══════════════════════════════════════════════════════════════
+# Rate limiting مستقل لتأكيدات الاشتراك اليدوية
+# ═══════════════════════════════════════════════════════════════
+# مقصود: منفصل تمامًا عن login_attempts لأن:
+#   - خطأ في كود تأكيد اشتراك لا يجب أن يقفل تسجيل الدخول.
+#   - خطأ في تسجيل الدخول لا يجب أن يقفل تأكيد الاشتراك.
+#
+# in-memory: يعمل بشكل صحيح مع gunicorn --workers 1 (الإنتاج الحالي).
+# الحماية الأساسية هي sub.confirmation_attempts (DB-based، per-subscription).
+# هذا العدّاد طبقة إضافية فقط ضد تجربات كثيرة من نفس IP على اشتراكات مختلفة.
+_SUB_VERIFY_WINDOW_SECONDS = 15 * 60   # 15 دقيقة
+_SUB_VERIFY_MAX_ATTEMPTS = 10          # 10 محاولات/15 دقيقة لكل IP
+_sub_verify_attempts = {}              # {ip: deque[datetime]}
+
+
+def _check_and_record_sub_verify(ip):
+    """
+    يعيد True إذا كان IP مسموحًا له بالمحاولة، ويسجّل المحاولة.
+    يعيد False إذا تجاوز الحد.
+    """
+    if not ip:
+        return True
+    now = current_time()
+    cutoff = now - timedelta(seconds=_SUB_VERIFY_WINDOW_SECONDS)
+    bucket = _sub_verify_attempts.get(ip)
+    if bucket is None:
+        bucket = deque()
+        _sub_verify_attempts[ip] = bucket
+    # إزالة المحاولات القديمة
+    while bucket and bucket[0] < cutoff:
+        bucket.popleft()
+    if len(bucket) >= _SUB_VERIFY_MAX_ATTEMPTS:
+        return False
+    bucket.append(now)
+    return True
+
+
+def _clear_sub_verify_attempts(ip):
+    """تصفير عدّاد IP بعد نجاح التأكيد."""
+    if ip:
+        _sub_verify_attempts.pop(ip, None)
 
 
 class SubscriptionService:
@@ -408,7 +446,6 @@ class SubscriptionService:
                 if store and store.auto_renew:
                     existing_pending = SubscriptionRepository.get_pending_subscription_for_store(store.id)
                     if not existing_pending:
-                        # المدة
                         if store.custom_subscription_duration_days is not None:
                             try:
                                 duration = int(store.custom_subscription_duration_days)
@@ -417,7 +454,6 @@ class SubscriptionService:
                         else:
                             duration = int(get_setting('subscription_duration_days', 30))
 
-                        # السعر
                         if store.custom_subscription_price is not None:
                             try:
                                 price = float(store.custom_subscription_price)
@@ -638,10 +674,22 @@ class SubscriptionService:
 
     @staticmethod
     def verify_manual_confirmation(user, sub_id, code):
-        # rate limit بـ IP قبل أي معالجة (حماية ضد brute force على الكود)
+        """
+        التحقق من كود التأكيد اليدوي.
+
+        Rate limiting:
+          - على مستوى IP: 10 محاولات/15 دقيقة (in-memory) — حماية ضد
+            تجربة أكواد كثيرة على اشتراكات مختلفة من نفس الجهاز.
+          - على مستوى الاشتراك: 5 محاولات (sub.confirmation_attempts)
+            — حماية ضد brute force على اشتراك محدد.
+
+        ملاحظة: هذا المسار لا يمس login_attempts ولا يؤثر على تسجيل الدخول.
+        """
         ip = get_client_ip()
-        if get_login_attempts(ip) >= 5:
-            return False, 'تم تجاوز عدد المحاولات المسموح من هذا الجهاز، حاول بعد 5 دقائق'
+
+        # Rate limit على مستوى IP (in-memory)
+        if not _check_and_record_sub_verify(ip):
+            return False, 'تم تجاوز عدد المحاولات المسموح من هذا الجهاز، حاول بعد 15 دقيقة'
 
         sub = SubscriptionRepository.get_by_id(sub_id)
         if not sub:
@@ -659,7 +707,6 @@ class SubscriptionService:
         if sub.confirmation_expiry and sub.confirmation_expiry < current_time():
             return False, 'انتهت صلاحية كود التأكيد. يرجى إعادة الطلب.'
         if sub.confirmation_code != code.strip():
-            record_login_attempt(ip)
             sub.confirmation_attempts += 1
             db.session.add(sub)
             db.session.commit()
@@ -668,6 +715,6 @@ class SubscriptionService:
                 return False, 'تم تجاوز الحد الأقصى للمحاولات. يرجى التواصل مع الإدارة.'
             return False, f'كود التأكيد غير صحيح. تبقى {remaining} محاولات.'
 
-        # نجاح: تنظيف محاولات IP
-        clear_login_attempts(ip)
+        # نجاح: تصفير العدّاد الـ IP وعلامات الاشتراك
+        _clear_sub_verify_attempts(ip)
         return SubscriptionService._activate_subscription(sub)
