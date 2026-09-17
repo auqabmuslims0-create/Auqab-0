@@ -1,9 +1,22 @@
 from datetime import timedelta
 import secrets
 import hashlib
+from flask import request
 from database import db
 from models import LoginAttempt, PasswordResetAttempt
 from shared.time_utils import current_time
+
+
+def get_client_ip():
+    """
+    إرجاع IP العميل بشكل آمن.
+
+    - عند تفعيل TRUST_PROXY_HEADERS=1 (مع ProxyFix في app.py)،
+      يصبح request.remote_addr هو IP العميل الحقيقي بعد إعادة الكتابة.
+    - عند التعطيل، request.remote_addr هو IP الاتصال المباشر (لا يمكن تزويره).
+    - لا نقرأ X-Forwarded-For يدوياً أبداً لأنها قابلة للتزوير من العميل.
+    """
+    return request.remote_addr or 'unknown'
 
 
 def record_login_attempt(ip):
