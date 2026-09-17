@@ -187,6 +187,12 @@
 {% endblock %}
 
 {% block content %}
+{% set method_map = {
+    'cash': 'نقدي',
+    'wallet': 'محفظة',
+    'bank_transfer': 'تحويل بنكي',
+    'manual_delivery': 'تسليم يدوي'
+} %}
 <div class="container mt-4">
     <div class="page-header">
         <h1><i class="bi bi-cash-stack"></i> المدفوعات</h1>
@@ -203,6 +209,7 @@
                 <option value="cash" {% if method == 'cash' %}selected{% endif %}>نقدي</option>
                 <option value="wallet" {% if method == 'wallet' %}selected{% endif %}>محفظة</option>
                 <option value="bank_transfer" {% if method == 'bank_transfer' %}selected{% endif %}>تحويل بنكي</option>
+                <option value="manual_delivery" {% if method == 'manual_delivery' %}selected{% endif %}>تسليم يدوي</option>
             </select>
             <button type="submit" class="btn btn-sm btn-outline-secondary rounded-pill">تصفية</button>
         </form>
@@ -227,7 +234,7 @@
             </div>
             <div class="payment-amount">{{ payment.amount|format_price }} ل.س</div>
             <div class="payment-meta">
-                <span><i class="bi bi-wallet2"></i> {{ payment.method }}</span>
+                <span><i class="bi bi-wallet2"></i> {{ method_map.get(payment.method, payment.method) }}</span>
                 <span>{{ payment.reference or 'بدون مرجع' }}</span>
             </div>
             <div>

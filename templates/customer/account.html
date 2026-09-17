@@ -319,13 +319,20 @@
                 <i class="bi bi-exclamation-triangle text-danger warning-icon"></i>
                 <p class="mt-3 text-danger">سيتم حذف الحساب وجميع البيانات المرتبطة به نهائيًا. لا يمكن التراجع.</p>
             </div>
-            <div class="modal-footer">
-                <form action="{{ url_for('auth.account_delete') }}" method="post" class="w-100 d-flex justify-content-between" onsubmit="return confirm('هل أنت متأكد من حذف حسابك نهائيًا؟')">
+            <form action="{{ url_for('auth.account_delete') }}" method="post" onsubmit="return confirm('هل أنت متأكد من حذف حسابك نهائيًا؟')">
+                <div class="modal-body pt-0">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <label class="form-label">أدخل كلمة المرور لتأكيد الحذف</label>
+                    <div class="custom-input-wrap">
+                        <i class="bi bi-lock custom-input-icon"></i>
+                        <input type="password" name="password" class="form-control" required autocomplete="current-password" placeholder="كلمة المرور الحالية">
+                    </div>
+                </div>
+                <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                     <button type="submit" class="btn btn-danger">حذف الحساب</button>
-                </form>
-            </div>
+                </div>
+            </form>
         </div>
     </div>
 </div>

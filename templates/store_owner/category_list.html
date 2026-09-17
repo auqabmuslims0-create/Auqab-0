@@ -403,16 +403,27 @@
         return n.toLocaleString('en-US');
     }
 
+    // safeImageSrc: يبني مسار الصورة بأمان (يدعم Cloudinary، ويمنع javascript:/data:)
+    function safeImageSrc(filename) {
+        if (!filename) return '';
+        const s = String(filename);
+        if (s.startsWith('http://') || s.startsWith('https://')) return escapeHtml(s);
+        if (s.startsWith('static/')) return '/' + escapeHtml(s);
+        if (s.startsWith('uploads/')) return '/static/' + escapeHtml(s);
+        return '/static/uploads/' + escapeHtml(s);
+    }
+
     function renderProduct(p) {
-        const imgHtml = p.main_image
-            ? `<img src="/static/${p.main_image.startsWith('uploads/') ? p.main_image : 'uploads/' + p.main_image}"
-                    class="cat-product-thumb" alt="${escapeHtml(p.name)}"
-                    onerror="this.outerHTML='<div class=&quot;cat-product-thumb-placeholder&quot;><i class=&quot;bi bi-image&quot;></i></div>'">`
+        const src = safeImageSrc(p.main_image);
+        const imgHtml = src
+            ? `<img src="${src}" class="cat-product-thumb" alt="${escapeHtml(p.name)}" onerror="this.style.display='none'">`
             : `<div class="cat-product-thumb-placeholder"><i class="bi bi-image"></i></div>`;
 
         const priceHtml = p.hide_price
             ? '<span class="badge bg-warning text-dark" style="font-size:0.7rem;">حصراً من المتجر</span>'
             : `<span class="cat-product-price">${formatPrice(p.price)} ل.س</span>`;
+
+        const stockQty = parseInt(p.stock_quantity, 10) || 0;
 
         return `
             <div class="cat-product-item">
@@ -420,7 +431,7 @@
                 <div class="cat-product-info">
                     <div class="cat-product-name">${escapeHtml(p.name)}</div>
                     <div class="cat-product-meta">
-                        <i class="bi bi-boxes"></i> الكمية: ${p.stock_quantity}
+                        <i class="bi bi-boxes"></i> الكمية: ${stockQty}
                     </div>
                 </div>
                 ${priceHtml}

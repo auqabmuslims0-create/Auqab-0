@@ -205,7 +205,6 @@
             <button type="button" class="info-btn"
                     data-bs-toggle="modal"
                     data-bs-target="#userDetailsModal"
-                    data-user-id="{{ user.id }}"
                     data-username="{{ user.username }}"
                     data-email="{{ user.email }}"
                     data-phone="{{ user.phone or '-' }}"
@@ -261,7 +260,6 @@
                     <button type="button" class="btn btn-sm btn-outline-warning btn-action"
                             data-bs-toggle="modal"
                             data-bs-target="#resetPasswordModal"
-                            data-user-id="{{ user.id }}"
                             data-username="{{ user.username }}"
                             data-reset-url="{{ url_for('admin.admin_reset_password', user_id=user.id) }}">
                         كلمة مرور

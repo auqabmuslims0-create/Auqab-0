@@ -192,6 +192,18 @@
 {% endblock %}
 
 {% block content %}
+{% set method_map = {
+    'cash': 'نقدي',
+    'wallet': 'محفظة',
+    'bank_transfer': 'تحويل بنكي',
+    'manual_delivery': 'تسليم يدوي'
+} %}
+{% set pay_status_map = {
+    'pending': 'معلق',
+    'paid': 'مدفوع',
+    'failed': 'فاشل',
+    'refunded': 'مسترجع'
+} %}
 <div class="container mt-4">
     <div class="page-header">
         <h1><i class="bi bi-credit-card"></i> إدارة الاشتراكات</h1>
@@ -277,8 +289,9 @@
                             {% for pay in payments_map[sub.id] %}
                             <li>
                                 <span class="badge bg-info">#{{ pay.id }}</span>
-                                المبلغ: {{ pay.amount|format_price }} ل.س، الطريقة: {{ pay.method }}،
-                                الحالة: {{ pay.status }}
+                                المبلغ: {{ pay.amount|format_price }} ل.س،
+                                الطريقة: {{ method_map.get(pay.method, pay.method) }}،
+                                الحالة: {{ pay_status_map.get(pay.status, pay.status) }}
                             </li>
                             {% endfor %}
                         </ul>

@@ -130,7 +130,6 @@
         border-color: #333;
     }
 
-    /* قسم الطلبات الحديثة */
     .order-card-new {
         border-radius: 20px;
         background: #fff;
@@ -297,7 +296,6 @@
         padding: 5px 15px;
         font-size: 0.8rem;
     }
-    /* Accordion لعنوان الطلب */
     .order-toggle-btn {
         background: transparent;
         border: none;
@@ -322,7 +320,6 @@
     .order-toggle-btn[aria-expanded="true"] .order-toggle-icon {
         transform: rotate(180deg);
     }
-    /* تحسينات لوضع عدم الاتصال */
     #offlineCartContainer {
         display: none;
     }
@@ -333,7 +330,6 @@
 <div class="container">
     <h4 class="fw-bold mb-4"><i class="bi bi-cart3"></i> سلة المشتريات</h4>
 
-    <!-- المحتوى العادي (عند الاتصال) -->
     <div id="onlineCartContent">
         {% if grouped %}
             {% if grouped|length > 1 %}
@@ -408,7 +404,6 @@
         {% endif %}
     </div>
 
-    <!-- محتوى عدم الاتصال -->
     <div id="offlineCartContainer">
         <div class="alert alert-warning text-center">
             <i class="bi bi-wifi-off"></i> أنت غير متصل بالإنترنت - يتم عرض السلة المحفوظة محلياً
@@ -416,7 +411,6 @@
         <div id="offlineCartItems"></div>
     </div>
 
-    <!-- الطلبات الحديثة -->
     {% if orders %}
     <h5 class="fw-bold mt-5 mb-3"><i class="bi bi-clock-history"></i> طلباتك الحديثة (آخر 24 ساعة)</h5>
     <div class="orders-list">
@@ -537,6 +531,17 @@
 <script src="{{ url_for('static', filename='vendor/qrcodejs/qrcode.min.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // escapeHtml: يمنع XSS عند بناء HTML بـ innerHTML مع بيانات من IndexedDB
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     // تهيئة أكواد QR
     document.querySelectorAll('.qr-container').forEach(container => {
         const orderId = container.id.replace('qr-container-', '');
@@ -572,23 +577,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 const data = await response.json();
                 if (data.status === 'success') {
-                    // إزالة من LocalStore
                     if (typeof LocalStore !== 'undefined') {
                         LocalStore.removeFromCart(parseInt(productId));
                         LocalStore.updateCartBadges();
                     }
 
-                    // إزالة بطاقة المنتج من DOM
                     const col = document.querySelector(`[data-product-col="${productId}"]`);
                     if (col) col.remove();
 
-                    // التحقق من فراغ مجموعة المتجر
                     const storeCard = document.querySelector(`.server-cart[data-store-id="${storeId}"]`);
                     if (storeCard && !storeCard.querySelector('.cart-item-card')) {
                         storeCard.remove();
                     }
 
-                    // التحقق من فراغ السلة بالكامل
                     const remaining = document.querySelectorAll('.server-cart');
                     if (remaining.length === 0) {
                         const onlineContent = document.getElementById('onlineCartContent');
@@ -615,11 +616,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // مسح كل منتجات متجر (يستخدم DOM أيضاً)
     window.clearLocalStoreCart = async function(storeId, productIds) {
         if (!confirm('هل تريد مسح جميع منتجات هذا المتجر من السلة؟')) return;
 
-        // إزالة من LocalStore
         if (typeof LocalStore !== 'undefined') {
             const cart = LocalStore.getCart();
             productIds.forEach(pid => { delete cart[String(pid)]; });
@@ -627,7 +626,6 @@ document.addEventListener('DOMContentLoaded', function() {
             LocalStore.updateCartBadges();
         }
 
-        // إرسال طلب لكل منتج (أو استخدام endpoint جديد)
         try {
             const formData = new FormData();
             formData.append('_csrf_token', window.csrfToken);
@@ -640,11 +638,9 @@ document.addEventListener('DOMContentLoaded', function() {
             console.warn('Clear store cart server sync failed:', err);
         }
 
-        // إزالة بطاقة المتجر من DOM
         const storeCard = document.querySelector(`.server-cart[data-store-id="${storeId}"]`);
         if (storeCard) storeCard.remove();
 
-        // التحقق من فراغ السلة
         if (document.querySelectorAll('.server-cart').length === 0) {
             const onlineContent = document.getElementById('onlineCartContent');
             if (onlineContent) {
@@ -689,16 +685,19 @@ document.addEventListener('DOMContentLoaded', function() {
         productIds.forEach(pid => {
             const qty = cart[pid];
             const p = cache[pid] || {};
+            const safeName = escapeHtml(p.name || 'منتج');
+            const safePrice = escapeHtml(p.price || 0);
+            const safePid = parseInt(pid, 10) || 0;
             html += `
                 <div class="col-6 col-md-4 col-lg-3">
                     <div class="cart-item-card">
                         <div class="cart-item-image-placeholder"><i class="bi bi-image"></i></div>
                         <div class="cart-item-body">
-                            <div class="cart-item-name">${p.name || 'منتج'}</div>
-                            <div class="cart-item-price">${p.price || 0} ل.س</div>
+                            <div class="cart-item-name">${safeName}</div>
+                            <div class="cart-item-price">${safePrice} ل.س</div>
                             <div class="cart-item-actions">
                                 <div class="pickup-only-note"><i class="bi bi-shop"></i> استلام حصرا من المتجر</div>
-                                <button class="btn btn-sm btn-outline-danger" onclick="removeOfflineCartItem('${pid}')"><i class="bi bi-trash"></i></button>
+                                <button class="btn btn-sm btn-outline-danger" onclick="removeOfflineCartItem('${safePid}')"><i class="bi bi-trash"></i></button>
                             </div>
                         </div>
                     </div>
@@ -709,7 +708,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     window.removeOfflineCartItem = function(pid) {
-        LocalStore.removeFromCart(parseInt(pid));
+        LocalStore.removeFromCart(parseInt(pid, 10));
         LocalStore.updateCartBadges();
         renderOfflineCart();
     };

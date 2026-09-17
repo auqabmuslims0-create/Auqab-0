@@ -197,7 +197,7 @@
                                             </a>
                                         </div>
                                         <div class="reel-actions-column">
-                                            <button class="reel-action-btn" onclick="shareProduct({{ product.id }}, '{{ product.name }}')" title="مشاركة"><i class="bi bi-share"></i></button>
+                                            <button class="reel-action-btn" onclick='shareProduct({{ product.id }}, {{ product.name | tojson }})' title="مشاركة"><i class="bi bi-share"></i></button>
                                         </div>
                                     </div>
                                 </div>

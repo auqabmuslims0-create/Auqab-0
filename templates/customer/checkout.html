@@ -61,7 +61,6 @@
     body.dark-mode .store-marker-icon {
         background: #1e1e1e; border-color: var(--accent); color: var(--accent);
     }
-    /* U7: علامة المستخدم على الخريطة (صورة دائرية كعلامة المتجر) */
     .user-marker-icon {
         width: 44px; height: 44px; border-radius: 50%;
         background: #fff; border: 3px solid var(--primary);
@@ -105,7 +104,6 @@
     body.dark-mode .location-status.pending { background: #3a2f1a; color: #ffd666; border-color: #5c4a2a; }
     body.dark-mode .location-status.success { background: #102e1a; color: #6edfa0; border-color: #1e5c36; }
     body.dark-mode .location-status.error { background: #3e1a1d; color: #ff8a95; border-color: #6b2a30; }
-    /* U5: تحذير صارم */
     .strict-warning-card {
         border: 2px solid #dc3545; border-radius: 15px;
         background: #fff5f5; padding: 16px;
@@ -261,7 +259,6 @@
                             <strong class="text-success" id="grandTotal">{{ grand_total|format_price }} ل.س</strong>
                         </div>
 
-                        <!-- U5: تحذير صارم + تعهد إلزامي -->
                         <div class="strict-warning-card">
                             <div class="strict-warning-title">
                                 <i class="bi bi-exclamation-triangle-fill"></i>
@@ -291,7 +288,6 @@
     </form>
 </div>
 
-<!-- U8: مودال تأكيد موحّد -->
 <div class="modal fade" id="finalConfirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -330,11 +326,17 @@
 {% endif %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const csrfToken = "{{ csrf_token }}";
-    const deliveryFee = parseFloat("{{ delivery_fee }}") || 0;
+    const csrfToken = {{ csrf_token | tojson }};
+    const deliveryFee = parseFloat({{ delivery_fee | tojson }}) || 0;
     const hasDelivery = {{ 'true' if store.has_delivery else 'false' }};
 
-    // ===== U4: تحديث حالة أزرار الكمية =====
+    // _esc: يهرّب HTML entity لمنع XSS عند بناء نصوص تُدرج في innerHTML/popup
+    function _esc(s) {
+        var d = document.createElement('div');
+        d.textContent = (s == null ? '' : String(s));
+        return d.innerHTML;
+    }
+
     function updateQuantityButtons(productId, qty, maxQty) {
         const minusBtn = document.querySelector(`.quantity-btn[data-product-id="${productId}"][data-action="decrease"]`);
         const plusBtn = document.querySelector(`.quantity-btn[data-product-id="${productId}"][data-action="increase"]`);
@@ -364,7 +366,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const currentQty = qtySpan ? parseInt(qtySpan.textContent) : 1;
         if (currentQty === newQty) return;
 
-        // تعطيل مؤقت لمنع النقر السريع المزدوج
         const card = document.querySelector(`.quantity-card[data-product-card="${productId}"]`);
         const allBtns = card ? card.querySelectorAll('.quantity-btn') : [];
         allBtns.forEach(b => b.disabled = true);
@@ -410,7 +411,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // ربط أزرار الكمية
     document.querySelectorAll('.quantity-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             const productId = this.dataset.productId;
@@ -427,7 +427,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // ===== U5: تفعيل زر التأكيد عند إقرار التعهد =====
     const commitCheck = document.getElementById('strictCommit');
     const confirmBtn = document.getElementById('confirmOrderBtn');
     if (commitCheck && confirmBtn) {
@@ -436,7 +435,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ===== U3 + U7: الخريطة (تلقائي فقط + صورة المستخدم) =====
     let userLat = null;
     let userLng = null;
     let locationReady = false;
@@ -445,7 +443,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const el = document.getElementById('locationStatus');
         if (!el) return;
         el.className = 'location-status ' + type;
-        el.innerHTML = `<i class="bi ${icon}"></i> <span>${message}</span>`;
+        el.innerHTML = `<i class="bi ${icon}"></i> <span>${_esc(message)}</span>`;
     }
 
     function updateConfirmAvailability() {
@@ -456,7 +454,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     {% if store.has_delivery %}
-    const userAvatarUrl = "{{ (current_user.avatar | get_image_url) if current_user and current_user.avatar else '' }}";
+    const userAvatarUrl = {{ ((current_user.avatar | get_image_url) if current_user and current_user.avatar else '') | tojson }};
     const map = L.map('checkoutMap', {
         zoomControl: true,
         attributionControl: true,
@@ -470,7 +468,6 @@ document.addEventListener('DOMContentLoaded', function() {
         maxZoom: 19
     }).addTo(map);
 
-    // علامات المتاجر
     {% for s in all_stores %}
         {% if s.latitude and s.longitude %}
         L.marker([{{ s.latitude }}, {{ s.longitude }}], {
@@ -481,11 +478,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 iconAnchor: [18, 18],
                 popupAnchor: [0, -18]
             })
-        }).addTo(map).bindPopup('<strong>{{ s.name }}</strong>');
+        }).addTo(map).bindPopup('<strong>' + _esc({{ s.name | tojson }}) + '</strong>');
         {% endif %}
     {% endfor %}
 
-    // U7: علامة المستخدم بصورة دائرية
     const userIconHtml = userAvatarUrl
         ? `<div class="user-marker-icon"><img src="${userAvatarUrl}" alt="موقعك"></div>`
         : `<div class="user-marker-icon"><i class="bi bi-person-fill"></i></div>`;
@@ -515,9 +511,6 @@ document.addEventListener('DOMContentLoaded', function() {
             map.setView([lat, lng], 16);
         }
     }
-
-    // U3: منع التحديد اليدوي على الخريطة
-    // (تم إزالة map.on('click') — لن يعمل أي نقر لتغيير الموقع)
 
     function requestLocation() {
         if (!navigator.geolocation) {
@@ -557,10 +550,8 @@ document.addEventListener('DOMContentLoaded', function() {
         );
     }
 
-    // نطلب الموقع تلقائياً عند التحميل (H3)
     requestLocation();
     {% else %}
-    // بدون توصيل: زر التأكيد يعتمد على التعهد فقط
     if (commitCheck && confirmBtn) {
         commitCheck.addEventListener('change', function() {
             confirmBtn.disabled = !this.checked;
@@ -568,7 +559,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     {% endif %}
 
-    // ===== U5: مودال التأكيد النهائي =====
     const finalModalEl = document.getElementById('finalConfirmModal');
     const finalModal = finalModalEl ? new bootstrap.Modal(finalModalEl) : null;
     const agreeBtn = document.getElementById('agreeBtn');
@@ -592,7 +582,6 @@ document.addEventListener('DOMContentLoaded', function() {
             finalModal.hide();
             const form = document.getElementById('checkoutForm');
             if (navigator.onLine) {
-                // تعطيل الزر لمنع النقر المزدوج
                 agreeBtn.disabled = true;
                 agreeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>جارٍ الإرسال...';
                 form.submit();

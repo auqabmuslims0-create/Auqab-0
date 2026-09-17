@@ -339,6 +339,26 @@
 <script src="{{ url_for('static', filename='js/infinite-scroll.js') }}" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // escapeHtml: يمنع XSS عند بناء HTML بـ innerHTML مع بيانات المستخدم
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function safeImageUrl(url) {
+        if (!url) return '';
+        const s = String(url);
+        if (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('/')) {
+            return escapeHtml(s);
+        }
+        return '';
+    }
+
     if (navigator.onLine && typeof OfflineDB !== 'undefined') {
         const storesData = [
             {% for store in stores %}
@@ -382,11 +402,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (grid) {
                 if (stores && stores.length > 0) {
                     grid.innerHTML = stores.map(store => `
-                        <a href="/store/${store.id}/public" class="text-decoration-none">
+                        <a href="/store/${parseInt(store.id, 10)}/public" class="text-decoration-none">
                             <div class="offline-store-card">
-                                ${store.logo_url ? `<img src="${store.logo_url}" alt="${store.name}" class="offline-store-image">` : `<div class="offline-store-image d-flex align-items-center justify-content-center"><i class="bi bi-shop" style="font-size:2rem;"></i></div>`}
+                                ${store.logo_url ? `<img src="${safeImageUrl(store.logo_url)}" alt="" class="offline-store-image">` : `<div class="offline-store-image d-flex align-items-center justify-content-center"><i class="bi bi-shop" style="font-size:2rem;"></i></div>`}
                                 <div class="offline-store-body">
-                                    <div class="offline-store-name">${store.name}</div>
+                                    <div class="offline-store-name">${escapeHtml(store.name)}</div>
                                     <span class="store-status-badge ${store.is_open ? 'bg-success' : 'bg-secondary'}">${store.is_open ? 'مفتوح' : 'مغلق'}</span>
                                 </div>
                             </div>

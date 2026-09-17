@@ -166,6 +166,23 @@
 <script src="{{ url_for('static', filename='vendor/chartjs/chart.min.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // خرائط الترجمة (تتفادى عرض المفاتيح الإنجليزية في الواجهة)
+    const STATUS_MAP = {
+        'new': 'جديد',
+        'confirmed': 'مؤكد',
+        'preparing': 'قيد التجهيز',
+        'ready': 'جاهز للتسليم',
+        'delivering': 'قيد التسليم',
+        'delivered': 'تم التسليم',
+        'cancelled': 'ملغي'
+    };
+    const ROLE_MAP = {
+        'admin': 'مشرف',
+        'owner': 'صاحب متجر',
+        'customer': 'زبون',
+        'delivery': 'مندوب'
+    };
+
     // رسم بياني للإيرادات
     const revenueCtx = document.getElementById('revenueChart').getContext('2d');
     new Chart(revenueCtx, {
@@ -193,7 +210,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const statusLabels = [];
     const statusData = [];
     {% for status, count in order_status_counts %}
-    statusLabels.push('{{ status }}');
+    statusLabels.push(STATUS_MAP['{{ status }}'] || '{{ status }}');
     statusData.push({{ count|default(0) }});
     {% endfor %}
     const statusCtx = document.getElementById('orderStatusChart').getContext('2d');
@@ -218,7 +235,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const roleLabels = [];
     const roleData = [];
     {% for role, count in user_role_counts %}
-    roleLabels.push('{{ role }}');
+    roleLabels.push(ROLE_MAP['{{ role }}'] || '{{ role }}');
     roleData.push({{ count|default(0) }});
     {% endfor %}
     const roleCtx = document.getElementById('userRoleChart').getContext('2d');

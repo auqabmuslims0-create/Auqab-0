@@ -618,6 +618,17 @@
 (function() {
     'use strict';
 
+    // _esc: يهرّب HTML entity لمنع XSS في Leaflet popups
+    function _esc(s) {
+        if (s === null || s === undefined) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     // ========== Modal: pickup confirm ==========
     const pickupConfirmModal = document.getElementById('pickupConfirmModal');
     let pickupPending = { orderId: null, inputId: null };
@@ -722,7 +733,7 @@
             });
             L.marker([s.lat, s.lng], { icon })
                 .addTo(map)
-                .bindPopup(`<strong>${s.name}</strong><br><small>${s.address}</small>`);
+                .bindPopup(`<strong>${_esc(s.name)}</strong><br><small>${_esc(s.address)}</small>`);
             bounds.push([s.lat, s.lng]);
         });
 
@@ -749,7 +760,7 @@
             });
             L.marker([o.lat, o.lng], { icon })
                 .addTo(map)
-                .bindPopup(`<strong>طلب #${o.id}</strong><br>${o.customer}<br><small>${o.address}</small>`);
+                .bindPopup(`<strong>طلب #${o.id}</strong><br>${_esc(o.customer)}<br><small>${_esc(o.address)}</small>`);
             bounds.push([o.lat, o.lng]);
         });
 
@@ -775,7 +786,7 @@
             });
             L.marker([o.lat, o.lng], { icon })
                 .addTo(map)
-                .bindPopup(`<strong>طلب متاح #${o.id}</strong><br>${o.store}<br><small>${o.total.toLocaleString('en-US')} ل.س</small>`);
+                .bindPopup(`<strong>طلب متاح #${o.id}</strong><br>${_esc(o.store)}<br><small>${o.total.toLocaleString('en-US')} ل.س</small>`);
             bounds.push([o.lat, o.lng]);
         });
 

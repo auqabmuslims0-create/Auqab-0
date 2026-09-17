@@ -533,7 +533,7 @@
       } else {
         iconHtml = '<i class="bi bi-info-circle-fill text-info toast-icon"></i>';
       }
-      toast.innerHTML = `<div class="d-flex"><div class="toast-body">${imageHtml}${iconHtml}<span class="toast-message">${message}</span></div></div>`;
+      toast.innerHTML = `<div class="d-flex"><div class="toast-body">${imageHtml}${iconHtml}<span class="toast-message"></span></div></div>`; toast.querySelector(".toast-message").textContent = message;
       container.appendChild(toast);
       const bsToast = new bootstrap.Toast(toast, { delay: 3500, autohide: true });
       bsToast.show();

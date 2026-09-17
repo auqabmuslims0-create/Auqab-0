@@ -112,7 +112,6 @@
             <span class="text-muted small">{{ pagination.total }} منتج</span>
         </div>
 
-        {# ===== أزرار الترتيب ===== #}
         <div class="sort-tabs mb-3">
             <a href="{{ sort_urls.views }}"
                class="sort-tab {% if current_sort == 'views' %}active{% endif %}">
@@ -131,7 +130,6 @@
                 <i class="bi bi-arrow-up-circle"></i> الأغلى
             </a>
         </div>
-        {# ===== نهاية أزرار الترتيب ===== #}
 
         {% if products %}
         <div class="products-grid" id="items-grid">
@@ -218,6 +216,27 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearBtn = document.getElementById('clearSearchBtn');
     let debounceTimer;
 
+    // escapeHtml: يمنع XSS عند بناء HTML بـ innerHTML مع بيانات من المستخدم
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    // يُستخدم لتنقية روابط الصور (منع javascript: و data: وسم <)
+    function safeImageUrl(url) {
+        if (!url) return '';
+        const s = String(url);
+        if (s.startsWith('http://') || s.startsWith('https://') || s.startsWith('/')) {
+            return escapeHtml(s);
+        }
+        return '';
+    }
+
     function toggleClear() {
         clearBtn.style.display = searchInput.value ? 'block' : 'none';
     }
@@ -246,19 +265,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (data.stores.length) {
                         html += '<li class="suggestion-header">المتاجر</li>';
                         data.stores.forEach(s => {
-                            html += `<li><a href="/store/${s.id}/public"><i class="bi bi-shop me-2"></i>${s.name}</a></li>`;
+                            html += `<li><a href="/store/${parseInt(s.id, 10)}/public"><i class="bi bi-shop me-2"></i>${escapeHtml(s.name)}</a></li>`;
                         });
                     }
                     if (data.products.length) {
                         html += '<li class="suggestion-header">المنتجات</li>';
                         data.products.forEach(p => {
-                            html += `<li><a href="/product/${p.id}"><img src="${p.image_url}" class="me-2" style="width:30px;height:30px;object-fit:cover;border-radius:50%;">${p.name} <span class="text-muted small">${p.price} ل.س</span></a></li>`;
+                            html += `<li><a href="/product/${parseInt(p.id, 10)}"><img src="${safeImageUrl(p.image_url)}" class="me-2" style="width:30px;height:30px;object-fit:cover;border-radius:50%;">${escapeHtml(p.name)} <span class="text-muted small">${escapeHtml(p.price)} ل.س</span></a></li>`;
                         });
                     }
                     if (data.services.length) {
                         html += '<li class="suggestion-header">خدمات</li>';
                         data.services.forEach(sv => {
-                            html += `<li><a href="/services"><i class="bi ${sv.icon} me-2"></i>${sv.name}</a></li>`;
+                            html += `<li><a href="/services"><i class="bi ${escapeHtml(sv.icon)} me-2"></i>${escapeHtml(sv.name)}</a></li>`;
                         });
                     }
                     html += '</ul>';
@@ -284,7 +303,17 @@ document.addEventListener('DOMContentLoaded', function() {
             if (typeof data.active_shoppers_count !== 'undefined') {
                 const badge = document.getElementById('activeShoppersBadge');
                 if (badge) {
-                    badge.innerHTML = `<i class="bi bi-people-fill"></i> <span>${data.active_shoppers_count}</span> يتسوقون الآن`;
+                    // count من السيرفر كعدد صحيح — نستخدم textContent لتفادي XSS
+                    const count = parseInt(data.active_shoppers_count, 10) || 0;
+                    badge.innerHTML = '';
+                    const icon = document.createElement('i');
+                    icon.className = 'bi bi-people-fill';
+                    badge.appendChild(icon);
+                    badge.appendChild(document.createTextNode(' '));
+                    const span = document.createElement('span');
+                    span.textContent = String(count);
+                    badge.appendChild(span);
+                    badge.appendChild(document.createTextNode(' يتسوقون الآن'));
                 }
             }
         } catch (err) {
@@ -361,11 +390,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (storesStrip) {
                 if (stores && stores.length > 0) {
                     storesStrip.innerHTML = stores.map(store => `
-                        <a href="/store/${store.id}/public" class="store-circle text-decoration-none">
+                        <a href="/store/${parseInt(store.id, 10)}/public" class="store-circle text-decoration-none">
                             <div class="store-logo-circle">
-                                ${store.logo_url ? `<img src="${store.logo_url}" alt="${store.name}">` : `<div class="image-fallback"><i class="bi bi-shop"></i></div>`}
+                                ${store.logo_url ? `<img src="${safeImageUrl(store.logo_url)}" alt="">` : `<div class="image-fallback"><i class="bi bi-shop"></i></div>`}
                             </div>
-                            <span class="small d-block text-center text-truncate" style="max-width:80px;">${store.name}</span>
+                            <span class="small d-block text-center text-truncate" style="max-width:80px;">${escapeHtml(store.name)}</span>
                         </a>
                     `).join('');
                 } else {
@@ -377,12 +406,12 @@ document.addEventListener('DOMContentLoaded', function() {
             if (productsGrid) {
                 if (products && products.length > 0) {
                     productsGrid.innerHTML = products.map(product => `
-                        <a href="/product/${product.id}" class="text-decoration-none">
+                        <a href="/product/${parseInt(product.id, 10)}" class="text-decoration-none">
                             <div class="offline-product-card">
-                                ${product.main_image ? `<img src="${product.main_image}" alt="${product.name}" class="offline-product-image">` : `<div class="offline-product-image d-flex align-items-center justify-content-center"><i class="bi bi-image" style="font-size:2rem;"></i></div>`}
+                                ${product.main_image ? `<img src="${safeImageUrl(product.main_image)}" alt="" class="offline-product-image">` : `<div class="offline-product-image d-flex align-items-center justify-content-center"><i class="bi bi-image" style="font-size:2rem;"></i></div>`}
                                 <div class="offline-product-body">
-                                    <div class="offline-product-name">${product.name}</div>
-                                    <div class="offline-product-price">${product.price} ل.س</div>
+                                    <div class="offline-product-name">${escapeHtml(product.name)}</div>
+                                    <div class="offline-product-price">${escapeHtml(product.price)} ل.س</div>
                                 </div>
                             </div>
                         </a>

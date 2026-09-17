@@ -1,10 +1,4 @@
 /* ========== بطاقات المنتجات في الصفحات ========== */
-.product-card {
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    transition: var(--transition);
-}
 .product-image-wrapper {
     position: relative;
     overflow: hidden;
@@ -116,12 +110,6 @@ body.dark-mode .price { color: var(--accent); }
     border-radius: var(--radius-lg);
     overflow: hidden;
     background: #f8f9fa;
-}
-.main-product-image {
-    width: 100%;
-    height: 400px;
-    object-fit: cover;
-    display: block;
 }
 .main-product-image-placeholder {
     width: 100%;

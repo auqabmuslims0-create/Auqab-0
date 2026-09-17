@@ -321,7 +321,7 @@
     });
 
     // العداد التنازلي للحذف
-    const pendingDeletionAtIso = "{{ pending_deletion_at_iso or '' }}";
+    const pendingDeletionAtIso = {{ (pending_deletion_at_iso or '') | tojson }};
     if (pendingDeletionAtIso) {
         const countdownElement = document.getElementById('deleteCountdown');
         if (countdownElement) {

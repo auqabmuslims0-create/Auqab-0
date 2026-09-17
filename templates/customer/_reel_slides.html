@@ -60,7 +60,7 @@
                     title="إعجاب">
                 <i class="bi bi-heart{% if reel.id in user_reaction_map and user_reaction_map[reel.id] == 'like' %}-fill{% endif %}"></i>
             </button>
-            <button class="reel-action-btn" onclick="shareReel({{ reel.id }}, '{{ (reel.product.name if reel.product else reel.caption) | e }}')" title="مشاركة">
+            <button class="reel-action-btn" onclick='shareReel({{ reel.id }}, {{ (reel.product.name if reel.product else reel.caption) | tojson }})' title="مشاركة">
                 <i class="bi bi-share"></i>
             </button>
             {% if reel.product and not reel.product.hide_price %}

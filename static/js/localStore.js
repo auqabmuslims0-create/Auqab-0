@@ -38,7 +38,8 @@ const LocalStore = (function() {
     function setTheme(theme) {
         localStorage.setItem(THEME_KEY, theme);
         applyTheme(theme);
-        if (window.csrfToken && window.isAuthenticated !== false) {
+        // A1: نطلب === true بدل !== false (دفاعياً — القيمة دائماً true/false في base.html)
+        if (window.csrfToken && window.isAuthenticated === true) {
             const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
             fetch('/account/theme', {
                 method: 'POST',
@@ -181,11 +182,17 @@ const LocalStore = (function() {
         });
     }
 
+    // A2: معالجة دقيقة لأكواد الأخطاء
+    // - 200: نجاح → حذف الطلب من IndexedDB
+    // - 403: الحساب محظور → إيقاف المزامنة (كل الطلبات ستفشل)
+    // - 400/404: خطأ بيانات (منتج محذوف/مخزون) → تجاوز هذا الطلب فقط (يبقى في IndexedDB)
+    // - 5xx/شبكة: محاولة لاحقاً
     async function syncPendingOrders() {
         if (!navigator.onLine || typeof OfflineDB === 'undefined') return;
         try {
             const pending = await OfflineDB.getAllPendingOrders();
             if (!pending || pending.length === 0) return;
+
             for (const order of pending) {
                 try {
                     const csrfToken = window.csrfToken || '';
@@ -203,17 +210,30 @@ const LocalStore = (function() {
                             longitude: order.longitude
                         })
                     });
+
                     if (response.ok) {
                         await OfflineDB.deletePendingOrder(order.local_id);
                         console.log('تم إرسال طلب معلق بنجاح');
-                    } else {
-                        const data = await response.json().catch(() => ({}));
-                        console.warn('فشل إرسال الطلب المعلق:', data.message || response.status);
-                        if (response.status === 403) {
-                            console.warn('CSRF token expired، توقف المزامنة');
-                            break;
-                        }
+                        continue;
                     }
+
+                    const data = await response.json().catch(() => ({}));
+                    console.warn('فشل إرسال الطلب المعلق:', data.message || response.status);
+
+                    if (response.status === 403) {
+                        // الحساب محظور — لا فائدة من متابعة بقية الطلبات
+                        console.warn('الحساب محظور، إيقاف مزامنة الطلبات المعلقة');
+                        break;
+                    }
+
+                    if (response.status === 400 || response.status === 404) {
+                        // خطأ في بيانات الطلب (منتج محذوف، مخزون غير كافٍ، متجر غير نشط)
+                        // نبقيه في IndexedDB للتصحيح اليدوي بدل حذفه — لكن نتجاوز للطلب التالي.
+                        console.warn('تم تجاوز الطلب المعلق (خطأ بيانات):', data.message || '');
+                        continue;
+                    }
+
+                    // 5xx أو حالة أخرى: نحاول في المزامنة القادمة بدون حذف.
                 } catch (err) {
                     console.warn('خطأ في إرسال الطلب المعلق:', err);
                 }
