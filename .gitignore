@@ -1,4 +1,4 @@
-# Python
+# ═══════════════ Python ═══════════════
 __pycache__/
 *.py[cod]
 *.so
@@ -9,65 +9,32 @@ env/
 ENV/
 *.egg-info/
 
-# Env & secrets
+# ═══════════════ Environment & secrets ═══════════════
 .env
 .env.*
 !.env.example
 
-# Database
-*.db
-*.sqlite3
-husayniyyah.db
-
-# Logs
-*.log
-gunicorn.log
-
-# Uploads (Cloudinary)
-static/uploads/
-
-# Termux / IDE / OS
-.vscode/
-.idea/
-*.swp
-.DS_Store
-Thumbs.db
-mise.local.toml
-
-# Test
-.pytest_cache/
-.coverage
-
-# Environment
-.env
-.env.*
-!.env.example
-
-# Databases
+# ═══════════════ Databases ═══════════════
 *.db
 *.sqlite
 *.sqlite3
 
-# Uploads (user generated content - Cloudinary handles these)
-static/uploads/
-
-# Logs
+# ═══════════════ Logs ═══════════════
 *.log
 logs/
 
-# OS
-.DS_Store
-Thumbs.db
+# ═══════════════ Uploads (user-generated content, handled by Cloudinary) ═══════════════
+static/uploads/
 
-# IDE
-.vscode/
-.idea/
-*.swp
-
-# Testing
+# ═══════════════ Testing ═══════════════
 .pytest_cache/
 .coverage
 htmlcov/
 
-# Termux/local
+# ═══════════════ Termux / IDE / OS ═══════════════
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
 mise.local.toml

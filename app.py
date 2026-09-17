@@ -482,6 +482,28 @@ def assetlinks():
     return app.send_static_file('.well-known/assetlinks.json')
 
 
+# ═══════════════════════════════════════════════════════════════
+# تهيئة المجدول الدوري (مهام الاشتراكات)
+# ═══════════════════════════════════════════════════════════════
+# يُنفَّذ على مستوى الوحدة (module level) ليعمل تحت gunicorn أيضاً —
+# وليس فقط عند `python app.py`. سابقاً كان داخل `if __name__ == '__main__':`
+# مما يعني أن مهام الاشتراكات (expire / تذكيرات التجديد) لم تكن تُنفَّذ
+# في الإنتاج على Railway إطلاقاً.
+#
+# scheduler.py يتحقق داخلياً من SCHEDULER_ENABLED، لذا:
+#   - محلياً (SCHEDULER_ENABLED=0): لا شيء يحدث
+#   - إنتاجياً (SCHEDULER_ENABLED=1): يبدأ المجدول في الخلفية
+#
+# الحماية بـ try/except تضمن أن أي فشل في تهيئة المجدول (مثلاً: خطأ
+# في اتصال قاعدة البيانات، أو تعارض في ملف القفل) لا يُسقِط التطبيق
+# بالكامل عند الإقلاع.
+try:
+    from scheduler import init_scheduler
+    init_scheduler(app)
+except Exception as _scheduler_init_error:
+    app.logger.error(f"فشل تهيئة المجدول الدوري: {_scheduler_init_error}")
+
+
 def _handle_sigterm(signum, frame):
     from scheduler import shutdown_scheduler
     shutdown_scheduler()
@@ -490,8 +512,6 @@ def _handle_sigterm(signum, frame):
 
 if __name__ == '__main__':
     ensure_admin()
-    from scheduler import init_scheduler
-    init_scheduler(app)
     signal.signal(signal.SIGTERM, _handle_sigterm)
     signal.signal(signal.SIGINT, _handle_sigterm)
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
