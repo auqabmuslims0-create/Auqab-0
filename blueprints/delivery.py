@@ -15,7 +15,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# HTML/session-based routes (require CSRF on mutations)
 delivery_bp = Blueprint('delivery', __name__)
+
+# JWT-based API routes (CSRF-exempt: Bearer token in header, not cookie)
+delivery_api_bp = Blueprint('delivery_api', __name__)
 
 
 # ============================================================
@@ -93,7 +97,7 @@ def _claim_order_atomic(order_id, user):
 
 
 # ============================================================
-# واجهات المستخدم
+# واجهات المستخدم (Session + CSRF)
 # ============================================================
 
 @delivery_bp.route('/delivery')
@@ -108,7 +112,6 @@ def delivery_dashboard():
     if tab not in ('mine', 'available', 'map'):
         tab = 'mine'
 
-    # ===== مهامي =====
     my_orders = Order.query.filter(
         Order.delivery_person_id == user.id,
         Order.status.in_(['ready', 'delivering'])
@@ -121,7 +124,6 @@ def delivery_dashboard():
         Order.created_at.asc()
     ).all()
 
-    # آخر 10 طلبات مُسلَّمة
     delivered_orders = Order.query.filter(
         Order.delivery_person_id == user.id,
         Order.status == 'delivered'
@@ -130,7 +132,6 @@ def delivery_dashboard():
         selectinload(Order.customer)
     ).order_by(Order.delivered_at.desc().nullslast(), Order.created_at.desc()).limit(10).all()
 
-    # ===== الطلبات المتاحة في المدينة =====
     available_orders = Order.query.join(Store, Order.store_id == Store.id).filter(
         Order.delivery_person_id.is_(None),
         Order.status == 'ready',
@@ -142,7 +143,6 @@ def delivery_dashboard():
         selectinload(Order.items).selectinload(OrderItem.product)
     ).order_by(Order.created_at.asc()).all()
 
-    # ===== إحصائيات =====
     active_orders_count = len(my_orders)
     delivering_count = len([o for o in my_orders if o.status == 'delivering'])
     is_available_now = is_delivery_available(user)
@@ -154,7 +154,6 @@ def delivery_dashboard():
             'end': user.shift_end_time.strftime('%H:%M')
         }
 
-    # ===== الخريطة =====
     active_stores = Store.query.filter(
         Store.subscription_status == 'active',
         Store.latitude.isnot(None),
@@ -204,7 +203,6 @@ def delivery_claim_order(order_id):
         flash(err, 'error')
         return redirect(url_for('delivery.delivery_dashboard', tab='available'))
 
-    # إشعار صاحب المتجر
     try:
         NotificationService.send_to_store_owner(
             order.store,
@@ -215,7 +213,6 @@ def delivery_claim_order(order_id):
     except Exception as e:
         logger.error(f'فشل إشعار صاحب المتجر: {e}')
 
-    # إشعار الزبون
     if order.customer_id:
         try:
             NotificationService.send_to_user(
@@ -300,10 +297,10 @@ def update_availability():
 
 
 # ============================================================
-# API (للتطبيقات الخارجية مستقبلاً)
+# API للمندوبين (JWT — CSRF-exempt)
 # ============================================================
 
-@delivery_bp.route('/api/delivery/orders', methods=['GET'])
+@delivery_api_bp.route('/api/delivery/orders', methods=['GET'])
 @token_required
 def delivery_get_orders(current_user):
     if current_user.role != 'delivery':
@@ -313,7 +310,7 @@ def delivery_get_orders(current_user):
     return jsonify({'orders': [serialize_order(o) for o in orders.items]}), 200
 
 
-@delivery_bp.route('/api/delivery/orders/<int:order_id>/start', methods=['POST'])
+@delivery_api_bp.route('/api/delivery/orders/<int:order_id>/start', methods=['POST'])
 @token_required
 def delivery_start_order_api(current_user, order_id):
     if current_user.role != 'delivery':
@@ -333,7 +330,7 @@ def delivery_start_order_api(current_user, order_id):
         return jsonify({'message': 'حدث خطأ'}), 500
 
 
-@delivery_bp.route('/api/delivery/orders/<int:order_id>/deliver', methods=['POST'])
+@delivery_api_bp.route('/api/delivery/orders/<int:order_id>/deliver', methods=['POST'])
 @token_required
 def delivery_deliver_order_api(current_user, order_id):
     if current_user.role != 'delivery':
@@ -353,7 +350,7 @@ def delivery_deliver_order_api(current_user, order_id):
         return jsonify({'message': 'حدث خطأ'}), 500
 
 
-@delivery_bp.route('/api/delivery/available-orders', methods=['GET'])
+@delivery_api_bp.route('/api/delivery/available-orders', methods=['GET'])
 @token_required
 def delivery_available_orders_api(current_user):
     if current_user.role != 'delivery':
@@ -367,7 +364,7 @@ def delivery_available_orders_api(current_user):
     return jsonify({'orders': [serialize_order(o) for o in orders]}), 200
 
 
-@delivery_bp.route('/api/delivery/orders/<int:order_id>/claim', methods=['POST'])
+@delivery_api_bp.route('/api/delivery/orders/<int:order_id>/claim', methods=['POST'])
 @token_required
 def delivery_claim_order_api(current_user, order_id):
     if current_user.role != 'delivery':
@@ -381,6 +378,8 @@ def delivery_claim_order_api(current_user, order_id):
     return jsonify({'message': 'تم استلام الطلب', 'order': serialize_order(order)}), 200
 
 
+# ملاحظة: delivery_notifications_api يستخدم session auth (api_login_required)
+# وليس JWT، لذا يبقى في delivery_bp (CSRF محمي على POST، لكنه GET).
 @delivery_bp.route('/api/delivery/notifications', methods=['GET'])
 @api_login_required
 def delivery_notifications_api():

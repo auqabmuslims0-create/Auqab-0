@@ -75,9 +75,10 @@
         // نسجل فقط فيديوهات الريلز (وليس فيديوهات المنتجات في لوحة صاحب المتجر)
         if (!video.hasAttribute('data-reel-video')) return;
         viewedReels.add(reelId);
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || window.csrfToken || '';
         fetch(`/api/reels/${reelId}/view`, {
             method: 'POST',
-            headers: { 'Accept': 'application/json' }
+            headers: { 'Accept': 'application/json', 'X-CSRF-Token': csrfToken }
         }).catch(() => { /* تجاهل الأخطاء بصمت */ });
     }
 

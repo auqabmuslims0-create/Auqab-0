@@ -29,7 +29,7 @@ from admin import admin_bp
 from blueprints.api import api_bp
 from blueprints.social import social_bp
 from store_owner import store_bp
-from blueprints.delivery import delivery_bp
+from blueprints.delivery import delivery_bp, delivery_api_bp
 
 from customer.market import market_bp
 from blueprints.reels import reels_bp
@@ -88,7 +88,12 @@ csp_policy = (
 Talisman(app, content_security_policy=csp_policy, force_https=IS_PRODUCTION)
 
 csrf = CSRFProtect(app)
-for bp in [api_bp, social_bp, reels_bp, delivery_bp]:
+# CSRF exemption is granted ONLY to blueprints whose mutations are
+# authenticated via JWT Bearer tokens (not cookies) — i.e. api_bp
+# and delivery_api_bp. Session-based blueprints (social_bp, reels_bp,
+# delivery_bp) keep CSRF protection: their JS callers send
+# X-CSRF-Token (see templates/base.html and static/js/*).
+for bp in [api_bp, delivery_api_bp]:
     csrf.exempt(bp)
 
 
@@ -180,6 +185,7 @@ migrate = Migrate(app, db)
 app.register_blueprint(auth_bp)
 app.register_blueprint(store_bp)
 app.register_blueprint(delivery_bp)
+app.register_blueprint(delivery_api_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(api_bp, url_prefix='/api')
 app.register_blueprint(social_bp)
