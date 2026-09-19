@@ -2,6 +2,7 @@ from flask import render_template, request, redirect, url_for, flash, abort, ses
 from database import db
 from models import Store, Product, Order, Category, Reel, Subscription, Review, ProductComment, ProductReaction
 from sqlalchemy import func
+from sqlalchemy.orm import selectinload
 from shared.time_utils import current_time
 from shared.utils import save_image, get_setting
 from shared.validators import is_valid_phone_syrian
@@ -33,10 +34,23 @@ def _attach_days_remaining(stores):
 @role_required('owner')
 def my_stores():
     user = g.user
-    from shared.services.subscription_service import SubscriptionService
-    SubscriptionService.check_expiring_subscriptions()
-
-    stores = Store.query.filter_by(owner_id=user.id).all()
+    # check_expiring_subscriptions مهمة scheduler دورية (كل ساعة).
+    # تشغيلها في view كان يسبب N+1 + إشعارات push مكررة.
+    #
+    # selectinload يمنع N+1 من القالب (my_stores.html يصل إلى
+    # store.owner / store.products / store.categories / category.products
+    # داخل حلقة over stores). بلا eager loading: ~300 استعلام لكل زيارة.
+    # بعد التحميل المسبق: 5 استعلامات ثابتة (1 لكل علاقة).
+    stores = (
+        Store.query
+        .filter_by(owner_id=user.id)
+        .options(
+            selectinload(Store.owner),
+            selectinload(Store.products),
+            selectinload(Store.categories).selectinload(Category.products),
+        )
+        .all()
+    )
     _attach_days_remaining(stores)
     return render_template('store_owner/my_stores.html', stores=stores)
 

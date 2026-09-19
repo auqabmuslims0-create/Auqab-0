@@ -379,7 +379,14 @@
           </li>
           <li><a href="{{ url_for('services.services_page') }}" class="sidebar-menu-item"><i class="bi bi-info-circle ms-1"></i> حول / خدمات</a></li>
           {% if current_user %}
-            <li><a href="{{ url_for('auth.logout') }}" class="sidebar-menu-item text-danger"><i class="bi bi-box-arrow-left ms-1"></i> تسجيل الخروج</a></li>
+            <li>
+                <form method="POST" action="{{ url_for('auth.logout') }}" style="margin:0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="sidebar-menu-item text-danger" style="background:none;border:none;width:100%;text-align:right;cursor:pointer;padding:0;font:inherit;">
+                        <i class="bi bi-box-arrow-left ms-1"></i> تسجيل الخروج
+                    </button>
+                </form>
+            </li>
           {% endif %}
         </ul>
       {% endif %}

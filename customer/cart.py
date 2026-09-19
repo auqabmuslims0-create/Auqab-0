@@ -25,6 +25,12 @@ from shared.services.cart_service import CartService
 cart_bp = Blueprint('cart', __name__)
 
 
+# سقف الطلبات المعروضة في صفحة السلة.
+# في الإنتاج الفعلي، المستخدم نادرًا ما يكون لديه أكثر من 20-30 طلبًا خلال 24 ساعة.
+# السقف يمنع انفجار الأداء إذا تراكمت طلبات (اختبارات الضغط، حسابات قديمة نشطة).
+ORDERS_LIMIT = 50
+
+
 # ═══════════════════════════════════════════════════════════════
 # أدوات مساعدة (session + HTTP)
 # ═══════════════════════════════════════════════════════════════
@@ -86,6 +92,8 @@ def cart():
             grouped[store_id]['total'] += effective_price * item['quantity']
 
     # الطلبات النشطة + المُسلَّمة خلال آخر 24 ساعة
+    # ORDERS_LIMIT يمنع تحميل تاريخ طويل (في الإنتاج = سقف احتياطي، وفي الاختبارات
+    # يمنع N+1 على قوائم ضخمة).
     cutoff = current_time() - timedelta(hours=24)
     orders = Order.query.filter(
         Order.customer_id == user.id,
@@ -103,7 +111,7 @@ def cart():
         selectinload(Order.store),
         selectinload(Order.items).selectinload(OrderItem.product),
         selectinload(Order.delivery_person)
-    ).order_by(Order.created_at.desc()).all()
+    ).order_by(Order.created_at.desc()).limit(ORDERS_LIMIT).all()
 
     return render_template('customer/cart.html', grouped=grouped, orders=orders)
 

@@ -243,9 +243,11 @@ def login():
     return render_template('auth/login.html', login_error=login_error)
 
 
-@auth_bp.route('/logout')
+@auth_bp.route('/logout', methods=['POST'])
 @login_required
 def logout():
+    # POST فقط — منع هجوم "logout via <img src=/logout>" من صفحات خارجية.
+    # الأزرار في القوالب تحتاج form مع csrf_token (تحدَّث في base.html).
     session.clear()
     flash('تم تسجيل الخروج', 'success')
     return redirect(url_for('auth.login'))

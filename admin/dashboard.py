@@ -8,9 +8,8 @@ from . import admin_bp
 @admin_bp.route('/admin')
 @role_required('admin')
 def admin_dashboard():
-    from shared.services.subscription_service import SubscriptionService
-    SubscriptionService.check_expiring_subscriptions()
-
+    # check_expiring_subscriptions مهمة scheduler دورية (كل ساعة) —
+    # تشغيلها في view يضيف 4+ استعلامات و N+1 على كل زيارة للوحة.
     total_users = User.query.count()
     total_stores = Store.query.count()
     total_orders = Order.query.count()

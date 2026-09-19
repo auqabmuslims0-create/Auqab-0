@@ -198,7 +198,28 @@ def test_login_clears_previous_session(client, make_user):
 def test_logout_clears_session(client, make_user, login):
     u = make_user(username='henry', password='MyPass123!@#')
     login('henry', 'MyPass123!@#')
+    r = client.post('/logout')
+    assert r.status_code == 302
+    with client.session_transaction() as sess:
+        assert 'user_id' not in sess
+
+
+def test_logout_via_get_is_rejected(client, make_user, login):
+    """GET /logout يجب أن يُرفض بـ 405 — منع CSRF logout (<img src=/logout>)."""
+    u = make_user(username='logout_get', password='MyPass123!@#')
+    login('logout_get', 'MyPass123!@#')
     r = client.get('/logout')
+    assert r.status_code == 405
+    # الجلسة لا تزال نشطة
+    with client.session_transaction() as sess:
+        assert sess.get('user_id') == u['id']
+
+
+def test_logout_via_post_succeeds(client, make_user, login):
+    """POST /logout يمسح الجلسة."""
+    u = make_user(username='logout_post', password='MyPass123!@#')
+    login('logout_post', 'MyPass123!@#')
+    r = client.post('/logout')
     assert r.status_code == 302
     with client.session_transaction() as sess:
         assert 'user_id' not in sess
