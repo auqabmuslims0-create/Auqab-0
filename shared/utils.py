@@ -12,6 +12,16 @@ from shared.time_utils import current_time
 from database import db
 from shared.validators import is_strong_password, is_valid_email, is_valid_phone_syrian
 
+
+# ═══════════════════════════════════════════════════════════════
+# A4: حماية من decompression bombs
+# ═══════════════════════════════════════════════════════════════
+# Pillow يطلق DecompressionBombWarning عند هذا الحد، و DecompressionBombError
+# عند 2× الحد. بضبط 50M بكسل → الرفض الصارم عند 100M بكسل (= 10000×10000)
+# وهو أكبر من أي صورة واقعية (8000×6000 = 48M).
+Image.MAX_IMAGE_PIXELS = 50_000_000
+
+
 # ========== دوال عامة ==========
 
 def generate_public_id():
@@ -122,8 +132,73 @@ def safe_referrer():
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'mov', 'avi'}
 MAX_IMAGE_SIZE = 10 * 1024 * 1024  # 10MB
-MAX_VIDEO_SIZE = 50 * 1024 * 1024  # 50MB (تم تقليل الحد الأقصى للفيديو)
+MAX_VIDEO_SIZE = 50 * 1024 * 1024  # 50MB
 
+
+# ═══════════════════════════════════════════════════════════════
+# A1: فحص magic bytes — لا نثق بالامتداد ولا بـ Content-Type
+# ═══════════════════════════════════════════════════════════════
+def _validate_image_magic(file):
+    """
+    التحقق من البايتات السحرية للصورة.
+    يقرأ أول 12 بايت ثم يُعيد المؤشر إلى 0.
+    يعيد True إذا كان التوقيع مطابقًا لـ JPEG/PNG/GIF/WebP.
+    """
+    try:
+        header = file.read(12)
+    except Exception:
+        return False
+    finally:
+        try:
+            file.seek(0)
+        except Exception:
+            pass
+
+    if not header or len(header) < 8:
+        return False
+    # JPEG: FF D8 FF
+    if header[:3] == b'\xff\xd8\xff':
+        return True
+    # PNG: 89 50 4E 47 0D 0A 1A 0A
+    if header[:8] == b'\x89PNG\r\n\x1a\n':
+        return True
+    # GIF: GIF87a أو GIF89a
+    if header[:6] in (b'GIF87a', b'GIF89a'):
+        return True
+    # WebP: RIFF .... WEBP
+    if header[:4] == b'RIFF' and header[8:12] == b'WEBP':
+        return True
+    return False
+
+
+def _validate_video_magic(file):
+    """
+    التحقق من البايتات السحرية للفيديو.
+    - MP4/MOV: بايتات 4-8 == b'ftyp' (ISO Base Media).
+    - AVI: RIFF ... AVI .
+    """
+    try:
+        header = file.read(12)
+    except Exception:
+        return False
+    finally:
+        try:
+            file.seek(0)
+        except Exception:
+            pass
+
+    if not header or len(header) < 12:
+        return False
+    if header[4:8] == b'ftyp':
+        return True
+    if header[:4] == b'RIFF' and header[8:12] == b'AVI ':
+        return True
+    return False
+
+
+# ═══════════════════════════════════════════════════════════════
+# A2: _secure_file — امتداد + mimetype + magic bytes + الحجم
+# ═══════════════════════════════════════════════════════════════
 def _secure_file(file, allowed_extensions, max_size):
     if not file or not file.filename or file.filename == '':
         return None
@@ -144,6 +219,17 @@ def _secure_file(file, allowed_extensions, max_size):
     file.seek(0)
     if size > max_size:
         return None
+
+    # A2: الامتداد و Content-Type قابلان للتزوير من العميل. الفحص القاطع
+    # هو محتوى الملف (magic bytes) — وإلا رفع مهاجم HTML باسم .jpg مع
+    # Content-Type: image/jpeg.
+    if ext in ALLOWED_IMAGE_EXTENSIONS:
+        if not _validate_image_magic(file):
+            return None
+    elif ext in ALLOWED_VIDEO_EXTENSIONS:
+        if not _validate_video_magic(file):
+            return None
+
     return ext
 
 def _is_cloudinary_enabled():
@@ -170,7 +256,6 @@ def _delete_from_cloudinary(url):
     """حذف ملف من Cloudinary إذا كان الرابط من Cloudinary."""
     if not url or not url.startswith('http'):
         return
-    # تحسين regex ليشمل جميع صيغ Cloudinary
     pattern = r'https?://(?:res\.cloudinary\.com|res-[\w-]+\.cloudinary\.com)/([^/]+)/(image|video|raw)/upload/(?:v\d+/)?(.+?)(?:\.[a-zA-Z0-9]+)?$'
     match = re.match(pattern, url)
     if not match:
@@ -187,6 +272,10 @@ def _delete_from_cloudinary(url):
     except Exception as e:
         current_app.logger.warning(f'فشل حذف الملف من Cloudinary: {str(e)}')
 
+
+# ═══════════════════════════════════════════════════════════════
+# A5: delete_local_file — مع منع path traversal
+# ═══════════════════════════════════════════════════════════════
 def delete_local_file(url):
     """حذف ملف: إذا كان رابط Cloudinary نحذفه من Cloudinary، وإلا نحذف الملف المحلي."""
     if not url:
@@ -203,18 +292,34 @@ def delete_local_file(url):
         relative_path = os.path.join('uploads', url.lstrip('/'))
 
     file_path = os.path.join(current_app.static_folder, relative_path.replace('/', os.sep))
-    if os.path.exists(file_path):
+
+    # A5: منع path traversal — المسار الحقيقي يجب أن يكون داخل static/uploads.
+    # مثال هجوم محتمل: url = 'uploads/../../../etc/passwd' → حذف خارج المشروع.
+    # هذا دفاع في العمق — الـ URLs تأتي من كودنا، لكن نضمن السلامة حتى لو تسربت.
+    try:
+        real_target = os.path.realpath(file_path)
+        real_base = os.path.realpath(current_app.static_folder)
+    except Exception:
+        return
+    upload_root = os.path.join(real_base, 'uploads')
+    if real_target != upload_root and not real_target.startswith(upload_root + os.sep):
+        current_app.logger.warning(f'delete_local_file: رفض مسار غير آمن: {url}')
+        return
+
+    if os.path.exists(real_target):
         try:
-            os.remove(file_path)
+            os.remove(real_target)
         except OSError:
             pass
+
 
 def _compress_image(file, max_width=1200, max_height=1200, quality=80):
     """
     ضغط الصورة وتقليل حجمها.
-    تعيد (bytes_io, output_ext) حيث:
-    - bytes_io: كائن BytesIO يحتوي على بيانات الصورة.
-    - output_ext: الامتداد الصحيح للصورة الناتجة (مثل 'jpg' أو 'png' أو 'gif' أو 'webp').
+    تعيد (bytes_io, output_ext).
+
+    A3: عند فشل المعالجة نرفع ValueError بدل إرجاع البايتات الأصلية
+    (كان يُخزِّن أي ملف خبيث تشوَّه بعد فشل Pillow).
     """
     try:
         img = Image.open(file)
@@ -244,14 +349,8 @@ def _compress_image(file, max_width=1200, max_height=1200, quality=80):
 
     except Exception as e:
         current_app.logger.warning(f'فشل ضغط الصورة: {str(e)}')
-        file.seek(0)
-        output = io.BytesIO(file.read())
-        output.seek(0)
-        if file.filename and '.' in file.filename:
-            orig_ext = file.filename.rsplit('.', 1)[1].lower()
-        else:
-            orig_ext = 'jpg'
-        return output, orig_ext
+        # A3: بدل إرجاع البايتات الأصلية (سلوك قديم خطير) نرفع استثناء.
+        raise ValueError('تعذر معالجة الصورة — قد تكون تالفة أو غير مدعومة')
 
 def _compress_video(file, max_width=720, crf=32):
     """ضغط الفيديو باستخدام ffmpeg إذا كان متاحًا وبسرعة معقولة."""
@@ -266,7 +365,6 @@ def _compress_video(file, max_width=720, crf=32):
         with tempfile.NamedTemporaryFile(delete=False, suffix='.mp4') as temp_output:
             output_path = temp_output.name
 
-        # تحسين الإعدادات لتقليل الحجم أكثر مع الحفاظ على جودة مقبولة
         cmd = [
             'ffmpeg', '-i', input_path,
             '-vf', f'scale={max_width}:-2',
@@ -278,7 +376,7 @@ def _compress_video(file, max_width=720, crf=32):
             '-y'
         ]
         try:
-            subprocess.run(cmd, check=True, capture_output=True, timeout=60)  # زيادة المهلة إلى 60 ثانية
+            subprocess.run(cmd, check=True, capture_output=True, timeout=60)
         except subprocess.TimeoutExpired:
             current_app.logger.warning('ffmpeg استغرق أكثر من 60 ثانية، سيتم رفع الفيديو الأصلي')
             os.unlink(input_path)
@@ -341,6 +439,8 @@ def save_image(file, old_url=None):
             if new_url and old_url:
                 delete_local_file(old_url)
             return new_url
+    except ValueError:
+        raise
     except Exception as e:
         current_app.logger.error(f'save_image failed: {str(e)}')
         raise ValueError(f'فشل حفظ الصورة: {str(e)}')
@@ -395,6 +495,8 @@ def save_video(file, old_url=None):
             if new_url and old_url:
                 delete_local_file(old_url)
             return new_url
+    except ValueError:
+        raise
     except Exception as e:
         current_app.logger.error(f'save_video failed: {str(e)}')
         raise ValueError(f'فشل حفظ الفيديو: {str(e)}')

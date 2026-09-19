@@ -1,3 +1,7 @@
+from collections import deque
+from datetime import datetime, timedelta
+from threading import Lock
+
 from flask import request, jsonify, abort
 from database import db
 from models import Store, Category, Product, Subscription
@@ -8,6 +12,39 @@ from .helpers import token_required, serialize_store, serialize_product, get_ima
 
 DEFAULT_PER_PAGE = 20
 MAX_PER_PAGE = 100
+
+
+# ═══════════════════════════════════════════════════════════════
+# A6: Rate limit بسيط لرفع الملفات (20/ساعة لكل IP)
+# ═══════════════════════════════════════════════════════════════
+# الحماية العامة في app.py تسمح بـ 100 طلب/ساعة لكل IP. هذا حد إضافي على
+# مسارات الرفع تحديدًا — دفاع ضد إغراق Cloudinary أو القرص المحلي.
+# in-memory: يعمل بشكل صحيح مع gunicorn --workers 1.
+_UPLOAD_WINDOW_SECONDS = 3600
+_UPLOAD_MAX_PER_IP = 20
+_upload_attempts = {}
+_upload_lock = Lock()
+
+
+def _check_upload_rate_limit():
+    """
+    يعيد True إذا كان IP مسموحًا له بالرفع ويسجّل المحاولة.
+    يعيد False إذا تجاوز الحد (20/ساعة).
+    """
+    ip = (request.remote_addr or 'unknown').strip()
+    now = datetime.utcnow()
+    cutoff = now - timedelta(seconds=_UPLOAD_WINDOW_SECONDS)
+    with _upload_lock:
+        bucket = _upload_attempts.get(ip)
+        if bucket is None:
+            bucket = deque()
+            _upload_attempts[ip] = bucket
+        while bucket and bucket[0] < cutoff:
+            bucket.popleft()
+        if len(bucket) >= _UPLOAD_MAX_PER_IP:
+            return False
+        bucket.append(now)
+        return True
 
 
 def _paginate_args():
@@ -108,6 +145,8 @@ def get_my_stores(current_user):
 @api_bp.route('/stores/<int:store_id>/upload-images', methods=['POST'])
 @token_required
 def upload_product_images(current_user, store_id):
+    if not _check_upload_rate_limit():
+        return jsonify({'message': 'تم تجاوز حد الرفع المسموح، حاول بعد ساعة'}), 429
     store = db.get_or_404(Store, store_id)
     if store.owner_id != current_user.id and current_user.role != 'admin':
         return jsonify({'message': 'غير مسموح'}), 403
@@ -117,7 +156,10 @@ def upload_product_images(current_user, store_id):
     urls = []
     for file in files:
         if file and file.filename:
-            saved_name = save_image(file)
+            try:
+                saved_name = save_image(file)
+            except ValueError as e:
+                return jsonify({'message': str(e)}), 400
             if saved_name:
                 urls.append(get_image_url(saved_name))
     return jsonify({'urls': urls}), 200
@@ -126,13 +168,18 @@ def upload_product_images(current_user, store_id):
 @api_bp.route('/stores/<int:store_id>/upload-video', methods=['POST'])
 @token_required
 def upload_product_video(current_user, store_id):
+    if not _check_upload_rate_limit():
+        return jsonify({'message': 'تم تجاوز حد الرفع المسموح، حاول بعد ساعة'}), 429
     store = db.get_or_404(Store, store_id)
     if store.owner_id != current_user.id and current_user.role != 'admin':
         return jsonify({'message': 'غير مسموح'}), 403
     file = request.files.get('files')
     if not file:
         return jsonify({'message': 'لم يتم إرسال ملف'}), 400
-    saved_name = save_video(file)
+    try:
+        saved_name = save_video(file)
+    except ValueError as e:
+        return jsonify({'message': str(e)}), 400
     if saved_name:
         return jsonify({'url': get_image_url(saved_name)}), 200
     return jsonify({'message': 'فشل رفع الملف'}), 500
@@ -141,13 +188,18 @@ def upload_product_video(current_user, store_id):
 @api_bp.route('/stores/<int:store_id>/upload-logo', methods=['POST'])
 @token_required
 def upload_store_logo(current_user, store_id):
+    if not _check_upload_rate_limit():
+        return jsonify({'message': 'تم تجاوز حد الرفع المسموح، حاول بعد ساعة'}), 429
     store = db.get_or_404(Store, store_id)
     if store.owner_id != current_user.id and current_user.role != 'admin':
         return jsonify({'message': 'غير مسموح'}), 403
     file = request.files.get('files')
     if not file:
         return jsonify({'message': 'لم يتم إرسال ملف'}), 400
-    saved_name = save_image(file)
+    try:
+        saved_name = save_image(file)
+    except ValueError as e:
+        return jsonify({'message': str(e)}), 400
     if saved_name:
         return jsonify({'url': get_image_url(saved_name)}), 200
     return jsonify({'message': 'فشل رفع الملف'}), 500
@@ -156,13 +208,18 @@ def upload_store_logo(current_user, store_id):
 @api_bp.route('/stores/<int:store_id>/upload-proof', methods=['POST'])
 @token_required
 def upload_subscription_proof(current_user, store_id):
+    if not _check_upload_rate_limit():
+        return jsonify({'message': 'تم تجاوز حد الرفع المسموح، حاول بعد ساعة'}), 429
     store = db.get_or_404(Store, store_id)
     if store.owner_id != current_user.id and current_user.role != 'admin':
         return jsonify({'message': 'غير مسموح'}), 403
     file = request.files.get('files')
     if not file:
         return jsonify({'message': 'لم يتم إرسال ملف'}), 400
-    saved_name = save_image(file)
+    try:
+        saved_name = save_image(file)
+    except ValueError as e:
+        return jsonify({'message': str(e)}), 400
     if saved_name:
         return jsonify({'url': get_image_url(saved_name)}), 200
     return jsonify({'message': 'فشل رفع الملف'}), 500
