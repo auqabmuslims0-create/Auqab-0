@@ -17,8 +17,6 @@ def admin_stores():
     q = request.args.get('q', '').strip()
     status_filter = request.args.get('status', '').strip()
     expiring_filter = request.args.get('expiring', '').strip()
-    page = request.args.get('page', 1, type=int)
-    per_page = 12
 
     now = current_time()
 
@@ -43,8 +41,7 @@ def admin_stores():
             Store.subscription_expiry <= threshold
         )
 
-    pagination = query.order_by(Store.id.desc()).paginate(page=page, per_page=per_page, error_out=False)
-    stores = pagination.items
+    stores = query.order_by(Store.id.desc()).all()
 
     for store in stores:
         if store.pending_deletion_at:
@@ -76,7 +73,7 @@ def admin_stores():
                 'orders_count': order_counts.get(s.id, 0),
             }
 
-    return render_template('admin/admin_stores.html', stores=stores, pagination=pagination,
+    return render_template('admin/admin_stores.html', stores=stores,
                            q=q, status_filter=status_filter, expiring_filter=expiring_filter,
                            store_stats=store_stats)
 
