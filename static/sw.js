@@ -4,7 +4,7 @@
 // قاعدة ذهبية: لا نعترض cross-origin requests (Cloudinary, OSM, Fonts CDN...)
 // ============================================================
 
-const CACHE_VERSION = 17;
+const CACHE_VERSION = 18;
 
 const STATIC_CACHE = `husayniyyah-static-v${CACHE_VERSION}`;
 const HTML_CACHE   = `husayniyyah-html-v${CACHE_VERSION}`;

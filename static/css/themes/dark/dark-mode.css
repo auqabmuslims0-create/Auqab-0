@@ -18,6 +18,39 @@ html.dark-mode {
     --muted-dark: #e0e0e0;
     --glass-bg-dark: rgba(45, 45, 45, 0.6);
     --glass-border-dark: rgba(255, 255, 255, 0.15);
+
+    /* ===== Bootstrap 5.3 CSS variables ===== */
+    --bs-body-bg: #1e1e1e;
+    --bs-body-color: #ffffff;
+    --bs-border-color: #333333;
+    --bs-secondary-bg: #2a2a2a;
+    --bs-tertiary-bg: #1e1e1e;
+
+    /* Modal */
+    --bs-modal-bg: #1e1e1e;
+    --bs-modal-color: #ffffff;
+    --bs-modal-border-color: #333333;
+    --bs-modal-header-border-color: #333333;
+    --bs-modal-footer-border-color: #333333;
+
+    /* Table */
+    --bs-table-bg: transparent;
+    --bs-table-color: #ffffff;
+    --bs-table-border-color: #333333;
+    --bs-table-striped-bg: rgba(255,255,255,0.05);
+    --bs-table-striped-color: #ffffff;
+    --bs-table-hover-bg: rgba(255,255,255,0.08);
+    --bs-table-hover-color: #ffffff;
+    --bs-table-active-bg: rgba(255,255,255,0.1);
+    --bs-table-active-color: #ffffff;
+
+    /* Accordion */
+    --bs-accordion-bg: #1e1e1e;
+    --bs-accordion-color: #ffffff;
+    --bs-accordion-border-color: #333333;
+    --bs-accordion-btn-color: #ffffff;
+    --bs-accordion-active-bg: rgba(201,162,39,0.15);
+    --bs-accordion-active-color: #c9a227;
 }
 
 /* ========== تغطية شاملة لجميع النصوص ========== */
@@ -259,22 +292,64 @@ body.dark-mode .filter-btn:hover {
     color: #ffffff !important;
 }
 
-/* ========== الجداول ========== */
+/* ========== الجداول (v2: إصلاح خلفيات Bootstrap البيضاء) ========== */
 body.dark-mode .table {
-    background: var(--glass-bg-dark) !important;
+    --bs-table-bg: transparent;
+    --bs-table-color: #ffffff;
+    --bs-table-border-color: #333333;
+    --bs-table-striped-bg: rgba(255,255,255,0.05);
+    --bs-table-striped-color: #ffffff;
+    --bs-table-hover-bg: rgba(255,255,255,0.08);
+    --bs-table-hover-color: #ffffff;
+    --bs-table-active-bg: rgba(255,255,255,0.1);
+    --bs-table-active-color: #ffffff;
+    background-color: transparent !important;
     color: #ffffff !important;
-    border-color: var(--glass-border-dark) !important;
+    border-color: #333333 !important;
 }
-body.dark-mode .table thead {
-    background-color: #444 !important;
+
+/* قتل خلفية Bootstrap البيضاء داخل كل الخلايا (td/th) */
+body.dark-mode .table > :not(caption) > * > * {
+    background-color: transparent !important;
     color: #ffffff !important;
+    border-color: #333333 !important;
+    box-shadow: none !important;
 }
-body.dark-mode .table-striped tbody tr:nth-of-type(odd) {
+
+body.dark-mode .table thead,
+body.dark-mode .table thead th {
+    background-color: #2a2a2a !important;
+    color: #ffffff !important;
+    border-color: #333333 !important;
+}
+
+body.dark-mode .table-bordered,
+body.dark-mode .table-bordered > :not(caption) > * > * {
+    border-color: #333333 !important;
+}
+
+body.dark-mode .table-striped > tbody > tr:nth-of-type(odd) > * {
     background-color: rgba(255,255,255,0.05) !important;
-}
-body.dark-mode .table-hover tbody tr:hover {
-    background-color: #4a4a4a !important;
     color: #ffffff !important;
+    box-shadow: none !important;
+}
+
+body.dark-mode .table-hover > tbody > tr:hover > * {
+    background-color: rgba(255,255,255,0.08) !important;
+    color: #ffffff !important;
+    box-shadow: none !important;
+}
+
+/* الجداول على الجوال — الوضع الداكن */
+body.dark-mode .table tr {
+    border-color: #333333 !important;
+}
+body.dark-mode .table td {
+    border-bottom-color: #333333 !important;
+    color: #ffffff !important;
+}
+body.dark-mode .table td::before {
+    color: #b0b0b0 !important;
 }
 
 /* ========== القوائم المنسدلة والقوائم ========== */
@@ -296,15 +371,39 @@ body.dark-mode .list-group-item {
     border-color: var(--glass-border-dark) !important;
 }
 
-/* ========== نوافذ ========== */
+/* ========== نوافذ (v2: إصلاح شامل) ========== */
 body.dark-mode .modal-content {
-    background: var(--glass-bg-dark) !important;
+    background-color: #1e1e1e !important;
     color: #ffffff !important;
-    border-color: var(--glass-border-dark) !important;
+    border: 1px solid #333333 !important;
 }
 body.dark-mode .modal-header,
 body.dark-mode .modal-footer {
-    border-color: var(--glass-border-dark) !important;
+    background-color: #1e1e1e !important;
+    color: #ffffff !important;
+    border-color: #333333 !important;
+}
+body.dark-mode .modal-body {
+    background-color: #1e1e1e !important;
+    color: #ffffff !important;
+}
+body.dark-mode .modal-title {
+    color: #ffffff !important;
+}
+body.dark-mode .modal-backdrop.show {
+    opacity: 0.7;
+}
+body.dark-mode .modal .btn-secondary {
+    background-color: #444 !important;
+    border-color: #444 !important;
+    color: #ffffff !important;
+}
+body.dark-mode .modal .btn-secondary:hover {
+    background-color: #555 !important;
+    border-color: #555 !important;
+}
+body.dark-mode .modal .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
 }
 
 /* ========== عناصر عامة ========== */
