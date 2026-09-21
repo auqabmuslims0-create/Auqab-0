@@ -122,6 +122,37 @@
     body.dark-mode .avatar-upload-circle i {
         color: var(--accent);
     }
+    /* ===== شريط قوة كلمة المرور (ناعم) ===== */
+    .password-strength-wrapper {
+        opacity: 0;
+        transition: opacity 0.25s ease;
+    }
+    .password-strength-wrapper.visible {
+        opacity: 1;
+    }
+    .password-strength-progress {
+        height: 5px;
+        border-radius: 10px;
+        overflow: hidden;
+        background-color: rgba(0,0,0,0.06);
+    }
+    #passwordStrengthBar {
+        height: 100%;
+        width: 0%;
+        background-color: #e9ecef;
+        transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                    background-color 0.3s ease;
+    }
+    .password-strength-text {
+        display: block;
+        min-height: 1.2em;
+        font-size: 0.8rem;
+        font-weight: 600;
+        transition: color 0.3s ease;
+    }
+    body.dark-mode .password-strength-progress {
+        background-color: rgba(255,255,255,0.08);
+    }
 </style>
 {% endblock %}
 
@@ -194,6 +225,12 @@
                             <button class="custom-input-toggle" type="button" id="togglePasswordBtn" aria-label="إظهار كلمة المرور">
                                 <i class="bi bi-eye"></i>
                             </button>
+                        </div>
+                        <div class="password-strength-wrapper mt-2" id="passwordStrengthWrapper" aria-hidden="true">
+                            <div class="password-strength-progress progress">
+                                <div class="progress-bar" id="passwordStrengthBar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                            <small class="password-strength-text mt-1" id="passwordStrengthText"></small>
                         </div>
                     </div>
 
@@ -269,7 +306,7 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // معاينة الصورة الشخصية
+        // ===== معاينة الصورة الشخصية =====
         const circle = document.getElementById('avatarUploadCircle');
         const input = document.getElementById('avatarInput');
         const preview = document.getElementById('avatarPreview');
@@ -308,7 +345,7 @@
             });
         }
 
-        // إظهار/إخفاء كلمة المرور
+        // ===== إظهار/إخفاء كلمة المرور =====
         const toggleBtn = document.getElementById('togglePasswordBtn');
         if (toggleBtn) {
             toggleBtn.addEventListener('click', function() {
@@ -322,6 +359,55 @@
                     icon.className = 'bi bi-eye';
                 }
             });
+        }
+
+        // ===== شريط قوة كلمة المرور =====
+        const pwdInput = document.getElementById('password');
+        const strengthWrapper = document.getElementById('passwordStrengthWrapper');
+        const strengthBar = document.getElementById('passwordStrengthBar');
+        const strengthText = document.getElementById('passwordStrengthText');
+
+        if (pwdInput && strengthWrapper && strengthBar && strengthText) {
+            const evaluate = function(pwd) {
+                if (!pwd) return { label: '', color: '#e9ecef', width: 0 };
+                const hasLower = /[a-z]/.test(pwd);
+                const hasUpper = /[A-Z]/.test(pwd);
+                const hasDigit = /\d/.test(pwd);
+                const hasSymbol = /[^A-Za-z0-9]/.test(pwd);
+                const len = pwd.length;
+
+                if (len < 8) return { label: 'ضعيفة جداً', color: '#dc3545', width: 20 };
+                if (len < 10) return { label: 'ضعيفة', color: '#fd7e14', width: 40 };
+                if (hasLower && hasUpper && hasDigit && hasSymbol && len >= 12) {
+                    return { label: 'قوية جداً', color: '#198754', width: 100 };
+                }
+                if (hasDigit && (hasLower || hasUpper) && len >= 10) {
+                    return { label: 'قوية', color: '#20c997', width: 80 };
+                }
+                if (hasDigit || hasSymbol) {
+                    return { label: 'متوسطة', color: '#ffc107', width: 60 };
+                }
+                return { label: 'ضعيفة', color: '#fd7e14', width: 40 };
+            };
+
+            const update = function() {
+                const result = evaluate(pwdInput.value);
+                if (pwdInput.value.length === 0) {
+                    strengthWrapper.classList.remove('visible');
+                    strengthWrapper.setAttribute('aria-hidden', 'true');
+                } else {
+                    strengthWrapper.classList.add('visible');
+                    strengthWrapper.setAttribute('aria-hidden', 'false');
+                }
+                strengthBar.style.width = result.width + '%';
+                strengthBar.style.backgroundColor = result.color;
+                strengthBar.setAttribute('aria-valuenow', result.width);
+                strengthText.textContent = result.label;
+                strengthText.style.color = result.color;
+            };
+
+            pwdInput.addEventListener('input', update);
+            update();
         }
     });
 </script>

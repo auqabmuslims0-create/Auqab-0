@@ -373,7 +373,7 @@ def inject_nav_items():
         nav_items.append({'type': 'link', 'url': url_for('auth.account'), 'label': 'الإعدادات', 'icon': 'bi-gear', 'active': endpoint == 'auth.account'})
     nav_items.append({'type': 'divider'})
     nav_items.append({'type': 'button', 'id': 'sidebarThemeToggle', 'label': 'الوضع الداكن', 'icon': 'bi-moon-stars'})
-    nav_items.append({'type': 'link', 'url': url_for('auth.logout'), 'label': 'تسجيل الخروج', 'icon': 'bi-box-arrow-left', 'active': False})
+    nav_items.append({'type': 'logout', 'label': 'تسجيل الخروج', 'icon': 'bi-box-arrow-left'})
     return dict(nav_items=nav_items)
 
 

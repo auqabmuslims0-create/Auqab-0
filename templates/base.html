@@ -345,7 +345,7 @@
         </a>
       </div>
       {% if nav_items is defined and nav_items %}
-        {{ macros.render_nav_items(nav_items) }}
+        {{ macros.render_nav_items(nav_items, csrf_token) }}
       {% else %}
         <ul class="list-unstyled w-100">
           {% if current_user %}

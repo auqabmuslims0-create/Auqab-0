@@ -177,7 +177,7 @@
 {% endif %}
 {%- endmacro %}
 
-{% macro render_nav_items(items) -%}
+{% macro render_nav_items(items, csrf_token=None) -%}
 <ul class="list-unstyled w-100">
     {% for item in items %}
         {% if item.type == 'link' %}
@@ -196,6 +196,16 @@
                 {% if item.icon %}<i class="bi {{ item.icon }} ms-1"></i>{% endif %}
                 <span>{{ item.label }}</span>
             </button>
+        </li>
+        {% elif item.type == 'logout' %}
+        <li>
+            <form method="POST" action="{{ url_for('auth.logout') }}" style="margin:0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token or '' }}">
+                <button type="submit" class="sidebar-menu-item text-danger" style="background:none;border:none;width:100%;text-align:right;cursor:pointer;padding:0;font:inherit;">
+                    {% if item.icon %}<i class="bi {{ item.icon }} ms-1"></i>{% endif %}
+                    {{ item.label }}
+                </button>
+            </form>
         </li>
         {% elif item.type == 'divider' %}
         <li><hr class="my-2 border-{{ item.variant|default('light') }}"></li>
