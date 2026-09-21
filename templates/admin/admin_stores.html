@@ -368,6 +368,11 @@
                             <button type="submit" class="btn btn-sm btn-outline-success btn-action">تفعيل</button>
                         </form>
                     {% endif %}
+
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-action"
+                            data-bs-toggle="modal" data-bs-target="#deleteStoreModal{{ store.id }}">
+                        <i class="bi bi-trash"></i> حذف نهائي
+                    </button>
                 </div>
             </div>
         </div>
@@ -450,6 +455,64 @@
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
                             <button type="submit" class="btn btn-warning">تمديد</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal: حذف نهائي -->
+        <div class="modal fade" id="deleteStoreModal{{ store.id }}" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form method="post" action="{{ url_for('admin.admin_delete_store', store_id=store.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                        <div class="modal-header bg-danger text-white">
+                            <h5 class="modal-title">
+                                <i class="bi bi-exclamation-triangle-fill"></i> حذف نهائي للمتجر
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="إغلاق"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p class="fw-bold text-danger mb-2">
+                                سيتم حذف المتجر "{{ store.name }}" وجميع بياناته نهائياً.
+                            </p>
+                            <p class="small mb-1">يشمل الحذف:</p>
+                            <ul class="small">
+                                <li>جميع المنتجات والتصنيفات</li>
+                                <li>جميع الطلبات ودفعاتها</li>
+                                <li>جميع الاشتراكات ومدفوعاتها</li>
+                                <li>جميع الريلز والتفاعلات المرتبطة</li>
+                                <li>المفضلة المرتبطة بهذا المتجر</li>
+                            </ul>
+
+                            <div class="alert alert-success small mb-3">
+                                <i class="bi bi-shield-check"></i>
+                                <strong>لن يتأثر:</strong> حساب المالك
+                                "{{ store.owner.username if store.owner else '—' }}"
+                                ولا أي متجر آخر يملكه.
+                            </div>
+
+                            <div class="alert alert-danger small mb-3">
+                                <i class="bi bi-exclamation-octagon-fill"></i>
+                                هذا الإجراء <strong>نهائي ولا يمكن التراجع عنه</strong>.
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label">
+                                    للتأكيد، اكتب اسم المتجر
+                                    <code>{{ store.name }}</code> في الحقل أدناه:
+                                </label>
+                                <input type="text" name="confirm_name" class="form-control"
+                                       required autocomplete="off"
+                                       placeholder="اكتب اسم المتجر حرفياً">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إلغاء</button>
+                            <button type="submit" class="btn btn-danger">
+                                <i class="bi bi-trash"></i> حذف نهائي
+                            </button>
                         </div>
                     </form>
                 </div>

@@ -137,3 +137,29 @@ def admin_suspend_store_subscription(store_id):
     success, msg = SubscriptionService.suspend_store_subscription(store_id, reason=reason)
     flash(msg, 'success' if success else 'error')
     return redirect(url_for('admin.admin_stores'))
+
+
+@admin_bp.route('/admin/stores/<int:store_id>/delete', methods=['POST'])
+@role_required('admin')
+def admin_delete_store(store_id):
+    """
+    حذف نهائي لمتجر واحد من لوحة المدير.
+
+    - يتطلب كتابة اسم المتجر حرفياً في الحقل confirm_name (تأكيد مزدوج server-side).
+    - يستدعي StoreService.admin_delete_store() الذي يقوم بـ Hard Delete
+      لكل بيانات المتجر (منتجات، تصنيفات، طلبات، اشتراكات، ريلز، مفضلة، ...).
+    - لا يمس حساب المالك ولا متاجره الأخرى.
+    """
+    store = db.session.get(Store, store_id)
+    if not store:
+        flash('المتجر غير موجود', 'error')
+        return redirect(url_for('admin.admin_stores'))
+
+    confirm_name = request.form.get('confirm_name', '').strip()
+    if confirm_name != store.name:
+        flash('اسم المتجر المُدخل لا يطابق الاسم الفعلي. تم إلغاء الحذف.', 'error')
+        return redirect(url_for('admin.admin_stores'))
+
+    success, msg = StoreService.admin_delete_store(store_id)
+    flash(msg, 'success' if success else 'error')
+    return redirect(url_for('admin.admin_stores'))

@@ -157,3 +157,41 @@ class StoreService:
             db.session.rollback()
             logger.error(f'خطأ في حذف المتجر {store_id}: {str(e)}')
             return False, 'حدث خطأ أثناء حذف المتجر'
+
+    @staticmethod
+    def admin_delete_store(store_id):
+        """
+        حذف نهائي للمتجر من لوحة المدير.
+
+        - يحفظ معلومات المتجر/المالك قبل الحذف (للإشعار).
+        - يستدعي delete_store() القائمة (Hard Delete شامل).
+        - يرسل إشعاراً للمالك بعد الحذف (best-effort — فشل الإشعار لا يفشل الحذف).
+        - لا يمس بيانات المستخدم أو متاجره الأخرى إطلاقاً.
+        """
+        store = StoreRepository.get_by_id(store_id)
+        if not store:
+            return False, 'المتجر غير موجود'
+
+        store_name = store.name
+        owner_id = store.owner_id
+
+        success, msg = StoreService.delete_store(store_id)
+        if not success:
+            return False, msg
+
+        if owner_id:
+            try:
+                NotificationService.send_to_user(
+                    user_id=owner_id,
+                    title='تم حذف متجرك',
+                    message=f'قام المدير بحذف متجر "{store_name}" وجميع بياناته. هذا الإجراء نهائي ولا يمكن التراجع عنه.',
+                    link='/my_stores',
+                    type_=NotificationService.TYPE_ALERT,
+                    priority=NotificationService.PRIORITY_IMPORTANT
+                )
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f'فشل إشعار المالك {owner_id} بعد حذف المتجر {store_id}: {str(e)}')
+
+        return True, f'تم حذف المتجر "{store_name}" نهائياً'
