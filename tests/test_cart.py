@@ -347,7 +347,7 @@ def test_register_merges_anonymous_session_cart_to_db(
     client, app, make_active_store, make_product
 ):
     """
-    سلة الزائر تُدمَج مع DB عند إنشاء حساب جديد (3 خطوات).
+    سلة الزائر تُدمَج مع DB عند إنشاء حساب جديد (4 خطوات).
     """
     s = make_active_store(has_delivery=False)
     p = make_product(s['id'], stock=10)
@@ -356,22 +356,30 @@ def test_register_merges_anonymous_session_cart_to_db(
     r = client.post('/api/cart/sync', json={'cart': {str(p['id']): 2}})
     assert r.status_code == 200
 
-    # 2) تسجيل كامل عبر 3 خطوات
+    # 2) اختيار نوع الحساب
     client.post('/register?step=1', data={
-        'step': '1', 'username': 'newmerge',
+        'step': '1', 'role': 'customer',
+    })
+
+    # 3) البيانات الأساسية
+    client.post('/register?step=2', data={
+        'step': '2', 'username': 'newmerge',
         'email': 'newmerge@test.local', 'phone': '977000111',
     })
-    client.post('/register?step=2', data={
-        'step': '2',
+
+    # 4) كلمة المرور + الموافقة
+    client.post('/register?step=3', data={
+        'step': '3',
         'password': 'NewMerge123!@#',
         'confirm_password': 'NewMerge123!@#',
-        'role': 'customer',
         'agree': 'on',
     })
-    r = client.post('/register?step=3', data={'step': '3', 'bio': ''})
+
+    # 5) إنشاء الحساب (الخطوة 4 = صورة/نبذة)
+    r = client.post('/register?step=4', data={'step': '4', 'bio': ''})
     assert r.status_code == 302
 
-    # 3) السلة في DB
+    # 6) السلة في DB
     with app.app_context():
         from models import User
         new_user = User.query.filter_by(username='newmerge').first()

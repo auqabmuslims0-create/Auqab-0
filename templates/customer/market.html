@@ -2,6 +2,7 @@
 {% import '_macros.html' as macros %}
 
 {% block title %}السوق{% endblock %}
+
 {% block head %}
 <style>
     .market-header-section { margin-bottom: 20px; }
@@ -66,6 +67,96 @@
     .offline-product-name, .offline-store-name { font-weight: 600; margin-bottom: 4px; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .offline-product-price { color: var(--primary); font-weight: bold; }
     body.dark-mode .offline-product-price { color: var(--accent); }
+
+    /* ============================================================
+       نمط البطاقات المكدّسة (بطاقة تحت بطاقة) — مستوحى من الريلز
+       ============================================================ */
+    .products-grid--stacked {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    @media (max-width: 520px) {
+        .products-grid--stacked { max-width: 100%; }
+    }
+
+    /* البطاقة: بدون خلفية داخلية، الحافة المستديرة تقصّ الصورة */
+    .products-grid--stacked .product-card {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        position: relative;
+        overflow: hidden;
+        border-radius: 20px;
+        background: transparent;
+        border: none;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .products-grid--stacked .product-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.24);
+    }
+    body.dark-mode .products-grid--stacked .product-card {
+        background: transparent;
+        border: none;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+    }
+    body.dark-mode .products-grid--stacked .product-card:hover {
+        box-shadow: 0 12px 30px rgba(0,0,0,0.65);
+    }
+
+    /* حاوية الصورة: نسب طبيعية كاملة بدون قص */
+    .products-grid--stacked .product-card-image {
+        aspect-ratio: auto;
+        height: auto;
+        min-height: 100px;
+        background: #ececec;
+        border-radius: 0;
+        overflow: hidden;
+        display: block;
+        flex-shrink: 0;
+    }
+    body.dark-mode .products-grid--stacked .product-card-image {
+        background: #1e1e1e;
+    }
+    .products-grid--stacked .product-card-image a {
+        display: block;
+        width: 100%;
+        line-height: 0;
+    }
+    .products-grid--stacked .product-card-image img {
+        width: 100%;
+        height: auto;
+        object-fit: contain;
+        display: block;
+        border-radius: 0;
+    }
+
+    /* الجسم: زجاجي كثيف يتراكب على أسفل الصورة */
+    .products-grid--stacked .product-card-body {
+        position: relative;
+        margin-top: -70px;
+        z-index: 2;
+        padding: 12px 14px;
+        min-height: auto;
+        border-radius: 0 0 20px 20px;
+        background: rgba(255, 255, 255, 0.38);
+        backdrop-filter: blur(22px) saturate(180%);
+        -webkit-backdrop-filter: blur(22px) saturate(180%);
+        border: none;
+        box-shadow: 0 -4px 16px rgba(0,0,0,0.06);
+    }
+    body.dark-mode .products-grid--stacked .product-card-body {
+        background: rgba(15, 15, 15, 0.42);
+        box-shadow: 0 -4px 16px rgba(0,0,0,0.28);
+    }
+
+    /* الشارات فوق الـ glass (شارة العرض + شارة "حصراً من المتجر") */
+    .products-grid--stacked .offer-badge { z-index: 3; }
 </style>
 {% endblock %}
 
@@ -132,7 +223,7 @@
         </div>
 
         {% if products %}
-        <div class="products-grid" id="items-grid">
+        <div class="products-grid products-grid--stacked" id="items-grid">
             {% for product in products %}
                 {{ macros.render_product_card(product, None, user_reaction_map, show_add_to_cart=True) }}
             {% endfor %}

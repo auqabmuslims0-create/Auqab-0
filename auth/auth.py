@@ -22,81 +22,99 @@ from . import auth_bp
 def register():
     step = request.args.get('step', 1, type=int)
 
+    # إبطال أي جلسة تسجيل قديمة (سبقت الترقية إلى 4 خطوات) — لا تحتوي على role
+    # هذا يحمي المستخدمين الذين كانوا في منتصف التسجيل لحظة النشر
+    if 'reg_data' in session and 'role' not in session.get('reg_data', {}):
+        session.pop('reg_data', None)
+
     if request.method == 'POST':
         step = request.form.get('step', 1, type=int)
 
+        # ═══ الخطوة 1: اختيار نوع الحساب ═══
         if step == 1:
+            role = request.form.get('role', '')
+            if role not in ['customer', 'owner']:
+                flash('يرجى اختيار نوع الحساب', 'error')
+                return redirect(url_for('auth.register', step=1))
+
+            # بدء جلسة تسجيل جديدة — تنظيف أي بيانات سابقة
+            session['reg_data'] = {'role': role}
+            session.modified = True
+            return redirect(url_for('auth.register', step=2))
+
+        # ═══ الخطوة 2: البيانات الأساسية ═══
+        elif step == 2:
+            if 'reg_data' not in session or 'role' not in session['reg_data']:
+                flash('يرجى البدء من الخطوة الأولى', 'error')
+                return redirect(url_for('auth.register', step=1))
+
             username = request.form.get('username', '').strip()
             email = request.form.get('email', '').strip()
             phone = request.form.get('phone', '').strip()
 
             if not username or not email:
                 flash('جميع الحقول مطلوبة', 'error')
-                return redirect(url_for('auth.register', step=1))
+                return redirect(url_for('auth.register', step=2))
 
             if not is_valid_email(email):
                 flash('البريد الإلكتروني غير صالح', 'error')
-                return redirect(url_for('auth.register', step=1))
+                return redirect(url_for('auth.register', step=2))
 
             if phone and not is_valid_phone_syrian(phone):
                 flash('رقم الهاتف يجب أن يبدأ بـ 9 ويتكون من 9 أرقام', 'error')
-                return redirect(url_for('auth.register', step=1))
+                return redirect(url_for('auth.register', step=2))
 
             if UserRepository.get_by_username(username):
                 flash('اسم المستخدم موجود مسبقاً', 'error')
-                return redirect(url_for('auth.register', step=1))
+                return redirect(url_for('auth.register', step=2))
 
             if UserRepository.get_by_email(email):
                 flash('البريد الإلكتروني مستخدم بالفعل', 'error')
-                return redirect(url_for('auth.register', step=1))
+                return redirect(url_for('auth.register', step=2))
 
-            session['reg_data'] = {
-                'username': username,
-                'email': email,
-                'phone': '+963' + phone if phone else None
-            }
-            return redirect(url_for('auth.register', step=2))
+            session['reg_data']['username'] = username
+            session['reg_data']['email'] = email
+            session['reg_data']['phone'] = '+963' + phone if phone else None
+            session.modified = True
+            return redirect(url_for('auth.register', step=3))
 
-        elif step == 2:
-            if 'reg_data' not in session:
+        # ═══ الخطوة 3: كلمة المرور + الموافقة ═══
+        elif step == 3:
+            if 'reg_data' not in session or 'role' not in session['reg_data']:
                 flash('يرجى البدء من الخطوة الأولى', 'error')
                 return redirect(url_for('auth.register', step=1))
 
             password = request.form.get('password', '')
             confirm_password = request.form.get('confirm_password', '')
-            role = request.form.get('role', 'customer')
             agree = request.form.get('agree')
 
             if not password or not confirm_password:
                 flash('جميع الحقول مطلوبة', 'error')
-                return redirect(url_for('auth.register', step=2))
+                return redirect(url_for('auth.register', step=3))
 
             if confirm_password != password:
                 flash('كلمتا المرور غير متطابقتين', 'error')
-                return redirect(url_for('auth.register', step=2))
+                return redirect(url_for('auth.register', step=3))
 
             strong, msg = is_strong_password(password)
             if not strong:
                 flash(msg, 'error')
-                return redirect(url_for('auth.register', step=2))
+                return redirect(url_for('auth.register', step=3))
 
             if not agree:
                 flash('يجب الموافقة على الشروط والأحكام', 'error')
-                return redirect(url_for('auth.register', step=2))
-
-            if role not in ['customer', 'owner']:
-                role = 'customer'
+                return redirect(url_for('auth.register', step=3))
 
             # تشفير password_hash قبل وضعه في الجلسة — Flask sessions
             # غير مشفّرة افتراضياً، فتخزين الهاش صريحاً يعرّضه لأي XSS.
             session['reg_data']['password_hash'] = encrypt_session_secret(
                 generate_password_hash(password)
             )
-            session['reg_data']['role'] = role
             session.modified = True
-            return redirect(url_for('auth.register', step=3))
+            return redirect(url_for('auth.register', step=4))
 
-        elif step == 3:
+        # ═══ الخطوة 4: الصورة والنبذة (اختياري) + إنشاء الحساب ═══
+        elif step == 4:
             if 'reg_data' not in session or 'password_hash' not in session['reg_data']:
                 flash('يرجى إكمال الخطوات السابقة', 'error')
                 return redirect(url_for('auth.register', step=1))
@@ -119,7 +137,7 @@ def register():
                     avatar_url = save_image(avatar_file)
                 except ValueError as e:
                     flash(str(e), 'error')
-                    return redirect(url_for('auth.register', step=3))
+                    return redirect(url_for('auth.register', step=4))
 
             user = User(
                 username=reg['username'],
@@ -160,9 +178,12 @@ def register():
 
             return redirect(url_for('auth.show_public_id'))
 
-    if step == 2 and 'reg_data' not in session:
+    # حرّاس GET — التوجيه حسب حالة الجلسة
+    if step == 2 and ('reg_data' not in session or 'role' not in session.get('reg_data', {})):
         return redirect(url_for('auth.register', step=1))
-    if step == 3 and ('reg_data' not in session or 'password_hash' not in session['reg_data']):
+    if step == 3 and ('reg_data' not in session or 'role' not in session.get('reg_data', {})):
+        return redirect(url_for('auth.register', step=1))
+    if step == 4 and ('reg_data' not in session or 'password_hash' not in session['reg_data']):
         return redirect(url_for('auth.register', step=1))
 
     return render_template('auth/register.html', step=step)

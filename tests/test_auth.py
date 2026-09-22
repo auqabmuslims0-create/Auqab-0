@@ -6,59 +6,109 @@ from shared.security import decrypt_session_secret
 
 
 # ═══════════════════════════════════════════════════════════════
-# التسجيل — 3 خطوات
+# التسجيل — 4 خطوات (1: نوع الحساب، 2: بيانات، 3: كلمة المرور، 4: صورة)
 # ═══════════════════════════════════════════════════════════════
-def test_register_step1_stores_session_data(client):
+def test_register_step1_stores_role_customer(client):
     r = client.post('/register?step=1', data={
         'step': '1',
+        'role': 'customer',
+    })
+    assert r.status_code == 302
+    assert 'step=2' in r.headers['Location']
+    with client.session_transaction() as sess:
+        assert sess['reg_data']['role'] == 'customer'
+
+
+def test_register_step1_stores_role_owner(client):
+    r = client.post('/register?step=1', data={
+        'step': '1',
+        'role': 'owner',
+    })
+    assert r.status_code == 302
+    assert 'step=2' in r.headers['Location']
+    with client.session_transaction() as sess:
+        assert sess['reg_data']['role'] == 'owner'
+
+
+def test_register_step1_rejects_invalid_role(client):
+    r = client.post('/register?step=1', data={
+        'step': '1',
+        'role': 'hacker',
+    })
+    assert r.status_code == 302
+    assert 'step=1' in r.headers['Location']
+
+
+def test_register_step2_stores_session_data(client):
+    # أولاً اختيار نوع الحساب
+    client.post('/register?step=1', data={'step': '1', 'role': 'customer'})
+    # ثم البيانات الأساسية
+    r = client.post('/register?step=2', data={
+        'step': '2',
         'username': 'newuser',
         'email': 'new@test.local',
         'phone': '911111111',
     })
     assert r.status_code == 302
-    assert 'step=2' in r.headers['Location']
+    assert 'step=3' in r.headers['Location']
     with client.session_transaction() as sess:
         assert sess['reg_data']['username'] == 'newuser'
         assert sess['reg_data']['email'] == 'new@test.local'
         assert sess['reg_data']['phone'] == '+963911111111'
+        assert sess['reg_data']['role'] == 'customer'
 
 
-def test_register_step1_rejects_duplicate_username(client, make_user):
+def test_register_step2_rejects_duplicate_username(client, make_user):
     make_user(username='taken', email='taken@test.local')
-    r = client.post('/register?step=1', data={
-        'step': '1',
+    client.post('/register?step=1', data={'step': '1', 'role': 'customer'})
+    r = client.post('/register?step=2', data={
+        'step': '2',
         'username': 'taken',
         'email': 'other@test.local',
         'phone': '922222222',
     })
     assert r.status_code == 302
-    assert 'step=1' in r.headers['Location']
+    assert 'step=2' in r.headers['Location']
 
 
-def test_register_step1_rejects_invalid_email(client):
-    r = client.post('/register?step=1', data={
-        'step': '1',
+def test_register_step2_rejects_invalid_email(client):
+    client.post('/register?step=1', data={'step': '1', 'role': 'customer'})
+    r = client.post('/register?step=2', data={
+        'step': '2',
         'username': 'x',
         'email': 'not-an-email',
+        'phone': '911111111',
+    })
+    assert r.status_code == 302
+    assert 'step=2' in r.headers['Location']
+
+
+def test_register_step2_without_role_redirects_to_step1(client):
+    """لا يمكن الوصول للخطوة 2 بدون اختيار نوع الحساب في الخطوة 1."""
+    r = client.post('/register?step=2', data={
+        'step': '2',
+        'username': 'skip',
+        'email': 'skip@test.local',
         'phone': '911111111',
     })
     assert r.status_code == 302
     assert 'step=1' in r.headers['Location']
 
 
-def test_register_step2_encrypts_password_hash_in_session(client):
-    client.post('/register?step=1', data={
-        'step': '1', 'username': 'alice',
+def test_register_step3_encrypts_password_hash_in_session(client):
+    client.post('/register?step=1', data={'step': '1', 'role': 'customer'})
+    client.post('/register?step=2', data={
+        'step': '2', 'username': 'alice',
         'email': 'alice@test.local', 'phone': '933333333',
     })
-    r = client.post('/register?step=2', data={
-        'step': '2',
+    r = client.post('/register?step=3', data={
+        'step': '3',
         'password': 'StrongPass123!@#',
         'confirm_password': 'StrongPass123!@#',
-        'role': 'customer',
         'agree': 'on',
     })
     assert r.status_code == 302
+    assert 'step=4' in r.headers['Location']
     with client.session_transaction() as sess:
         stored = sess['reg_data']['password_hash']
         # يجب ألا تكون plaintext werkzeug hash
@@ -70,36 +120,36 @@ def test_register_step2_encrypts_password_hash_in_session(client):
         assert decrypted.startswith('scrypt:') or decrypted.startswith('pbkdf2:')
 
 
-def test_register_step2_rejects_weak_password(client):
-    client.post('/register?step=1', data={
-        'step': '1', 'username': 'bob',
-        'email': 'bob@test.local', 'phone': '944444444',
-    })
-    r = client.post('/register?step=2', data={
-        'step': '2',
-        'password': '123',
-        'confirm_password': '123',
-        'role': 'customer',
-        'agree': 'on',
-    })
-    assert r.status_code == 302
-    assert 'step=2' in r.headers['Location']
-
-
-def test_register_full_flow_creates_user(client, app):
-    client.post('/register?step=1', data={
-        'step': '1', 'username': 'charlie',
-        'email': 'charlie@test.local', 'phone': '955555555',
-    })
+def test_register_step3_rejects_weak_password(client):
+    client.post('/register?step=1', data={'step': '1', 'role': 'customer'})
     client.post('/register?step=2', data={
-        'step': '2',
-        'password': 'StrongPass123!@#',
-        'confirm_password': 'StrongPass123!@#',
-        'role': 'customer',
-        'agree': 'on',
+        'step': '2', 'username': 'bob',
+        'email': 'bob@test.local', 'phone': '944444444',
     })
     r = client.post('/register?step=3', data={
         'step': '3',
+        'password': '123',
+        'confirm_password': '123',
+        'agree': 'on',
+    })
+    assert r.status_code == 302
+    assert 'step=3' in r.headers['Location']
+
+
+def test_register_full_flow_creates_customer(client, app):
+    client.post('/register?step=1', data={'step': '1', 'role': 'customer'})
+    client.post('/register?step=2', data={
+        'step': '2', 'username': 'charlie',
+        'email': 'charlie@test.local', 'phone': '955555555',
+    })
+    client.post('/register?step=3', data={
+        'step': '3',
+        'password': 'StrongPass123!@#',
+        'confirm_password': 'StrongPass123!@#',
+        'agree': 'on',
+    })
+    r = client.post('/register?step=4', data={
+        'step': '4',
         'bio': 'hello',
     })
     assert r.status_code == 302
@@ -110,6 +160,52 @@ def test_register_full_flow_creates_user(client, app):
         assert u.phone == '+963955555555'
         assert u.role == 'customer'
         assert check_password_hash(u.password_hash, 'StrongPass123!@#')
+
+
+def test_register_full_flow_creates_owner(client, app):
+    client.post('/register?step=1', data={'step': '1', 'role': 'owner'})
+    client.post('/register?step=2', data={
+        'step': '2', 'username': 'shopowner',
+        'email': 'shopowner@test.local', 'phone': '966666666',
+    })
+    client.post('/register?step=3', data={
+        'step': '3',
+        'password': 'StrongPass123!@#',
+        'confirm_password': 'StrongPass123!@#',
+        'agree': 'on',
+    })
+    r = client.post('/register?step=4', data={
+        'step': '4',
+        'bio': 'my shop',
+    })
+    assert r.status_code == 302
+    with app.app_context():
+        u = User.query.filter_by(username='shopowner').first()
+        assert u is not None
+        assert u.role == 'owner'
+        assert check_password_hash(u.password_hash, 'StrongPass123!@#')
+
+
+def test_register_step4_without_full_data_redirects_to_step1(client):
+    """لا يمكن إنشاء الحساب بدون بيانات كاملة في الخطوات السابقة."""
+    r = client.post('/register?step=4', data={'step': '4', 'bio': 'x'})
+    assert r.status_code == 302
+    assert 'step=1' in r.headers['Location']
+
+
+def test_register_old_session_without_role_is_invalidated(client):
+    """جلسة تسجيل قديمة (قبل الترقية إلى 4 خطوات) يجب إبطالها تلقائياً."""
+    with client.session_transaction() as sess:
+        # محاكاة جلسة قديمة: reg_data بدون role
+        sess['reg_data'] = {
+            'username': 'old',
+            'email': 'old@test.local',
+            'phone': '+963900000000',
+        }
+    # أي GET لصفحة التسجيل يجب أن ينظف هذه الجلسة
+    client.get('/register?step=2')
+    with client.session_transaction() as sess:
+        assert 'reg_data' not in sess
 
 
 # ═══════════════════════════════════════════════════════════════

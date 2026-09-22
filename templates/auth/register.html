@@ -153,6 +153,74 @@
     body.dark-mode .password-strength-progress {
         background-color: rgba(255,255,255,0.08);
     }
+    /* ===== كروت اختيار نوع الحساب ===== */
+    .role-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 24px 14px;
+        min-height: 180px;
+        width: 100%;
+        text-align: center;
+        background: var(--glass-bg-light);
+        backdrop-filter: blur(var(--glass-blur));
+        -webkit-backdrop-filter: blur(var(--glass-blur));
+        border: 2px solid var(--glass-border-light);
+        border-radius: var(--radius-lg);
+        cursor: pointer;
+        transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+        color: var(--text-light);
+        font-family: inherit;
+    }
+    .role-card:hover,
+    .role-card:focus-visible {
+        transform: translateY(-4px);
+        border-color: var(--primary);
+        box-shadow: var(--shadow-md);
+        outline: none;
+    }
+    .role-card:active {
+        transform: translateY(-2px);
+    }
+    .role-card i {
+        font-size: 3rem;
+        color: var(--primary);
+        margin-bottom: 12px;
+        transition: color 0.2s ease, transform 0.2s ease;
+    }
+    .role-card:hover i {
+        transform: scale(1.1);
+    }
+    .role-card-title {
+        font-weight: 700;
+        font-size: 1.1rem;
+        margin-bottom: 6px;
+        color: var(--text-light);
+    }
+    .role-card-desc {
+        font-size: 0.82rem;
+        line-height: 1.4;
+        color: #6c757d;
+    }
+    body.dark-mode .role-card {
+        background: var(--glass-bg-dark);
+        border-color: var(--glass-border-dark);
+        color: var(--text-dark);
+    }
+    body.dark-mode .role-card:hover,
+    body.dark-mode .role-card:focus-visible {
+        border-color: var(--accent);
+    }
+    body.dark-mode .role-card i {
+        color: var(--accent);
+    }
+    body.dark-mode .role-card-title {
+        color: var(--text-dark);
+    }
+    body.dark-mode .role-card-desc {
+        color: #b0b0b0;
+    }
 </style>
 {% endblock %}
 
@@ -163,23 +231,51 @@
             <div class="card p-4 shadow-sm auth-card">
                 <div class="text-center mb-4">
                     {% if step == 1 %}
+                        <i class="bi bi-people auth-icon"></i>
+                        <h1 class="h3 mt-2">نوع الحساب</h1>
+                        <p class="text-muted small">الخطوة 1 من 4</p>
+                    {% elif step == 2 %}
                         <i class="bi bi-person-plus auth-icon"></i>
                         <h1 class="h3 mt-2">إنشاء حساب</h1>
-                        <p class="text-muted small">الخطوة 1 من 3</p>
-                    {% elif step == 2 %}
+                        <p class="text-muted small">الخطوة 2 من 4</p>
+                    {% elif step == 3 %}
                         <i class="bi bi-lock auth-icon"></i>
                         <h1 class="h3 mt-2">إنشاء كلمة مرور</h1>
-                        <p class="text-muted small">الخطوة 2 من 3</p>
-                    {% elif step == 3 %}
+                        <p class="text-muted small">الخطوة 3 من 4</p>
+                    {% elif step == 4 %}
                         <i class="bi bi-image auth-icon"></i>
                         <h1 class="h3 mt-2">الصورة الشخصية</h1>
-                        <p class="text-muted small">الخطوة 3 من 3 (اختياري)</p>
+                        <p class="text-muted small">الخطوة 4 من 4 (اختياري)</p>
                     {% endif %}
                 </div>
 
                 {% if step == 1 %}
                 <form method="post" action="{{ url_for('auth.register') }}">
                     <input type="hidden" name="step" value="1">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <button type="submit" name="role" value="customer" class="role-card">
+                                <i class="bi bi-person"></i>
+                                <div class="role-card-title">زبون</div>
+                                <div class="role-card-desc">تصفح المتاجر، تسوّق، وتابع طلباتك</div>
+                            </button>
+                        </div>
+                        <div class="col-6">
+                            <button type="submit" name="role" value="owner" class="role-card">
+                                <i class="bi bi-shop"></i>
+                                <div class="role-card-title">صاحب متجر</div>
+                                <div class="role-card-desc">افتح متجرك، أضف منتجاتك، وأدر مبيعاتك</div>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+                {% endif %}
+
+                {% if step == 2 %}
+                <form method="post" action="{{ url_for('auth.register') }}">
+                    <input type="hidden" name="step" value="2">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
                     <div class="mb-3">
@@ -212,9 +308,9 @@
                 </form>
                 {% endif %}
 
-                {% if step == 2 %}
+                {% if step == 3 %}
                 <form method="post" action="{{ url_for('auth.register') }}">
-                    <input type="hidden" name="step" value="2">
+                    <input type="hidden" name="step" value="3">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
                     <div class="mb-3">
@@ -242,18 +338,6 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label d-block">نوع الحساب</label>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="role" id="roleCustomer" value="customer" checked>
-                            <label class="form-check-label" for="roleCustomer">زبون</label>
-                        </div>
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="radio" name="role" id="roleOwner" value="owner">
-                            <label class="form-check-label" for="roleOwner">صاحب متجر</label>
-                        </div>
-                    </div>
-
                     <div class="form-check mb-3">
                         <input class="form-check-input" type="checkbox" name="agree" id="agree" required>
                         <label class="form-check-label small" for="agree">أوافق على <a href="#" target="_blank">الشروط والأحكام</a></label>
@@ -265,9 +349,9 @@
                 </form>
                 {% endif %}
 
-                {% if step == 3 %}
+                {% if step == 4 %}
                 <form method="post" enctype="multipart/form-data" action="{{ url_for('auth.register') }}">
-                    <input type="hidden" name="step" value="3">
+                    <input type="hidden" name="step" value="4">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
 
                     <div class="mb-3 text-center">
