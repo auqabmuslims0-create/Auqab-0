@@ -3,7 +3,8 @@ FROM python:3.11-slim
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_ROOT_USER_ACTION=ignore
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         gcc \
@@ -13,8 +14,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 
 COPY requirements.txt .
+
+# تثبيت صريح + التحقق الفوري من psycopg2
 RUN pip install --upgrade pip \
- && pip install -r requirements.txt
+ && pip install --no-cache-dir -r requirements.txt \
+ && python -c "import psycopg2; print('BUILD-CHECK: psycopg2 v' + psycopg2.__version__ + ' OK')"
 
 COPY . .
 
