@@ -69,51 +69,53 @@
     body.dark-mode .offline-product-price { color: var(--accent); }
 
     /* ============================================================
-       نمط البطاقات المكدّسة (بطاقة تحت بطاقة) — مستوحى من الريلز
+       نمط البطاقات العائمة الديناميكية (Story Card - Compact)
+       البطاقة تأخذ حجم الصورة الأصلي مع حد أدنى 300px
+       الشريط العائم مصغّر ليوفّر مساحة أكبر للصورة
        ============================================================ */
     .products-grid--stacked {
         display: flex;
         flex-direction: column;
-        gap: 15px;
+        gap: 18px;
         max-width: 500px;
         margin-left: auto;
         margin-right: auto;
     }
     @media (max-width: 520px) {
-        .products-grid--stacked { max-width: 100%; }
+        .products-grid--stacked { max-width: 100%; gap: 14px; }
     }
 
-    /* البطاقة: بدون خلفية داخلية، الحافة المستديرة تقصّ الصورة */
+    /* البطاقة */
     .products-grid--stacked .product-card {
-        display: flex;
-        flex-direction: column;
-        height: auto;
+        display: block;
         position: relative;
+        height: auto;
         overflow: hidden;
-        border-radius: 20px;
-        background: transparent;
+        border-radius: 22px;
+        background: #ececec;
         border: none;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.18);
         transition: transform 0.25s ease, box-shadow 0.25s ease;
     }
     .products-grid--stacked .product-card:hover {
         transform: translateY(-3px);
-        box-shadow: 0 12px 30px rgba(0,0,0,0.24);
+        box-shadow: 0 14px 38px rgba(0,0,0,0.24);
     }
     body.dark-mode .products-grid--stacked .product-card {
-        background: transparent;
-        border: none;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+        background: #1e1e1e;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.55);
     }
     body.dark-mode .products-grid--stacked .product-card:hover {
-        box-shadow: 0 12px 30px rgba(0,0,0,0.65);
+        box-shadow: 0 14px 38px rgba(0,0,0,0.7);
     }
 
-    /* حاوية الصورة: نسب طبيعية كاملة بدون قص */
+    /* حاوية الصورة */
     .products-grid--stacked .product-card-image {
-        aspect-ratio: auto;
+        position: relative;
+        width: 100%;
+        min-height: 300px;
         height: auto;
-        min-height: 100px;
+        aspect-ratio: auto;
         background: #ececec;
         border-radius: 0;
         overflow: hidden;
@@ -126,36 +128,106 @@
     .products-grid--stacked .product-card-image a {
         display: block;
         width: 100%;
+        height: 100%;
         line-height: 0;
     }
     .products-grid--stacked .product-card-image img {
         width: 100%;
-        height: auto;
-        object-fit: contain;
+        height: 100%;
+        min-height: 300px;
+        object-fit: cover;
         display: block;
         border-radius: 0;
+        transition: transform 0.4s ease;
+    }
+    .products-grid--stacked .product-card:hover .product-card-image img {
+        transform: scale(1.03);
     }
 
-    /* الجسم: زجاجي كثيف يتراكب على أسفل الصورة */
+    @media (max-width: 400px) {
+        .products-grid--stacked .product-card-image,
+        .products-grid--stacked .product-card-image img { min-height: 260px; }
+    }
+
+    /* ✨ الشريط العائم: نسخة مصغّرة */
     .products-grid--stacked .product-card-body {
-        position: relative;
-        margin-top: -70px;
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        right: 10px;
         z-index: 2;
-        padding: 12px 14px;
+        padding: 8px 12px;
         min-height: auto;
-        border-radius: 0 0 20px 20px;
-        background: rgba(255, 255, 255, 0.38);
-        backdrop-filter: blur(22px) saturate(180%);
-        -webkit-backdrop-filter: blur(22px) saturate(180%);
-        border: none;
-        box-shadow: 0 -4px 16px rgba(0,0,0,0.06);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.72);
+        backdrop-filter: blur(16px) saturate(160%);
+        -webkit-backdrop-filter: blur(16px) saturate(160%);
+        border: 1px solid rgba(255, 255, 255, 0.35);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.14);
     }
     body.dark-mode .products-grid--stacked .product-card-body {
-        background: rgba(15, 15, 15, 0.42);
-        box-shadow: 0 -4px 16px rgba(0,0,0,0.28);
+        background: rgba(20, 20, 20, 0.62);
+        border-color: rgba(255, 255, 255, 0.1);
+        box-shadow: 0 6px 18px rgba(0,0,0,0.5);
     }
 
-    /* الشارات فوق الـ glass (شارة العرض + شارة "حصراً من المتجر") */
+    /* ✨ تصغير عناصر الشريط */
+    .products-grid--stacked .product-card-name {
+        font-size: 0.92rem;
+        font-weight: 700;
+        line-height: 1.2;
+        margin-bottom: 2px;
+        color: var(--text-light);
+    }
+    body.dark-mode .products-grid--stacked .product-card-name {
+        color: var(--text-dark);
+    }
+    .products-grid--stacked .product-card-store {
+        font-size: 0.7rem;
+        margin-bottom: 2px;
+        gap: 3px;
+        color: #5a6068;
+    }
+    body.dark-mode .products-grid--stacked .product-card-store {
+        color: #c9c9c9;
+    }
+    .products-grid--stacked .product-card-store img {
+        width: 15px;
+        height: 15px;
+    }
+    .products-grid--stacked .product-card-price {
+        gap: 4px;
+    }
+    .products-grid--stacked .price-current {
+        font-size: 0.95rem;
+    }
+    .products-grid--stacked .price-old {
+        font-size: 0.7rem;
+    }
+    .products-grid--stacked .price-discount {
+        font-size: 0.65rem;
+        padding: 0.12rem 0.42rem;
+    }
+
+    /* سطر المشاهدات - حجم مصغّر (فقط في /market) */
+    .products-grid--stacked .product-card-body .small.text-muted.mt-1 {
+        display: block;
+        font-size: 0.65rem;
+        margin-top: 2px;
+        opacity: 0.75;
+    }
+
+    /* ✨ أزرار الإجراءات: أصغر وأكثر إحكاماً */
+    .products-grid--stacked .product-card-actions-vertical {
+        gap: 1px;
+        margin-right: 2px;
+    }
+    .products-grid--stacked .action-icon-btn {
+        font-size: 1.15rem;
+        padding: 3px;
+    }
+
+    /* الشارات فوق البطاقة العائمة */
     .products-grid--stacked .offer-badge { z-index: 3; }
 </style>
 {% endblock %}
@@ -307,7 +379,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const clearBtn = document.getElementById('clearSearchBtn');
     let debounceTimer;
 
-    // escapeHtml: يمنع XSS عند بناء HTML بـ innerHTML مع بيانات من المستخدم
     function escapeHtml(str) {
         if (str === null || str === undefined) return '';
         return String(str)
@@ -318,7 +389,6 @@ document.addEventListener('DOMContentLoaded', function() {
             .replace(/'/g, '&#39;');
     }
 
-    // يُستخدم لتنقية روابط الصور (منع javascript: و data: وسم <)
     function safeImageUrl(url) {
         if (!url) return '';
         const s = String(url);
@@ -394,7 +464,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (typeof data.active_shoppers_count !== 'undefined') {
                 const badge = document.getElementById('activeShoppersBadge');
                 if (badge) {
-                    // count من السيرفر كعدد صحيح — نستخدم textContent لتفادي XSS
                     const count = parseInt(data.active_shoppers_count, 10) || 0;
                     badge.innerHTML = '';
                     const icon = document.createElement('i');

@@ -1,19 +1,39 @@
+/* ============================================================
+   components.css — الأزرار، الحقول، البطاقات العامة
+   آخر تحديث: المجموعة د (إزالة blur من البطاقات والجداول والحقول)
+   ============================================================ */
+
+/* ========== حلقة التركيز العامة (إتاحة الكيبورد) ========== */
+a:focus-visible,
+button:focus-visible,
+.btn:focus-visible,
+.form-control:focus-visible,
+.form-select:focus-visible,
+.form-check-input:focus-visible,
+[tabindex]:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+    border-radius: inherit;
+}
+
 /* ========== أزرار عامة ========== */
 .btn-custom {
-    background-color: var(--primary);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     color: #fff;
     border: none;
     border-radius: var(--radius-pill);
     padding: 10px 24px;
     font-weight: 600;
     transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+    box-shadow: 0 3px 10px rgba(46, 93, 52, 0.18);
 }
 .btn-custom:hover {
-    background-color: var(--primary-dark);
     color: #fff;
     transform: translateY(-2px);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 6px 16px rgba(46, 93, 52, 0.3);
 }
+.btn-custom:active { transform: translateY(0); }
+
 .btn-outline-light:hover { color: var(--primary-dark); }
 .btn-outline-secondary,
 .btn-outline-primary,
@@ -29,25 +49,29 @@
 .btn-outline-success:hover,
 .btn-outline-warning:hover { transform: translateY(-2px); }
 
-/* ========== البطاقة العامة الزجاجية ========== */
+/* ========== البطاقة العامة (معتمة — بلا blur) ========== */
 .card {
-    border: 1px solid var(--glass-border-light);
+    border: 1px solid rgba(0, 0, 0, 0.06);
     border-radius: var(--radius-lg);
     overflow: hidden;
-    background: var(--glass-bg-light);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
+    background: var(--card-light);
     box-shadow: var(--shadow-sm);
-    transition: transform var(--transition), box-shadow var(--transition), background-color var(--transition), color var(--transition);
+    transition: transform var(--transition), box-shadow var(--transition),
+                background-color var(--transition), color var(--transition),
+                border-color var(--transition);
 }
 .card:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-md);
+    border-color: rgba(212, 175, 55, 0.35);
 }
 body.dark-mode .card {
-    background: var(--glass-bg-dark);
+    background: var(--card-dark);
     border-color: var(--glass-border-dark);
     color: var(--text-dark);
+}
+body.dark-mode .card:hover {
+    border-color: rgba(212, 175, 55, 0.5);
 }
 .card-header {
     background: rgba(0,0,0,0.02);
@@ -58,15 +82,13 @@ body.dark-mode .card-header {
     border-bottom: 1px solid var(--glass-border-dark);
 }
 
-/* ========== حقول الإدخال الزجاجية ========== */
+/* ========== حقول الإدخال (معتمة — بلا blur) ========== */
 .form-control,
 .form-select {
     border-radius: var(--radius-sm);
     border: 1px solid #ced4da;
     padding: 10px 14px;
-    background: var(--glass-bg-light);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
+    background: var(--card-light);
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 .form-control:focus,
@@ -76,7 +98,7 @@ body.dark-mode .card-header {
 }
 body.dark-mode .form-control,
 body.dark-mode .form-select {
-    background: var(--glass-bg-dark);
+    background: var(--card-dark);
     border-color: var(--glass-border-dark);
     color: var(--text-dark);
 }
@@ -87,18 +109,16 @@ body.dark-mode .form-select:focus {
 }
 .input-group-text { border-radius: var(--radius-sm); }
 
-/* ========== الجداول ========== */
+/* ========== الجداول (معتمة — بلا blur) ========== */
 .table {
-    background: var(--glass-bg-light);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
+    background: var(--card-light);
     border-radius: var(--radius-sm);
     overflow: hidden;
     box-shadow: var(--shadow-sm);
-    border: 1px solid var(--glass-border-light);
+    border: 1px solid rgba(0, 0, 0, 0.06);
 }
 body.dark-mode .table {
-    background: var(--glass-bg-dark);
+    background: var(--card-dark);
     border-color: var(--glass-border-dark);
     color: var(--text-dark);
 }
@@ -119,30 +139,31 @@ body.dark-mode .alert-success { background-color: #102e1a; color: #a3cfbb; }
 body.dark-mode .alert-warning { background-color: #3e2e00; color: #ffe69c; }
 body.dark-mode .alert-info { background-color: #032f36; color: #b6effb; }
 
+/* ========== الشارات ========== */
 .badge {
     border-radius: var(--radius-pill);
-    padding: 0.4em 0.8em;
+    padding: 0.42em 0.85em;
     font-weight: 600;
+    font-size: 0.75rem;
+    letter-spacing: 0.01em;
 }
 
-/* ========== اقتراحات البحث ========== */
+/* ========== اقتراحات البحث (معتمة — بلا blur) ========== */
 .search-suggestions {
     position: absolute;
     top: 100%;
     right: 0;
     left: 0;
     z-index: 1050;
-    background: var(--glass-bg-light);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--glass-border-light);
+    background: var(--card-light);
+    border: 1px solid rgba(0, 0, 0, 0.08);
     border-radius: var(--radius-sm);
     max-height: 350px;
     overflow-y: auto;
     box-shadow: var(--shadow-md);
 }
 body.dark-mode .search-suggestions {
-    background: var(--glass-bg-dark);
+    background: var(--card-dark);
     border-color: var(--glass-border-dark);
     color: var(--text-dark);
 }
@@ -180,12 +201,21 @@ body.dark-mode .search-suggestions .suggestion-header {
     justify-content: center;
     font-size: 2rem;
     margin: 0 auto;
+    background: rgba(46, 93, 52, 0.1);
+    color: var(--primary);
+    transition: transform var(--transition-fast);
 }
+.service-icon:hover { transform: scale(1.05); }
+body.dark-mode .service-icon {
+    background: rgba(212, 175, 55, 0.15);
+    color: var(--accent);
+}
+
 .step-number {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background-color: var(--primary);
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
     color: #fff;
     display: flex;
     align-items: center;
@@ -193,6 +223,7 @@ body.dark-mode .search-suggestions .suggestion-header {
     font-size: 1.3rem;
     font-weight: bold;
     margin: 0 auto;
+    box-shadow: 0 3px 10px rgba(46, 93, 52, 0.25);
 }
 .store-logo-circle {
     width: 70px;

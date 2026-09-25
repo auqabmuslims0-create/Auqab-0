@@ -44,3 +44,11 @@ mise.local.toml
 *.tmp
 *.orig
 *~
+
+# === نسخ احتياطية محلية (لا تُرفع) ===
+.backup-*/
+*_backup/
+*.tar.gz
+gunicorn.log
+__pycache__/
+*.pyc

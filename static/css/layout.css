@@ -1,3 +1,8 @@
+/* ============================================================
+   layout.css — التخطيط العام (Navbar / Sidebar / Bottom-nav)
+   آخر تحديث: المجموعة أ (توحيد التخطيط)
+   ============================================================ */
+
 /* ========== الشريط العلوي ========== */
 .navbar-custom {
     position: fixed;
@@ -5,10 +10,10 @@
     left: 0;
     right: 0;
     z-index: 1030;
-    height: 64px;
+    height: var(--navbar-height);
     padding: 0 16px;
     background: linear-gradient(135deg, var(--primary-dark), var(--primary));
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
     color: #fff;
 }
 body.dark-mode .navbar-custom {
@@ -23,7 +28,6 @@ body.dark-mode .navbar-custom {
     align-items: center;
     text-decoration: none;
 }
-body { padding-top: 80px; }
 
 .burger-btn {
     background: none !important;
@@ -45,13 +49,13 @@ body { padding-top: 80px; }
 
 /* ========== القائمة الجانبية الزجاجية ========== */
 .modern-sidebar {
-    width: 30% !important;
-    max-width: 280px;
+    width: var(--sidebar-width) !important;
+    max-width: var(--sidebar-width-max);
     background: var(--glass-bg-light);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border-light);
-    box-shadow: 10px 0 15px rgba(0,0,0,0.05);
+    box-shadow: 10px 0 15px rgba(0, 0, 0, 0.05);
     border-radius: 15px;
     margin: 5px;
     transition: transform 0.3s ease;
@@ -63,11 +67,11 @@ body { padding-top: 80px; }
 body.dark-mode .modern-sidebar {
     background: var(--glass-bg-dark);
     border-color: var(--glass-border-dark);
-    box-shadow: 10px 0 15px rgba(0,0,0,0.3);
+    box-shadow: 10px 0 15px rgba(0, 0, 0, 0.3);
 }
 .modern-sidebar .offcanvas-header {
     padding: 0.8rem 0.8rem 0.4rem;
-    border-bottom: 1px solid rgba(0,0,0,0.05);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
     background-color: transparent;
 }
 body.dark-mode .modern-sidebar .offcanvas-header {
@@ -149,10 +153,10 @@ body.dark-mode .sidebar-avatar-placeholder {
 /* ========== الشريط السفلي الزجاجي ========== */
 .bottom-nav {
     position: fixed;
-    bottom: 15px;
+    bottom: var(--bottom-nav-gap);
     left: 20px;
     right: 20px;
-    height: 72px;
+    height: var(--bottom-nav-height);
     z-index: 1020;
     display: flex;
     align-items: center;
@@ -168,7 +172,7 @@ body.dark-mode .sidebar-avatar-placeholder {
 body.dark-mode .bottom-nav {
     background: var(--glass-bg-dark);
     border-color: var(--glass-border-dark);
-    box-shadow: 0 12px 28px rgba(0,0,0,0.5);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
 }
 
 .bottom-nav-item {
@@ -237,13 +241,13 @@ body.dark-mode .bottom-nav-item:hover { color: #f0ede8; }
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border-light);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     transition: box-shadow 0.25s ease, border-color 0.25s ease;
 }
 body.dark-mode .search-bar-modern {
     background: var(--glass-bg-dark);
     border-color: var(--glass-border-dark);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 .search-bar-modern:focus-within {
     border-color: var(--primary);
@@ -278,32 +282,32 @@ body.dark-mode .search-bar-modern {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     transition: background-color 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
 }
 body.dark-mode .filter-btn {
     background: var(--glass-bg-dark);
     border-color: var(--glass-border-dark);
     color: var(--accent);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 .filter-btn:hover {
     transform: scale(1.05);
-    background: rgba(255,255,255,0.95);
+    background: rgba(255, 255, 255, 0.95);
 }
 body.dark-mode .filter-btn:hover {
-    background: rgba(70,70,70,0.9);
+    background: rgba(70, 70, 70, 0.9);
 }
 
 /* ========== لوحة التصفية الزجاجية ========== */
 .filter-sidebar {
-    width: 85% !important;
-    max-width: 320px;
+    width: var(--filter-sidebar-width) !important;
+    max-width: var(--filter-sidebar-width-max);
     background: var(--glass-bg-light);
     backdrop-filter: blur(var(--glass-blur));
     -webkit-backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border-light);
-    box-shadow: 10px 0 20px rgba(0,0,0,0.08);
+    box-shadow: 10px 0 20px rgba(0, 0, 0, 0.08);
     border-radius: 15px;
     margin: 5px;
     top: 0;
@@ -314,11 +318,11 @@ body.dark-mode .filter-btn:hover {
 body.dark-mode .filter-sidebar {
     background: var(--glass-bg-dark);
     border-color: var(--glass-border-dark);
-    box-shadow: 10px 0 20px rgba(0,0,0,0.3);
+    box-shadow: 10px 0 20px rgba(0, 0, 0, 0.3);
 }
 .filter-sidebar .offcanvas-header {
     padding: 1rem 1rem 0.5rem;
-    border-bottom: 1px solid rgba(0,0,0,0.05);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
 }
 body.dark-mode .filter-sidebar .offcanvas-header {
     border-bottom: 1px solid var(--glass-border-dark);
@@ -330,14 +334,6 @@ body.dark-mode .filter-sidebar .offcanvas-header {
     border-radius: 10px;
     padding: 8px 12px;
     font-size: 0.9rem;
-}
-
-@media (max-width: 480px) {
-    .bottom-nav { left: 10px; right: 10px; height: 68px; }
-    .bottom-nav-item i { font-size: 1.4rem; }
-    .cart-circle { width: 56px; height: 56px; margin-top: -24px; }
-    .cart-circle i { font-size: 24px; }
-    .modern-sidebar, .filter-sidebar { width: 85% !important; margin: 4px; }
 }
 
 /* ========== أزرار زجاجية ========== */
@@ -354,14 +350,14 @@ body.dark-mode .filter-sidebar .offcanvas-header {
     color: var(--primary-dark);
     font-weight: 600;
     font-size: 0.85rem;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     transition: background-color 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
 }
 .btn-glass i { font-size: 1rem; }
 .btn-glass:hover {
     background: rgba(255, 255, 255, 0.85);
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
 }
 .btn-glass-danger { color: #dc3545; }
 .btn-glass-danger:hover { background: rgba(220, 53, 69, 0.1); }
@@ -380,14 +376,14 @@ body.dark-mode .btn-glass-danger:hover { background: rgba(220, 53, 69, 0.2); }
     -webkit-backdrop-filter: blur(var(--glass-blur));
     border: 1px solid var(--glass-border-light);
     border-radius: 20px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
     padding: 4px 8px;
     animation: toast-slide-up 0.3s ease;
 }
 body.dark-mode .toast-modern {
     background: var(--glass-bg-dark);
     border-color: var(--glass-border-dark);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 .toast-modern .toast-body { font-weight: 500; color: var(--text-light); }
 body.dark-mode .toast-modern .toast-body { color: var(--text-dark); }

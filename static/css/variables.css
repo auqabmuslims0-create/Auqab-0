@@ -1,47 +1,119 @@
+/* ============================================================
+   variables.css — متغيّرات التصميم المركزية
+   آخر تحديث: المجموعة أ (توحيد التخطيط)
+   ============================================================ */
+
 :root {
-    /* الألوان الأساسية */
+    /* ========== الألوان الأساسية ========== */
     --primary: #2e5d34;
     --primary-dark: #224527;
     --primary-light: #3e7a44;
     --accent: #d4af37;
+    --accent-dark: #b8941f;
 
-    /* الخلفيات */
+    /* ========== الخلفيات ========== */
     --bg-light: #f7f4ef;
     --bg-dark: #121212;
     --card-light: #ffffff;
     --card-dark: #2a2a2a;
 
-    /* النصوص */
+    /* ========== النصوص ========== */
     --text-light: #2d2d2d;
     --text-dark: #ffffff;
     --muted-light: #6c757d;
     --muted-dark: #e0e0e0;
 
-    /* ألوان الحالة */
+    /* ========== ألوان الحالة ========== */
     --danger: #dc3545;
     --success: #198754;
     --warning: #ffc107;
     --info: #0dcaf0;
 
-    /* الأنصاف */
+    /* ========== الأنصاف ========== */
     --radius-sm: 10px;
     --radius-md: 15px;
     --radius-lg: 20px;
     --radius-pill: 50px;
 
-    /* الظلال */
-    --shadow-sm: 0 2px 6px rgba(0,0,0,0.08);
-    --shadow-md: 0 6px 18px rgba(0,0,0,0.12);
-    --shadow-lg: 0 12px 30px rgba(0,0,0,0.18);
+    /* ========== الظلال ========== */
+    --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.12);
+    --shadow-lg: 0 12px 30px rgba(0, 0, 0, 0.18);
 
-    /* الحركات */
+    /* ========== الحركات ========== */
     --transition-fast: 0.2s ease;
     --transition: 0.3s ease;
 
-    /* قيم زجاجية */
+    /* ========== القيم الزجاجية ========== */
     --glass-bg-light: rgba(255, 255, 255, 0.7);
     --glass-bg-dark: rgba(45, 45, 45, 0.6);
     --glass-border-light: rgba(255, 255, 255, 0.5);
     --glass-border-dark: rgba(255, 255, 255, 0.15);
     --glass-blur: 12px;
+
+    /* ========== قياسات التخطيط (المجموعة أ) ========== */
+    --navbar-height: 64px;
+    --navbar-gap: 16px;
+    --navbar-total: calc(var(--navbar-height) + var(--navbar-gap));
+
+    --bottom-nav-height: 72px;
+    --bottom-nav-gap: 15px;
+    --bottom-nav-total: calc(var(--bottom-nav-height) + var(--bottom-nav-gap) + 20px);
+
+    --sidebar-width: 300px;
+    --sidebar-width-max: 85vw;
+    --filter-sidebar-width: 320px;
+    --filter-sidebar-width-max: 85vw;
+
+    /* ========== سلّم المسافات ========== */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --space-7: 48px;
+    --space-8: 64px;
+
+    /* ========== سلّم الطباعة ========== */
+    --fs-xs: 0.7rem;
+    --fs-sm: 0.85rem;
+    --fs-base: 1rem;
+    --fs-lg: 1.15rem;
+    --fs-xl: 1.35rem;
+    --fs-2xl: 1.75rem;
+    --fs-3xl: 2.25rem;
+
+    /* ========== إتاحة الوصول ========== */
+    --focus-ring: 0 0 0 3px rgba(212, 175, 55, 0.45);
+}
+
+/* ========== تجاوزات الوضع الداكن (مركزية) ========== */
+html.dark-mode {
+    --navbar-gap: 12px;
+    --focus-ring: 0 0 0 3px rgba(212, 175, 55, 0.55);
+}
+
+/* ========== تجاوزات الشاشات ========== */
+@media (max-width: 575.98px) {
+    :root {
+        --navbar-height: 56px;
+        --navbar-gap: 14px;
+        --bottom-nav-height: 68px;
+        --bottom-nav-gap: 10px;
+    }
+}
+
+@media (min-width: 576px) and (max-width: 767.98px) {
+    :root {
+        --navbar-height: 60px;
+        --navbar-gap: 15px;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991.98px) {
+    :root {
+        --navbar-height: 64px;
+        --navbar-gap: 16px;
+    }
 }
